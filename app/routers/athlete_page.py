@@ -1,9 +1,8 @@
 import pickle
 from functools import lru_cache
-from typing import List, Tuple
+from typing import List
 from collections import OrderedDict
 import pandas as pd
-import time
 import numpy as np
 
 from stats.athlete import Athlete
@@ -544,7 +543,6 @@ async def get_athlete(request: Request, athlete_id: int):
     """
     Prepare athlete information for display as HTML.
     """
-    start = time.time()
     athlete: Athlete = load_athlete_cached(athlete_id)
     
     race_lookup: dict = get_race_lookup()
@@ -568,9 +566,6 @@ async def get_athlete(request: Request, athlete_id: int):
     # Format race splits and ratings for display
     race_history = get_race_history(athlete, race_lookup)
     rating_history = get_rating_history(athlete, race_lookup)
-    
-    end = time.time()
-    print(f"Athlete format time: {end-start}s")
     
     return templates.TemplateResponse(
         "athlete.html",

@@ -76,8 +76,8 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 270907,110113,00:19:52,00:00:20,00:00:00,00:00:21,00:38:43,02:00:37,Inna Tutukina has incorrect bike time; removed for consistency. TODO: Recalc bike
 270907,9819,00:20:40,00:00:25,00:00:00,00:00:23,00:36:21,02:01:57,Anna Burova has incorrect bike time; removed for consistency. TODO: Recalc bike
 270907,9817,00:20:45,00:00:26,00:00:00,00:00:35,00:40:18,02:06:15,Olga Dmitrieva has incorrect bike time; removed for consistency. TODO: Recalc bike
-270907,49078,00:19:10,00:00:27,00:00:00,00:00:22,00:36:56,01:58:53,Anastasia Gorbunova has incorrect bike time; removed for consistency. TODO: Recalc bike
-270907,29844,00:20:37,00:00:24,00:00:00,00:00:27,00:36:38,02:02:21,Anastasia Polyanskaya Protasenya has incorrect bike time; removed for consistency. TODO: Recalc bike
+270907,49078,00:19:10,00:00:27,00:00:00,00:00:22,00:36:56,01:58:53,Anastasia Gorbunova has incorrect bike time; removed for consistency.
+270907,29844,00:20:37,00:00:24,00:00:00,00:00:27,00:36:38,02:02:21,Anastasia Polyanskaya Protasenya has incorrect bike time; removed for consistency.
 270907,29843,00:20:40,00:00:20,00:00:00,00:00:26,00:38:36,02:04:19,Olga Agapova has incorrect bike time; removed for consistency. TODO: Recalc bike
 270907,70468,00:19:57,00:00:22,00:00:00,00:00:26,00:40:11,02:05:56,Maria Molyarova has incorrect bike time; removed for consistency. TODO: Recalc bike
 270907,26398,00:20:41,00:00:24,00:00:00,00:00:25,00:41:08,02:06:47,Anastasiya Vasilyeva has incorrect bike time; removed for consistency. TODO: Recalc bike
@@ -106,14 +106,43 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 309042,111067,00:33:06,00:00:48,00:00:00,00:00:59,01:12:03,03:25:12,Ruth Rudden has incorrect bike split; overall remains correct. TODO: Recalc bike
 309042,111068,00:41:19,00:01:36,00:00:00,00:01:07,01:11:53,03:36:13,Aliya Drakes has incorrect bike split; overall remains correct. TODO: Recalc bike
 309574,101296,00:21:33,00:00:57,00:00:00,00:00:41,00:00:38:52,02:05:33,Stefanie Gouveia has bike split of 01:04. TODO: Recalc bike
-310497,73284,00:23:02,00:00:33,00:00:00,00:00:44,00:45:49,02:16:50,Hannah Cutajar has incorrect bike split; overall remains correct. TODO: Reclac bike
-310497,83248,00:23:41,00:00:39,00:00:00,00:00:53,00:47:37,02:24:23,Margaret Seguna has incorrect bike split; overall remains correct. TODO: Reclac bike
-310497,105294,00:25:10,00:00:31,00:00:00,00:00:53,00:54:07,02:26:22,Michelle Vella Wood has incorrect bike split; overall remains correct. TODO: Reclac bike
-310497,95464,00:26:37,00:00:32,00:00:00,00:00:52,00:48:12,02:28:34,Lara Buttigieg has incorrect bike split; overall remains correct. TODO: Reclac bike
-310497,102321,00:30:32,00:01:39,00:00:00,00:01:12,00:47:53,02:48:15,Felicienne Mercieca has incorrect bike split; overall remains correct. TODO: Reclac bike
-310497,111610,00:29:56,00:01:23,00:00:00,00:00:59,00:46:32,02:55:16,Karen Amato has incorrect bike split; overall remains correct. TODO: Reclac bike
+310497,73284,00:23:02,00:00:33,01:06:42,00:00:44,00:45:49,02:16:50,Hannah Cutajar has incorrect bike split; recalcuated from remaining splits
+310497,83248,00:23:41,00:00:39,01:11:33,00:00:53,00:47:37,02:24:23,Margaret Seguna has incorrect bike split; recalcuated from remaining splits
+310497,105294,00:25:10,00:00:31,01:05:41,00:00:53,00:54:07,02:26:22,Michelle Vella Wood has incorrect bike split; recalcuated from remaining splits
+310497,95464,00:26:37,00:00:32,01:12:21,00:00:52,00:48:12,02:28:34,Lara Buttigieg has incorrect bike split; recalcuated from remaining splits
+310497,102321,00:30:32,00:01:39,01:26:59,00:01:12,00:47:53,02:48:15,Felicienne Mercieca has incorrect bike split; recalcuated from remaining splits
+310497,111610,00:29:56,00:01:23,01:36:26,00:00:59,00:46:32,02:55:16,Karen Amato has incorrect bike split; recalcuated from remaining splits
 310497,29810,00:30:56,00:01:13,00:00:00,00:01:17,00:00:00,02:57:23,Suzanna Farrugia has short bike and run split; both removed for consistency
 310497,111606,00:38:24,00:01:03,00:00:00,00:01:02,00:00:00,03:07:53,Claire Azzopardi has short bike and run split; both removed for consistency
 310497,91696,00:26:46,00:01:43,00:00:00,00:01:21,00:00:00,03:15:42,Marian Belsten has short bike and run split; both removed for consistency
 310497,111611,00:34:48,00:02:03,00:00:00,00:01:25,00:00:00,03:17:13,Nanette Farrugia has short bike and run split; both removed for consistency
 389432,8045,00:00:00,00:00:00,00:00:00,00:00:00,00:00:00,02:31:00,Sergio Muciño has incorrect overall time; time interpolated from competition
+264795,47782,00:00:00,00:00:00,00:00:00,00:00:00,00:00:00,2:05:20,Luisa Baptista has incorrect run split. Removed for consistency
+333117,96688,00:10:00,00:00:41,00:31:38,00:00:26,00:18:18,01:01:03,Pauline Landron has incorrectly formatted overall time; recalculated from splits
+333117,104333,00:10:01,00:00:43,00:31:36,00:00:29,00:19:28,01:02:17,Jessica Fullagar has incorrectly formatted overall time; recalculated from splits
+333117,96747,00:09:58,00:00:44,00:31:37,00:00:25,00:20:26,01:03:10,Emma Ducreux has incorrectly formatted overall time; recalculated from splits
+333117,96812,00:09:59,00:00:49,00:31:37,00:00:31,00:20:41,01:03:37,Julie Iemmolo has incorrectly formatted overall time; recalculated from splits
+333117,104946,00:10:31,00:00:45,00:32:49,00:00:29,00:19:11,01:03:45,Audrey Ducornet has incorrectly formatted overall time; recalculated from splits
+333117,117232,00:10:52,00:00:46,00:32:24,00:00:29,00:19:29,01:04:00,Marine Vetillard has incorrectly formatted overall time; recalculated from splits
+333117,111231,00:10:26,00:00:44,00:32:52,00:00:29,00:19:36,01:04:07,Blandine Guilloteau has incorrectly formatted overall time; recalculated from splits
+333117,122662,00:10:34,00:00:47,00:32:46,00:00:31,00:19:47,01:04:25,Laurie Maisonneuve has incorrectly formatted overall time; recalculated from splits
+333117,128131,00:10:39,00:00:47,00:32:39,00:00:30,00:20:20,01:04:55,Ines De Poorter has incorrectly formatted overall time; recalculated from splits
+333117,117233,00:10:27,00:00:44,00:32:50,00:00:34,00:20:33,01:05:08,Juliette Duquesne has incorrectly formatted overall time; recalculated from splits
+333117,106878,00:10:51,00:00:46,00:32:22,00:00:27,00:20:51,01:05:17,Juliette Mahe has incorrectly formatted overall time; recalculated from splits
+333117,128132,00:10:48,00:00:51,00:32:26,00:00:31,00:20:47,01:05:23,Edmee Lachat has incorrectly formatted overall time; recalculated from splits
+333117,106467,00:10:25,00:00:43,00:32:55,00:00:25,00:21:17,01:05:45,Mathilde Serodon has incorrectly formatted overall time; recalculated from splits
+333117,128064,00:10:52,00:00:43,00:32:31,00:00:28,00:21:14,01:05:48,Marjolaine Pierre has incorrectly formatted overall time; recalculated from splits
+333117,128133,00:10:53,00:00:51,00:33:30,00:00:45,00:19:53,01:05:52,Juliette Noyer has incorrectly formatted overall time; recalculated from splits
+339728,119222,00:25:06,00:01:04,01:29:11,00:00:41,01:02:38,02:58:40,Megan Charles has incorrectly formatted run split; recalcuated from other splits
+339728,111066,00:36:44,00:02:33,01:32:53,00:01:51,01:03:50,03:17:51,Jacqueline Sabga has incorrectly formatted run split; recalcuated from other splits
+339728,111065,00:36:45,00:02:32,01:32:57,00:01:48,01:03:49,03:17:51,Cherise Stauble has incorrectly formatted run split; recalcuated from other splits
+229728,132386,00:33:05,00:01:38,01:34:09,00:00:58,01:11:52,03:21:42,Alana Lee Wo has incorrectly formatted run split; recalcuated from other splits
+352718,142126,00:29:08,00:00:59,01:18:39,00:01:00,00:55:58,02:45:44,Reka Kara has incorrectly formatted run split; relcaulcated from other splits
+352718,21501,00:30:34,00:02:01,01:17:12,00:01:03,00:59:28,02:50:18,Daniela Kamburova has incorrectly formatted run split; relcaulcated from other splits
+352718,142116,00:39:06,00:01:28,01:21:16,00:01:11,00:56:13,02:59:14,Vesela Mackic has incorrectly formatted run split; relcaulcated from other splits
+352718,142127,00:38:47,00:01:08,01:25:49,00:00:31,00:53:17,02:59:32,Branka Jerkov has incorrectly formatted run split; relcaulcated from other splits
+352718,142128,00:37:32,00:01:30,01:22:48,00:01:26,01:00:34,03:03:50,Ruzica Smelcerovic has incorrectly formatted run split; relcaulcated from other splits
+352718,142129,00:49:36,00:03:42,01:27:21,00:01:05,01:04:49,03:26:33,Ana Atanasoska has incorrectly formatted run split; relcaulcated from other splits
+352718,142131,00:37:37,00:02:18,01:46:54,00:00:54,01:02:36,03:30:19,Milea Zdravkovic has incorrectly formatted run split; relcaulcated from other splits
+352718,142133,00:47:18,00:06:28,01:45:33,00:04:02,00:55:47,03:39:08,Diliana Markova has incorrectly formatted run split; relcaulcated from other splits
+352718,142134,00:43:28,00:03:14,01:43:04,00:01:29,01:19:58,03:51:13,Svetlana Dalovic has incorrectly formatted run split; relcaulcated from other splits

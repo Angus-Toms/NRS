@@ -4,17 +4,26 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import PlainTextResponse
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, leaderboard, comparison, about, robots
 from config import RUNTIME_DATA_DIR, STATIC_BASE_URL
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
+ALLOWED_HOSTS = {"protridata.com", "www.protridata.com"}
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory = BASE_DIR / "static"), name = "static")
 app.mount("/data", StaticFiles(directory = RUNTIME_DATA_DIR), name = "data")
 templates = Jinja2Templates(directory = BASE_DIR / "templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+
+@app.middleware("http")
+async def enforce_host(request: Request, call_next):
+    host = request.headers.get("host", "").split(":")[0].lower()
+    if host not in ALLOWED_HOSTS:
+        return PlainTextResponse("Forbidden", status_code=403)
+    return await call_next(request)
 
 # Render HTTP errors with a shared template
 @app.exception_handler(StarletteHTTPException)
