@@ -80,7 +80,7 @@ def search_athletes(query, gender=None):
 
 def get_podium(gender):
     """
-    Top 3 athletes by current world_overall ranking for a given gender.
+    Top 3 athletes by current overall rating for a given gender.
     Returns list of dicts.
     """
     conn = _get_conn()
@@ -92,31 +92,32 @@ def get_podium(gender):
             n.emoji    AS country_emoji,
             a.country_full,
             a.year_of_birth,
-            COALESCE(cur.overall, 0) AS overall,
-            rk.world_overall         AS overall_rank
+            a.profile_img,
+            cur.overall,
+            rk.world_overall AS overall_rank
         FROM athletes a
         JOIN nationalities n ON a.country_full = n.country_full
         JOIN (
-            SELECT rk.athlete_id, rk.world_overall
+            SELECT DISTINCT ON (rk.athlete_id)
+                   rk.athlete_id, rk.world_overall
             FROM rankings rk
             JOIN races r ON rk.race_id = r.race_id
-            QUALIFY ROW_NUMBER() OVER (PARTITION BY rk.athlete_id
-                                       ORDER BY r.race_date DESC, rk.race_id DESC) = 1
+            ORDER BY rk.athlete_id, r.race_date DESC, rk.race_id DESC
         ) rk ON a.athlete_id = rk.athlete_id
-        LEFT JOIN (
-            SELECT ra.athlete_id, ra.overall
+        JOIN (
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id, ra.overall
             FROM ratings ra
             JOIN races r ON ra.race_id = r.race_id
-            QUALIFY ROW_NUMBER() OVER (PARTITION BY ra.athlete_id
-                                       ORDER BY r.race_date DESC, ra.race_id DESC) = 1
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
         ) cur ON a.athlete_id = cur.athlete_id
         WHERE a.gender = ?
-        ORDER BY rk.world_overall ASC
+        ORDER BY cur.overall DESC
         LIMIT 3
     """, [gender]).fetchall()
 
     cols = ["athlete_id", "name", "country_alpha3", "country_emoji",
-            "country_full", "year_of_birth", "overall", "overall_rank"]
+            "country_full", "year_of_birth", "profile_img", "overall", "overall_rank"]
     return [dict(zip(cols, r)) for r in rows]
 
 
@@ -208,38 +209,38 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
     where = " AND ".join(filters)
 
     order_clause = (
-        f"cr.{rank_col} ASC"
+        f"c.{rating_col} DESC, a.athlete_id ASC"
         if order == "top"
-        else f"COALESCE(c.{rating_col} - ya.{rating_col}, 0) DESC"
+        else f"COALESCE(c.{rating_col} - ya.{rating_col}, 0) DESC, a.athlete_id ASC"
     )
 
     sql = f"""
         WITH current AS (
-            SELECT ra.athlete_id,
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id,
                    ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
                    r.race_date AS last_race_date
             FROM ratings ra
             JOIN races r ON ra.race_id = r.race_id
-            QUALIFY ROW_NUMBER() OVER (PARTITION BY ra.athlete_id
-                                       ORDER BY r.race_date DESC, ra.race_id DESC) = 1
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
         ),
         current_rank AS (
-            SELECT rk.athlete_id,
+            SELECT DISTINCT ON (rk.athlete_id)
+                   rk.athlete_id,
                    rk.world_overall, rk.world_swim, rk.world_bike,
                    rk.world_run, rk.world_transition
             FROM rankings rk
             JOIN races r ON rk.race_id = r.race_id
-            QUALIFY ROW_NUMBER() OVER (PARTITION BY rk.athlete_id
-                                       ORDER BY r.race_date DESC, rk.race_id DESC) = 1
+            ORDER BY rk.athlete_id, r.race_date DESC, rk.race_id DESC
         ),
         year_ago AS (
-            SELECT ra.athlete_id,
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id,
                    ra.overall, ra.swim, ra.bike, ra.run, ra.transition
             FROM ratings ra
             JOIN races r ON ra.race_id = r.race_id
             WHERE r.race_date <= CURRENT_DATE - INTERVAL 1 YEAR
-            QUALIFY ROW_NUMBER() OVER (PARTITION BY ra.athlete_id
-                                       ORDER BY r.race_date DESC, ra.race_id DESC) = 1
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
         ),
         athlete_stats AS (
             SELECT athlete_id,
@@ -549,33 +550,26 @@ def get_athlete_race_history(athlete_id):
             res.run_s,
             res.t1_s,
             res.t2_s,
-            -- behind times: null if this athlete's time is 0
-            CASE WHEN res.overall_s > 0 THEN
-                res.overall_s - MIN(CASE WHEN res.overall_s > 0 THEN res.overall_s END)
-                                OVER (PARTITION BY res.race_id)
-            END AS overall_behind_s,
-            CASE WHEN res.swim_s > 0 THEN
-                res.swim_s - MIN(CASE WHEN res.swim_s > 0 THEN res.swim_s END)
-                             OVER (PARTITION BY res.race_id)
-            END AS swim_behind_s,
-            CASE WHEN res.bike_s > 0 THEN
-                res.bike_s - MIN(CASE WHEN res.bike_s > 0 THEN res.bike_s END)
-                             OVER (PARTITION BY res.race_id)
-            END AS bike_behind_s,
-            CASE WHEN res.run_s > 0 THEN
-                res.run_s - MIN(CASE WHEN res.run_s > 0 THEN res.run_s END)
-                            OVER (PARTITION BY res.race_id)
-            END AS run_behind_s,
-            CASE WHEN res.t1_s > 0 THEN
-                res.t1_s - MIN(CASE WHEN res.t1_s > 0 THEN res.t1_s END)
-                           OVER (PARTITION BY res.race_id)
-            END AS t1_behind_s,
-            CASE WHEN res.t2_s > 0 THEN
-                res.t2_s - MIN(CASE WHEN res.t2_s > 0 THEN res.t2_s END)
-                           OVER (PARTITION BY res.race_id)
-            END AS t2_behind_s
+            -- behind times: subtract per-race winner time computed across ALL athletes
+            CASE WHEN res.overall_s > 0 THEN res.overall_s - w.min_overall END AS overall_behind_s,
+            CASE WHEN res.swim_s    > 0 THEN res.swim_s    - w.min_swim    END AS swim_behind_s,
+            CASE WHEN res.bike_s    > 0 THEN res.bike_s    - w.min_bike    END AS bike_behind_s,
+            CASE WHEN res.run_s     > 0 THEN res.run_s     - w.min_run     END AS run_behind_s,
+            CASE WHEN res.t1_s      > 0 THEN res.t1_s      - w.min_t1      END AS t1_behind_s,
+            CASE WHEN res.t2_s      > 0 THEN res.t2_s      - w.min_t2      END AS t2_behind_s
         FROM results res
         JOIN races r ON res.race_id = r.race_id
+        JOIN (
+            SELECT race_id,
+                   MIN(CASE WHEN overall_s > 0 THEN overall_s END) AS min_overall,
+                   MIN(CASE WHEN swim_s    > 0 THEN swim_s    END) AS min_swim,
+                   MIN(CASE WHEN bike_s    > 0 THEN bike_s    END) AS min_bike,
+                   MIN(CASE WHEN run_s     > 0 THEN run_s     END) AS min_run,
+                   MIN(CASE WHEN t1_s      > 0 THEN t1_s      END) AS min_t1,
+                   MIN(CASE WHEN t2_s      > 0 THEN t2_s      END) AS min_t2
+            FROM results
+            GROUP BY race_id
+        ) w ON res.race_id = w.race_id
         WHERE res.athlete_id = ?
         ORDER BY r.race_date DESC, res.race_id DESC
     """, [athlete_id]).fetchall()
@@ -602,6 +596,7 @@ def get_athlete_rating_history(athlete_id):
             r.race_title,
             r.prog_name,
             res.position,
+            res.status,
             ra.overall,    ra.overall_change,
             ra.swim,       ra.swim_change,
             ra.bike,       ra.bike_change,
@@ -615,7 +610,7 @@ def get_athlete_rating_history(athlete_id):
     """, [athlete_id]).fetchall()
 
     cols = [
-        "race_id", "race_date", "race_title", "race_program", "position",
+        "race_id", "race_date", "race_title", "race_program", "position", "status",
         "overall_rating",    "overall_change",
         "swim_rating",       "swim_change",
         "bike_rating",       "bike_change",
@@ -641,33 +636,22 @@ def get_athlete_times_data(athlete_id):
             res.swim_s,
             res.bike_s,
             res.run_s,
-            -- pct behind per discipline
-            CASE WHEN res.overall_s > 0 THEN
-                (res.overall_s - MIN(CASE WHEN res.overall_s > 0 THEN res.overall_s END)
-                                 OVER (PARTITION BY res.race_id))
-                / MIN(CASE WHEN res.overall_s > 0 THEN res.overall_s END)
-                  OVER (PARTITION BY res.race_id)
-            END AS overall_pct_behind,
-            CASE WHEN res.swim_s > 0 THEN
-                (res.swim_s - MIN(CASE WHEN res.swim_s > 0 THEN res.swim_s END)
-                              OVER (PARTITION BY res.race_id))
-                / MIN(CASE WHEN res.swim_s > 0 THEN res.swim_s END)
-                  OVER (PARTITION BY res.race_id)
-            END AS swim_pct_behind,
-            CASE WHEN res.bike_s > 0 THEN
-                (res.bike_s - MIN(CASE WHEN res.bike_s > 0 THEN res.bike_s END)
-                              OVER (PARTITION BY res.race_id))
-                / MIN(CASE WHEN res.bike_s > 0 THEN res.bike_s END)
-                  OVER (PARTITION BY res.race_id)
-            END AS bike_pct_behind,
-            CASE WHEN res.run_s > 0 THEN
-                (res.run_s - MIN(CASE WHEN res.run_s > 0 THEN res.run_s END)
-                             OVER (PARTITION BY res.race_id))
-                / MIN(CASE WHEN res.run_s > 0 THEN res.run_s END)
-                  OVER (PARTITION BY res.race_id)
-            END AS run_pct_behind
+            -- pct behind leader — computed against all athletes in each race
+            CASE WHEN res.overall_s > 0 THEN (res.overall_s - w.min_overall) / w.min_overall END AS overall_pct_behind,
+            CASE WHEN res.swim_s    > 0 THEN (res.swim_s    - w.min_swim)    / w.min_swim    END AS swim_pct_behind,
+            CASE WHEN res.bike_s    > 0 THEN (res.bike_s    - w.min_bike)    / w.min_bike    END AS bike_pct_behind,
+            CASE WHEN res.run_s     > 0 THEN (res.run_s     - w.min_run)     / w.min_run     END AS run_pct_behind
         FROM results res
         JOIN races r ON res.race_id = r.race_id
+        JOIN (
+            SELECT race_id,
+                   MIN(CASE WHEN overall_s > 0 THEN overall_s END) AS min_overall,
+                   MIN(CASE WHEN swim_s    > 0 THEN swim_s    END) AS min_swim,
+                   MIN(CASE WHEN bike_s    > 0 THEN bike_s    END) AS min_bike,
+                   MIN(CASE WHEN run_s     > 0 THEN run_s     END) AS min_run
+            FROM results
+            GROUP BY race_id
+        ) w ON res.race_id = w.race_id
         WHERE res.athlete_id = ?
         ORDER BY r.race_date ASC, res.race_id ASC
     """, [athlete_id]).fetchall()
@@ -786,6 +770,7 @@ def get_race_ratings(race_id):
             n.emoji   AS country_emoji,
             a.year_of_birth,
             res.position,
+            res.status,
             ra.overall,    ra.overall_change,
             ra.swim,       ra.swim_change,
             ra.bike,       ra.bike_change,
@@ -800,7 +785,7 @@ def get_race_ratings(race_id):
     """, [race_id]).fetchall()
 
     cols = [
-        "athlete_id", "name", "country_alpha3", "country_emoji", "year_of_birth", "position",
+        "athlete_id", "name", "country_alpha3", "country_emoji", "year_of_birth", "position", "status",
         "overall_rating",    "overall_change",
         "swim_rating",       "swim_change",
         "bike_rating",       "bike_change",
@@ -848,6 +833,7 @@ def get_race_best_performances(race_id):
             FROM ratings ra
             JOIN athletes a ON ra.athlete_id = a.athlete_id
             WHERE ra.race_id = ?
+              AND ra.{disc}_change > 0
             ORDER BY ra.{disc}_change DESC
             LIMIT 1
         """, [race_id]).fetchone()

@@ -78,10 +78,9 @@ new Chart(ratingsCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: false,
@@ -139,10 +138,9 @@ new Chart(overallPctBehindCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: true,
@@ -200,10 +198,9 @@ new Chart(swimPctBehindCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: true,
@@ -261,10 +258,9 @@ new Chart(bikePctBehindCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,  
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: true,
@@ -275,7 +271,7 @@ new Chart(bikePctBehindCtx, {
             }
         }
     }
-});  
+});
 
 // Run % behind leader chart ---------------------------------------------------
 const runPctBehindCtx = document.getElementById('run-pct-behind-chart-canvas');
@@ -318,14 +314,13 @@ new Chart(runPctBehindCtx, {
         scales: {
             x: {
                 type: 'time',
-                time: { 
+                time: {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: true,
@@ -336,7 +331,7 @@ new Chart(runPctBehindCtx, {
             }
         }
     }
-}); 
+});
 
 // Swim splits chart -----------------------------------------------------------
 const swimTimesCtx = document.getElementById('swim-times-chart-canvas');
@@ -384,10 +379,9 @@ new Chart(swimTimesCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: false,
@@ -452,10 +446,9 @@ new Chart(bikeTimesCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: false,
@@ -520,10 +513,9 @@ new Chart(runTimesCtx, {
                     unit: 'year',
                     tooltipFormat: 'dd-MM-yyyy'
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                grid: { display: false },
+                ticks: { display: false },
+                title: { display: false }
             },
             y: {
                 beginAtZero: false,

@@ -27,9 +27,14 @@ def format_rating(rating: float) -> float:
     return round(rating, 1)
 
 def format_rating_change(change: float) -> dict:
-    """ 
+    """
     Format rating change to str and provide css-class based on cardinality
     """
+    if change is None: return {
+        "formatted_str": "",
+        "css_class": "no-data"
+    }
+
     # For races, returned when there is no split data for particular leg
     if change == float('-inf'): return {
         "formatted_str": "",
@@ -58,8 +63,8 @@ def format_1yr_rating_change(change: float) -> dict:
     """
     if change == 0:
         return {
-            "formatted_str": "▲0 last year",
-            "css_class": "neutral"
+            "formatted_str": "",
+            "css_class": ""
         }
     
     if change > 0:

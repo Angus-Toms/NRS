@@ -43,12 +43,11 @@ def hms_to_seconds(t: str) -> float:
     h, m, s = t.split(":")
     return int(h) * 3600 + int(m) * 60 + int(s)
 
-def fmt_hhmmss(sec: float) -> str:
+def fmt_mmss(sec: float) -> str:
     sec = int(round(sec))
-    h = sec // 3600
-    m = (sec % 3600) // 60
+    m = sec // 60
     s = sec % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
 
 # ---- Read / parse ----
 df = pd.read_csv(io.StringIO(csv_text))
@@ -77,43 +76,116 @@ pos["After T2"]   = cum["After T2"].rank(method="first").astype(int)
 pos["After Run"]  = cum["After Run"].rank(method="first").astype(int)
 
 # ---- X layout with narrow transitions ----
-seg_widths = np.array([1.0, 1.0/3.0, 1.0, 1.0/3.0, 1.0])
-x = np.concatenate(([0.0], np.cumsum(seg_widths)))  # 6 checkpoint positions
+seg_widths = np.array([1.0, 0.25, 1.0, 0.25, 1.0])
+x = np.concatenate(([0.0], np.cumsum(seg_widths)))
 seg_mids = (x[:-1] + x[1:]) / 2
 
 t1_span = (x[1], x[2])
 t2_span = (x[3], x[4])
 
 def add_transition_bg(ax):
-    ax.axvspan(*t1_span, color="grey", alpha=0.15, zorder=0)
-    ax.axvspan(*t2_span, color="grey", alpha=0.15, zorder=0)
-    for xv in [t1_span[0], t1_span[1], t2_span[0], t2_span[1]]:
-        ax.axvline(xv, color="grey", alpha=0.35, linewidth=1.0, zorder=1)
-
-def strip_axes(ax):
-    # remove all spines (axis lines)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-    # keep labels but remove tick marks
-    ax.tick_params(axis="both", length=0)
+    ax.axvspan(*t1_span, color="#f0f0f0", alpha=0.5, zorder=0)
+    ax.axvspan(*t2_span, color="#f0f0f0", alpha=0.5, zorder=0)
 
 # Plot order by finish time
 order = cum["After Run"].sort_values().index
 
 # =======================
-# Plot 1: Positions (with names in same color at end)
+# Plot 1: Positions (cleaner version)
 # =======================
-fig, ax = plt.subplots(figsize=(13, 7))
+fig, ax = plt.subplots(figsize=(14, 8))
 add_transition_bg(ax)
 
 for idx in order:
     y = pos.loc[idx, CHECKPOINTS].to_numpy(dtype=float)
-    (line,) = ax.plot(x, y, linewidth=1.6, alpha=0.85, zorder=2)
+    (line,) = ax.plot(x, y, linewidth=2.0, alpha=0.75, zorder=2)
 
-    # name at end of line (after run checkpoint)
     name = df.loc[idx, "athlete_title"]
     ax.text(
-        x[-1] + 0.03, y[-1], name,
+        x[-1] + 0.08, y[-1], name,
+        color=line.get_color(),
+        va="center", ha="left",
+        fontsize=9.5,
+        clip_on=False,
+        zorder=3
+    )
+
+ax.invert_yaxis()
+ax.set_ylabel("Position", fontsize=12, fontweight='bold')
+ax.set_xlabel("")
+ax.set_title("Race Position Through Each Discipline", fontsize=14, fontweight='bold', pad=20)
+
+ax.grid(True, axis='y', alpha=0.3, linestyle='--', linewidth=0.5)
+ax.set_axisbelow(True)
+
+ax.set_xticks(seg_mids)
+ax.set_xticklabels(SEGMENT_LABELS, fontsize=11)
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_linewidth(0.5)
+ax.spines['bottom'].set_linewidth(0.5)
+
+ax.set_xlim(x.min() - 0.1, x.max() + 1.1)
+
+plt.tight_layout()
+plt.show()
+
+# =======================
+# Plot 2: Time gaps with rescaled segments but continuous lines
+# =======================
+# Calculate time gaps behind leader at each checkpoint
+gap = pd.DataFrame(index=df.index)
+gap["Start"] = 0.0
+for c in ["After Swim", "After T1", "After Bike", "After T2", "After Run"]:
+    gap[c] = cum[c] - cum[c].min()
+
+# Define scaling factors for each segment to normalize display
+# We'll scale each segment so its max gap = 1.0
+segment_info = [
+    ("Swim", "Start", "After Swim", 1.0),
+    ("T1", "After Swim", "After T1", 0.25),
+    ("Bike", "After T1", "After Bike", 1.0),
+    ("T2", "After Bike", "After T2", 0.25),
+    ("Run", "After T2", "After Run", 1.0)
+]
+
+# Calculate max gaps for scaling
+max_gaps = {}
+for seg_name, start_cp, end_cp, width in segment_info:
+    if seg_name in ["T1", "T2"]:
+        # For transitions, use the max gap at start
+        max_gaps[seg_name] = max(gap[start_cp].max(), 0.001)
+    else:
+        max_gaps[seg_name] = max(gap[end_cp].max(), 0.001)
+
+# Build scaled x and y coordinates for each athlete
+fig, ax = plt.subplots(figsize=(15, 8))
+add_transition_bg(ax)
+
+x_scaled = x.copy()
+
+for idx in order:
+    x_points = []
+    y_points = []
+    
+    for i, (seg_name, start_cp, end_cp, width) in enumerate(segment_info):
+        start_gap = gap.loc[idx, start_cp]
+        end_gap = gap.loc[idx, end_cp]
+        
+        # Scale gaps to 0-1 based on max for this segment
+        start_scaled = start_gap / max_gaps[seg_name]
+        end_scaled = end_gap / max_gaps[seg_name]
+        
+        x_points.extend([x_scaled[i], x_scaled[i+1]])
+        y_points.extend([start_scaled, end_scaled])
+    
+    (line,) = ax.plot(x_points, y_points, linewidth=2.0, alpha=0.75, zorder=2)
+    
+    # Add name at end
+    name = df.loc[idx, "athlete_title"]
+    ax.text(
+        x_points[-1] + 0.08, y_points[-1], name,
         color=line.get_color(),
         va="center", ha="left",
         fontsize=9,
@@ -122,62 +194,45 @@ for idx in order:
     )
 
 ax.invert_yaxis()
-ax.set_ylabel("Position (lower is better)")
-ax.set_xlabel("Race segments (T1/T2 are 1/3 width)")
-ax.set_title("Snake-o-tron: Position at Start / Swim / T1 / Bike / T2 / Run")
+ax.set_ylabel("Time Behind Leader (scaled per segment)", fontsize=12, fontweight='bold')
+ax.set_xlabel("")
+ax.set_title("Time Gaps Evolution Through Race (each segment independently scaled)", 
+             fontsize=14, fontweight='bold', pad=20)
 
-# remove gridlines entirely (those y=5/10/15 etc.)
-ax.grid(False)
-
-# segment labels
+# Add segment labels
 ax.set_xticks(seg_mids)
-ax.set_xticklabels(SEGMENT_LABELS)
+ax.set_xticklabels(SEGMENT_LABELS, fontsize=11)
 
-# give room for labels on the right
-ax.set_xlim(x.min(), x.max() + 0.9)
+# Y-axis: show 0, 0.5, 1.0 normalized scale
+ax.set_yticks([0.0, 0.5, 1.0])
+ax.set_yticklabels(["Leader", "0.5×", "1.0×"], fontsize=10)
 
-plt.tight_layout()
-plt.show()
+ax.grid(True, axis='y', alpha=0.3, linestyle='--', linewidth=0.5)
+ax.set_axisbelow(True)
 
-# =======================
-# Plot 2: Time behind leader at each checkpoint (leader = 0 at each)
-# =======================
-# Build a "start" pseudo-time from start_num so we can show start order as a 0-based gap.
-# If you *don't* want any start gap on the time plot, set gap_start = 0 for all.
-start_rank = df["start_num"].rank(method="first").astype(int)
-gap_start = start_rank - start_rank.min()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_linewidth(0.5)
+ax.spines['bottom'].set_linewidth(0.5)
 
-gap = pd.DataFrame(index=df.index)
-gap["Start"] = 0.0
+ax.set_xlim(x.min() - 0.1, x.max() + 1.0)
 
-for c in ["After Swim", "After T1", "After Bike", "After T2", "After Run"]:
-    gap[c] = cum[c] - cum[c].min()  # leader at that checkpoint => 0
-
-fig, ax = plt.subplots(figsize=(13, 7))
-add_transition_bg(ax)
-
-for idx in order:
-    y = gap.loc[idx, CHECKPOINTS].to_numpy(dtype=float)
-    ax.plot(x, y, linewidth=1.6, alpha=0.85, zorder=2)
-
-# fastest (smallest gap) at the top
-ax.invert_yaxis()
-
-ax.set_ylabel("Time behind leader at checkpoint (seconds)")
-ax.set_xlabel("Race segments (T1/T2 are 1/3 width)")
-ax.set_title("Time behind leader at each checkpoint (leader is always 0)")
-ax.grid(False)
-
-ax.set_xticks(seg_mids)
-ax.set_xticklabels(SEGMENT_LABELS)
-
-ax.set_xlim(x.min(), x.max())
-
-# Optional: format ticks as HH:MM:SS even though axis is inverted.
-# (This keeps 00:00:00 near the top, increasing times lower down.)
-yt = ax.get_yticks()
-ax.set_yticks(yt)
-ax.set_yticklabels([fmt_hhmmss(abs(t)) for t in yt])
+# Add annotations showing actual max gap for each main discipline
+y_pos = 1.05
+for seg_name in ["Swim", "Bike", "Run"]:
+    seg_idx = [s[0] for s in segment_info].index(seg_name)
+    x_pos = seg_mids[seg_idx]
+    max_gap_time = max_gaps[seg_name]
+    ax.text(
+        x_pos, y_pos,
+        f"Max: {fmt_mmss(max_gap_time)}",
+        transform=ax.get_xaxis_transform(),
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        bbox=dict(boxstyle='round,pad=0.4', facecolor='white', 
+                  edgecolor='gray', alpha=0.9, linewidth=0.8)
+    )
 
 plt.tight_layout()
 plt.show()

@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
 
 from ptd_data import queries
+from app.routers.router_utils import format_rating
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -15,6 +16,9 @@ async def athletes_landing(request: Request):
     counts = queries.get_counts()
     female_podium = queries.get_podium("female")
     male_podium   = queries.get_podium("male")
+    for a in female_podium + male_podium:
+        a["overall_rating"]    = format_rating(a["overall"])
+        a["profile_img_exists"] = bool(a.get("profile_img"))
     country_list  = queries.get_country_list()
     return templates.TemplateResponse("athlete_search.html", {
         "request":         request,

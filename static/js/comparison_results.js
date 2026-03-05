@@ -109,7 +109,9 @@ function initOverallChart() {
                 } : {
                     type: 'time',
                     time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
-                    title: { display: true, text: 'Date' }
+                    grid: { display: false },
+                    ticks: { display: false },
+                    title: { display: false }
                 },
                 y: {
                     beginAtZero: false,
@@ -200,7 +202,9 @@ function initSwimChart() {
                 } : {
                     type: 'time',
                     time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
-                    title: { display: true, text: 'Date' }
+                    grid: { display: false },
+                    ticks: { display: false },
+                    title: { display: false }
                 },
                 y: {
                     beginAtZero: false,
@@ -291,7 +295,9 @@ function initBikeChart() {
                 } : {
                     type: 'time',
                     time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
-                    title: { display: true, text: 'Date' }
+                    grid: { display: false },
+                    ticks: { display: false },
+                    title: { display: false }
                 },
                 y: {
                     beginAtZero: false,
@@ -382,7 +388,9 @@ function initRunChart() {
                 } : {
                     type: 'time',
                     time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
-                    title: { display: true, text: 'Date' }
+                    grid: { display: false },
+                    ticks: { display: false },
+                    title: { display: false }
                 },
                 y: {
                     beginAtZero: false,
@@ -473,7 +481,9 @@ function initTransitionChart() {
                 } : {
                     type: 'time',
                     time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
-                    title: { display: true, text: 'Date' }
+                    grid: { display: false },
+                    ticks: { display: false },
+                    title: { display: false }
                 },
                 y: {
                     beginAtZero: false,

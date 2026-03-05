@@ -1,7 +1,12 @@
+import csv
+import pathlib
+
 import duckdb
 import pycountry
 
 from config import DB_PATH
+
+_DATA_DIR = pathlib.Path(__file__).parent / 'data'
 
 
 def get_conn(read_only=False):
@@ -73,6 +78,21 @@ def create_schema(conn):
         CREATE TABLE IF NOT EXISTS ignored_races (
             race_id     INTEGER PRIMARY KEY REFERENCES races(race_id),
             reason      VARCHAR NOT NULL
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS corrections (
+            race_id    INTEGER NOT NULL,
+            athlete_id INTEGER NOT NULL,
+            swim       DOUBLE NOT NULL DEFAULT 0,
+            t1         DOUBLE NOT NULL DEFAULT 0,
+            bike       DOUBLE NOT NULL DEFAULT 0,
+            t2         DOUBLE NOT NULL DEFAULT 0,
+            run        DOUBLE NOT NULL DEFAULT 0,
+            overall    DOUBLE NOT NULL DEFAULT 0,
+            notes      VARCHAR NOT NULL DEFAULT '',
+            PRIMARY KEY (race_id, athlete_id)
         )
     """)
 
@@ -218,3 +238,76 @@ def clear_all(conn):
     """Drop all data for a full recompute."""
     for table in ("results", "races", "athletes", "nationalities"):
         conn.execute(f"DELETE FROM {table}")
+
+
+def _parse_csv_time(time_str):
+    """Parse HH:MM:SS or MM:SS string to seconds. Returns 0.0 for empty/zero."""
+    if not time_str or not time_str.strip():
+        return 0.0
+    try:
+        parts = time_str.strip().split(':')
+        if len(parts) == 3:
+            h, m, s = map(float, parts)
+            return h * 3600 + m * 60 + s
+        elif len(parts) == 2:
+            m, s = map(float, parts)
+            return m * 60 + s
+        return float(time_str)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def load_corrections(conn):
+    """Load manual time corrections from data/corrections.csv.
+
+    Overwrites existing entries (INSERT OR REPLACE) so re-running picks up edits.
+    """
+    rows = []
+    with open(_DATA_DIR / 'corrections.csv', newline='', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            try:
+                race_id    = int(row['race_id'])
+                athlete_id = int(row['athlete_id'])
+            except (ValueError, KeyError, TypeError):
+                continue
+            rows.append((
+                race_id, athlete_id,
+                _parse_csv_time(row.get('swim', '')),
+                _parse_csv_time(row.get('t1', '')),
+                _parse_csv_time(row.get('bike', '')),
+                _parse_csv_time(row.get('t2', '')),
+                _parse_csv_time(row.get('run', '')),
+                _parse_csv_time(row.get('overall', '')),
+                row.get('notes', '').strip(),
+            ))
+    conn.executemany(
+        """INSERT OR REPLACE INTO corrections
+               (race_id, athlete_id, swim, t1, bike, t2, run, overall, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        rows,
+    )
+    print(f"Loaded {len(rows)} corrections")
+
+
+def load_manual_ignored(conn):
+    """Load manually specified ignored races from data/ignored.csv.
+
+    Call AFTER detect_all() — that function clears the table first, so manual
+    entries must be (re-)inserted afterwards with INSERT OR IGNORE.
+    Skips rows where race_id isn't in the races table (FK would fail).
+    """
+    rows = []
+    with open(_DATA_DIR / 'ignored.csv', newline='', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            try:
+                race_id = int(row['race_id'])
+            except (ValueError, KeyError, TypeError):
+                continue  # skip blank/malformed lines
+            reason = row.get('reason', '').strip()
+            rows.append((race_id, reason))
+    if rows:
+        conn.executemany(
+            "INSERT OR REPLACE INTO ignored_races (race_id, reason) VALUES (?, ?)",
+            rows,
+        )
+    print(f"Loaded {len(rows)} manual ignored races")

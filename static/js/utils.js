@@ -118,3 +118,58 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Chart.js plugin: alternating year bands + centered year labels.
+// Only fires on time-axis charts; no-ops on linear/category axes.
+const yearBandsPlugin = {
+    id: 'yearBands',
+    _bands(chart) {
+        const xScale = chart.scales.x;
+        if (!xScale || xScale.type !== 'time') return null;
+        const { chartArea: { top, bottom, left, right } } = chart;
+        const startYear = new Date(xScale.min).getFullYear();
+        const endYear   = new Date(xScale.max).getFullYear();
+        const bands = [];
+        for (let year = startYear; year <= endYear; year++) {
+            const xStart = Math.max(left,  xScale.getPixelForValue(new Date(year,     0, 1)));
+            const xEnd   = Math.min(right, xScale.getPixelForValue(new Date(year + 1, 0, 1)));
+            if (xEnd > xStart) bands.push({ year, xStart, xEnd });
+        }
+        return { bands, top, bottom, left, right };
+    },
+    // Draw shaded bands before data
+    beforeDraw(chart) {
+        const info = this._bands(chart);
+        if (!info) return;
+        const { bands, top, bottom } = info;
+        const ctx = chart.ctx;
+        ctx.save();
+        for (const { year, xStart, xEnd } of bands) {
+            if (year % 2 === 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
+            }
+        }
+        ctx.restore();
+    },
+    // Draw year labels after data, clipped inside chart area
+    afterDraw(chart) {
+        const info = this._bands(chart);
+        if (!info) return;
+        const { bands, top, bottom, left, right } = info;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(left, top, right - left, bottom - top);
+        ctx.clip();
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = 'rgba(130, 130, 130, 0.9)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        for (const { year, xStart, xEnd } of bands) {
+            ctx.fillText(String(year), (xStart + xEnd) / 2, bottom - 4);
+        }
+        ctx.restore();
+    }
+};
+Chart.register(yearBandsPlugin);

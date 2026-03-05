@@ -55,8 +55,8 @@
             <div class="podium-header">Podium</div>
             <div class="podium-list">
                 {% for athlete in splits_data[:3] %}
-                    {% if athlete.position in ['1', '2', '3'] %}
-                    <div class="podium-item {{ 'gold' if athlete.position == '1' else 'silver' if athlete.position == '2' else 'bronze' }}">
+                    {% if athlete.position in [1, 2, 3] %}
+                    <div class="podium-item {{ 'gold' if athlete.position == 1 else 'silver' if athlete.position == 2 else 'bronze' }}">
                         <div class="podium-position">{{ athlete.position }}</div>
                         <img
                         src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' }}"
@@ -71,7 +71,7 @@
                                 <span class="podium-country">{{ athlete.country_emoji }}</span>
                             </div>
                             <div class="podium-time">
-                                {{ athlete.overall_}}
+                                {{ athlete.overall_s }}
                                 {% if athlete.overall_behind_s != "+00:00" %}
                                     ({{ athlete.overall_behind_s }})
                                 {% endif %}
@@ -202,8 +202,8 @@
                 {% if splits_data %}
                     {% for athlete in splits_data %}
                     <tr>
-                        <td class="position-col position-cell {{'position-gold' if athlete.position == '1' else 'position-silver' if athlete.position == '2' else 'position-bronze' if athlete.position == '3' else 'position-dnf' if athlete.position in ['DNF', 'DQ', 'LAP'] else ''}}" data-value="{{ athlete.position }}">
-                            {{ athlete.position }}
+                        <td class="position-col position-cell {{'position-gold' if athlete.position == 1 else 'position-silver' if athlete.position == 2 else 'position-bronze' if athlete.position == 3 else 'position-dnf' if athlete.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''}}" data-value="{{ athlete.position }}">
+                            {{ athlete.position or athlete.status }}
                         </td>
                         <td class="athlete-col" data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">
@@ -297,8 +297,8 @@
                 {% if ratings_data %}
                     {% for athlete in ratings_data %}
                     <tr>
-                        <td class="position-cell {{'position-gold' if athlete.position == '1' else 'position-silver' if athlete.position == '2' else 'position-bronze' if athlete.position == '3' else 'position-dnf' if athlete.position in ['DNF', 'DQ', 'LAP'] else ''}}" data-value="{{ athlete.position }}">
-                            {{ athlete.position }}
+                        <td class="position-cell {{'position-gold' if athlete.position == 1 else 'position-silver' if athlete.position == 2 else 'position-bronze' if athlete.position == 3 else 'position-dnf' if athlete.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''}}" data-value="{{ athlete.position }}">
+                            {{ athlete.position or athlete.status }}
                         </td>
                         <td data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">

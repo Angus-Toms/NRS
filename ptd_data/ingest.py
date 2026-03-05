@@ -36,6 +36,15 @@ VALID_SPEC_IDS = {376, 377}
 _MALE_KEYWORDS = {'men', 'male'}
 _FEMALE_KEYWORDS = {'women', 'female'}
 
+# Programs whose first word matches one of these are competition rounds, not standalone races.
+# Everything else that also passes gender detection is accepted (Elite, AG, Para, Youth, etc.).
+_ROUND_PROG_PREFIXES = frozenset({'semifinal', 'final', 'qualifier', 'repechage', 'time'})
+
+
+def is_valid_program(prog_name):
+    first = prog_name.lower().split()[0] if prog_name else ''
+    return first not in _ROUND_PROG_PREFIXES
+
 
 def detect_gender(prog_name):
     """Detect gender from a program name by checking for Men/Male vs Women/Female keywords.
@@ -234,6 +243,8 @@ class Ingester:
 
             for prog in programs:
                 prog_name = prog.get('prog_name', '')
+                if not is_valid_program(prog_name):
+                    continue
                 gender = detect_gender(prog_name)
                 if gender is None:
                     continue

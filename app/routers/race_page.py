@@ -109,7 +109,7 @@ async def get_race(request: Request, race_id: int):
 
     # Add race year for age calculation
     race_year = race["race_date"].year if hasattr(race["race_date"], "year") else int(str(race["race_date"])[:4])
-    for r in results:
+    for r in results + ratings:
         r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
 
     # Format splits data

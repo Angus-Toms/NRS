@@ -228,7 +228,7 @@
 
 .notable-result-dropdown-link {
     font-size: 0.85rem;
-    color: var(--text-color);
+    color: var(--primary-color);
     text-decoration: none;
     padding-left: 0.75rem;
     position: relative;

@@ -103,6 +103,7 @@ def _build_ratings_chart(ratings_data, race_name_map):
                 for r in ratings_data
             ],
             "borderColor": border, "backgroundColor": bg,
+            "pointBackgroundColor": border,
             "borderWidth": 2, "pointRadius": 3,
         })
     return {"datasets": datasets}
@@ -129,6 +130,7 @@ def _build_pct_behind_chart(times_data):
                     if r[f"{disc}_pct_behind"] is not None
                 ],
                 "borderColor": border, "backgroundColor": bg,
+                "pointBackgroundColor": border,
                 "borderWidth": 2, "pointRadius": 3,
             }]
         }
@@ -153,7 +155,8 @@ def _build_splits_chart(times_data):
                         for r in times_data
                         if r[f"{disc}_s"] and 0 < r[f"{disc}_s"] <= short_thresh
                     ],
-                    "borderColor": c_short, "backgroundColor": c_short.replace("#", "rgba(") + ", 0.1)",
+                    "borderColor": c_short, "backgroundColor": c_short,
+                    "pointBackgroundColor": c_short,
                     "borderWidth": 2, "pointRadius": 3,
                 },
                 {
@@ -164,7 +167,8 @@ def _build_splits_chart(times_data):
                         for r in times_data
                         if r[f"{disc}_s"] and r[f"{disc}_s"] > long_thresh
                     ],
-                    "borderColor": c_long, "backgroundColor": c_long.replace("#", "rgba(") + ", 0.1)",
+                    "borderColor": c_long, "backgroundColor": c_long,
+                    "pointBackgroundColor": c_long,
                     "borderWidth": 2, "pointRadius": 3,
                 },
             ]
@@ -194,7 +198,13 @@ async def get_athlete(request: Request, athlete_id: int):
     if current:
         for disc in ["overall", "swim", "bike", "run", "transition"]:
             current_ratings[f"{disc}_rating"] = round(current[f"{disc}_rating"])
-            current_ratings[f"{disc}_rank"]   = format_ranking(current.get(f"world_{disc}"))
+
+    # --- current rankings card ---
+    current_rankings = {}
+    if current:
+        for disc in ["overall", "swim", "bike", "run", "transition"]:
+            current_rankings[f"world_{disc}"]    = current.get(f"world_{disc}")
+            current_rankings[f"national_{disc}"] = current.get(f"national_{disc}")
 
     # --- 1yr changes card ---
     rating_changes_1yr = {}
@@ -250,6 +260,7 @@ async def get_athlete(request: Request, athlete_id: int):
             "race_date":     r["race_date"],
             "program":       r["program"],
             "position":      r["position"],
+            "status":        r["status"],
             "overall":       format_time(r["overall_s"]),
             "overall_behind": format_time_behind(r["overall_behind_s"]),
             "swim":          format_time(r["swim_s"]),
@@ -274,6 +285,7 @@ async def get_athlete(request: Request, athlete_id: int):
             "race_title":        r["race_title"],
             "race_program":      r["race_program"],
             "position":          r["position"],
+            "status":            r["status"],
             "overall_rating":    round(r["overall_rating"]),
             "swim_rating":       round(r["swim_rating"]),
             "bike_rating":       round(r["bike_rating"]),
@@ -299,6 +311,7 @@ async def get_athlete(request: Request, athlete_id: int):
         "athlete":        athlete_dict,
         "notable_results":     notable_results,
         "current_ratings":     current_ratings,
+        "current_rankings":    current_rankings,
         "rating_changes_1yr":  rating_changes_1yr,
         "rating_peaks":        rating_peaks,
         "best_performances":   best_performances,

@@ -184,6 +184,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                         for r in ratings_data1
                     ],
                     "borderColor": c1, "backgroundColor": c1 + "20",
+                    "pointBackgroundColor": c1,
                     "borderWidth": 2, "pointRadius": 3,
                 },
                 {
@@ -194,6 +195,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                         for r in ratings_data2
                     ],
                     "borderColor": c2, "backgroundColor": c2 + "20",
+                    "pointBackgroundColor": c2,
                     "borderWidth": 2, "pointRadius": 3,
                 },
             ]

@@ -19,6 +19,8 @@ from tqdm import tqdm
 
 from config import ELITE_START_RATING, AG_START_RATING
 from ptd_data import db
+from ptd_data.db import load_corrections
+from ptd_data.ingest import is_valid_program
 
 SCALE = 46175.8
 K_FACTOR = 16
@@ -36,7 +38,8 @@ def _is_elite_prog(prog_name):
 
 
 def compute_all(conn):
-    """Full recompute: clear computed tables, then ratings, then rankings."""
+    """Full recompute: reload corrections, clear computed tables, ratings, rankings."""
+    load_corrections(conn)
     conn.execute("DELETE FROM rankings")
     conn.execute("DELETE FROM ratings")
     _compute_ratings(conn)
@@ -65,11 +68,20 @@ def _compute_ratings(conn):
     for race_id, prog_name in tqdm(races, desc="Computing ratings", unit="race"):
         if race_id in ignored:
             continue
+        if not is_valid_program(prog_name):
+            continue
 
         results = conn.execute("""
-            SELECT athlete_id, overall_s, swim_s, bike_s, run_s, t1_s, t2_s
-            FROM results
-            WHERE race_id = ?
+            SELECT res.athlete_id,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.overall ELSE res.overall_s END,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.swim    ELSE res.swim_s   END,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.bike    ELSE res.bike_s   END,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.run     ELSE res.run_s    END,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.t1      ELSE res.t1_s     END,
+                   CASE WHEN c.athlete_id IS NOT NULL THEN c.t2      ELSE res.t2_s     END
+            FROM results res
+            LEFT JOIN corrections c ON res.race_id = c.race_id AND res.athlete_id = c.athlete_id
+            WHERE res.race_id = ?
         """, [race_id]).fetchall()
 
         if len(results) < 2:

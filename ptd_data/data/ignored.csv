@@ -1,11 +1,575 @@
 race_id,reason
-4430,Elite results combined with AG
-4488,Elite results combined with AG
+2086,"Race has 124 entries (likely combined AG/Elite), needs manual review"
+2087,"Race has 104 entries (likely combined AG/Elite), needs manual review"
+2088,"Race has 127 entries (likely combined AG/Elite), needs manual review"
+2090,"Race has 124 entries (likely combined AG/Elite), needs manual review"
+2091,"Race has 104 entries (likely combined AG/Elite), needs manual review"
+2092,"Race has 137 entries (likely combined AG/Elite), needs manual review"
+2093,"Race has 111 entries (likely combined AG/Elite), needs manual review"
+2094,"Race has 119 entries (likely combined AG/Elite), needs manual review"
+2096,"Race has 109 entries (likely combined AG/Elite), needs manual review"
+2459,"Race has 108 entries (likely combined AG/Elite), needs manual review"
+2460,"Race has 135 entries (likely combined AG/Elite), needs manual review"
+2461,"Race has 124 entries (likely combined AG/Elite), needs manual review"
+2462,"Race has 115 entries (likely combined AG/Elite), needs manual review"
+2695,"Race has 118 entries (likely combined AG/Elite), needs manual review"
+2791,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+2793,"Race has 119 entries (likely combined AG/Elite), needs manual review"
+2798,"Race has 104 entries (likely combined AG/Elite), needs manual review"
+2800,"Race has 130 entries (likely combined AG/Elite), needs manual review"
+2802,"Race has 115 entries (likely combined AG/Elite), needs manual review"
+3018,"Race has 106 entries (likely combined AG/Elite), needs manual review"
+3103,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+3105,"Race has 118 entries (likely combined AG/Elite), needs manual review"
+3107,"Race has 122 entries (likely combined AG/Elite), needs manual review"
+3109,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+3111,"Race has 132 entries (likely combined AG/Elite), needs manual review"
+3113,"Race has 118 entries (likely combined AG/Elite), needs manual review"
+3367,"Race has 106 entries (likely combined AG/Elite), needs manual review"
+3377,"Race has 102 entries (likely combined AG/Elite), needs manual review"
+3490,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+3528,"Race has 135 entries (likely combined AG/Elite), needs manual review"
+3678,U23 Men results are a subset of 2008 Mazatlan PATCO Triathlon Pan-American Championship
+4245,"Race has 104 entries (likely combined AG/Elite), needs manual review"
 4308,Elite results combined with AG
-585505,Elite results combined with AG
-675092,Separate U23 results within Elite race
-629180,Seperate Junior results within Elite race
+4430,Elite results combined with AG
+4443,"Race has 141 entries (likely combined AG/Elite), needs manual review"
+4488,Elite results combined with AG
 4498,Elite results combined with AG
+4661,U23 Women results are a subset of 2009 Oklahoma PATCO Triathlon Pan-American Championships
+4662,U23 Men results are a subset of 2009 Oklahoma PATCO Triathlon Pan-American Championships
+4860,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+4862,"Race has 124 entries (likely combined AG/Elite), needs manual review"
+4864,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+4866,"Race has 112 entries (likely combined AG/Elite), needs manual review"
+4868,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+5871,"Race has 112 entries (likely combined AG/Elite), needs manual review"
+5873,"Race has 123 entries (likely combined AG/Elite), needs manual review"
+5875,"Race has 137 entries (likely combined AG/Elite), needs manual review"
+5877,"Race has 116 entries (likely combined AG/Elite), needs manual review"
+5879,"Race has 112 entries (likely combined AG/Elite), needs manual review"
+5881,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+7920,"Race has 103 entries (likely combined AG/Elite), needs manual review"
+8869,"Race has 135 entries (likely combined AG/Elite), needs manual review"
+8879,"Race has 123 entries (likely combined AG/Elite), needs manual review"
+259904,"Race has 120 entries (likely combined AG/Elite), needs manual review"
+259906,"Race has 103 entries (likely combined AG/Elite), needs manual review"
+259907,"Race has 101 entries (likely combined AG/Elite), needs manual review"
+259908,"Race has 142 entries (likely combined AG/Elite), needs manual review"
+259910,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+259912,"Race has 170 entries (likely combined AG/Elite), needs manual review"
+259913,"Race has 108 entries (likely combined AG/Elite), needs manual review"
+259914,"Race has 108 entries (likely combined AG/Elite), needs manual review"
+259916,"Race has 162 entries (likely combined AG/Elite), needs manual review"
+259917,"Race has 112 entries (likely combined AG/Elite), needs manual review"
+259918,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+259920,"Race has 165 entries (likely combined AG/Elite), needs manual review"
+259921,"Race has 108 entries (likely combined AG/Elite), needs manual review"
+259924,"Race has 155 entries (likely combined AG/Elite), needs manual review"
+259925,"Race has 116 entries (likely combined AG/Elite), needs manual review"
+259928,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+263838,"Race has 115 entries (likely combined AG/Elite), needs manual review"
+264261,U23 Men results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
+264262,U23 Women results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
+264309,U23 Men results are a subset of 2014 Troutbeck ATU Triathlon African Championships
+264310,U23 Women results are a subset of 2014 Troutbeck ATU Triathlon African Championships
+264637,Elite Men results are a subset of 2013 Penza ITU Triathlon European Cup
+264640,Junior Men results are a subset of 2013 Penza ETU Triathlon Junior European Cup
+264641,Junior Women results are a subset of 2013 Penza ETU Triathlon Junior European Cup
+264655,Elite Men results are a subset of 2013 Edmonton ITU Triathlon World Cup
+264656,Elite Women results are a subset of 2013 Edmonton ITU Triathlon World Cup
+264658,Para Triathlon Female TRI-1 results are a subset of 2013 Edmonton ITU Para Triathlon International Event
+264663,Para Triathlon Male TRI-2 results are a subset of 2013 Edmonton ITU Para Triathlon International Event
+264664,Para Triathlon Male TRI-3 results are a subset of 2013 Edmonton ITU Para Triathlon International Event
+264665,Para Triathlon Male TRI-4 results are a subset of 2013 Edmonton ITU Para Triathlon International Event
+264666,Para Triathlon Male TRI-5 results are a subset of 2013 Edmonton ITU Para Triathlon International Event
+264680,Elite Men results are a subset of 2013 Kinloch ITU Sprint Triathlon Oceania Cup
+264794,U23 Men results are a subset of 2014 Dallas PATCO Triathlon Pan-American Championships
+264795,U23 Women results are a subset of 2014 Dallas PATCO Triathlon Pan-American Championships
+264929,Elite Men results are a subset of 2013 Buffalo City ITU Triathlon Premium African Cup
+264930,Elite Women results are a subset of 2013 Buffalo City ITU Triathlon Premium African Cup
+265034,Elite Men results are a subset of 2013 ITU World Triathlon San Diego
+265447,Elite Men results are a subset of 2013 Mooloolaba ITU Triathlon World Cup
+265972,U23 Men results are a subset of 2014 Kinloch OTU Sprint Triathlon and Mixed Relay Oceania Championships
+265973,U23 Women results are a subset of 2014 Kinloch OTU Sprint Triathlon and Mixed Relay Oceania Championships
+269546,Elite Men results are a subset of 2014 Buffalo City ATU Triathlon African Cup
+269547,Elite Women results are a subset of 2014 Buffalo City ATU Triathlon African Cup
+269710,U23 Men results are a subset of 2015 Kinloch OTU Sprint Triathlon Oceania Championships
+269711,U23 Women results are a subset of 2015 Kinloch OTU Sprint Triathlon Oceania Championships
+269724,U23 Men results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
+269725,U23 Women results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
+269798,U23 Men results are a subset of 2014 Hong Kong ASTC Triathlon Asian Cup
+269799,U23 Women results are a subset of 2014 Hong Kong ASTC Triathlon Asian Cup
+270092,Junior Women results are a subset of 2014 SWE Sprint Triathlon National Championships
+270185,Junior Men results are a subset of 2014 GRE Sprint Triathlon National Championships
+270186,Junior Women results are a subset of 2014 GRE Sprint Triathlon National Championships
+270193,Elite Men results are a subset of 2014 ITU World Triathlon Chicago
+270194,Elite Women results are a subset of 2014 ITU World Triathlon Chicago
+270209,Junior Women results are a subset of 2014 PHI Sprint Triathlon National Championships
+270480,Elite Men results are a subset of 2014 Burgas ETU Triathlon Balkan Championships
+270481,Elite Women results are a subset of 2014 Burgas ETU Triathlon Balkan Championships
+270486,Elite Men results are a subset of 2014 Mendoza PATCO Triathlon Pan-American Cup
+270487,Elite Women results are a subset of 2014 Mendoza PATCO Triathlon Pan-American Cup
+270587,U23 Men results are a subset of 2015 Monterrey CAMTRI Triathlon American Championships
+270588,U23 Women results are a subset of 2015 Monterrey CAMTRI Triathlon American Championships
+270656,U23 Men results are a subset of 2015 Sharm El Sheikh ATU Triathlon African Championships and Pan-Arab Championships
+270657,U23 Women results are a subset of 2015 Sharm El Sheikh ATU Triathlon African Championships and Pan-Arab Championships
+271163,Elite Men results are a subset of 2014 Magog PATCO Sprint Triathlon Premium Pan-American Cup
+271164,Elite Women results are a subset of 2014 Magog PATCO Sprint Triathlon Premium Pan-American Cup
+271984,Elite Men results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
+271985,Elite Women results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
+272709,Junior Men results are a subset of 2014 Kupiskis ETU Triathlon Junior European Cup
+272710,Junior Women results are a subset of 2014 Kupiskis ETU Triathlon Junior European Cup
+278576,Junior Men results are a subset of 2015 AUT Sprint Triathlon National Championships
+278986,U23 Men results are a subset of 2015 GER Triathlon National Championships
+279160,U23 Men results are a subset of 2014 DOM Triathlon National Championships
+279539,"Race has 106 entries (likely combined AG/Elite), needs manual review"
+279540,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+279541,"Race has 122 entries (likely combined AG/Elite), needs manual review"
+279544,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+279545,"Race has 114 entries (likely combined AG/Elite), needs manual review"
+279546,"Race has 129 entries (likely combined AG/Elite), needs manual review"
+279547,"Race has 132 entries (likely combined AG/Elite), needs manual review"
+279548,"Race has 119 entries (likely combined AG/Elite), needs manual review"
+279927,Junior Women results are a subset of 2015 NOR Sprint Triathlon National Championships
+280398,Elite Men results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
+280399,Elite Women results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
+280707,U23 Men results are a subset of 2016 Gisborne OTU Triathlon Oceania Championships
+280708,U23 Women results are a subset of 2016 Gisborne OTU Triathlon Oceania Championships
+280911,U23 Men results are a subset of 2016 Penrith OTU Sprint Triathlon Oceania Championships
+280912,U23 Women results are a subset of 2016 Penrith OTU Sprint Triathlon Oceania Championships
+280949,U23 Men results are a subset of 2016 Buffalo City ATU Triathlon African Championships
+280950,U23 Women results are a subset of 2016 Buffalo City ATU Triathlon African Championships
+281872,Elite Men results are a subset of 2015 Mendoza CAMTRI Triathlon American Cup
+281873,Elite Women results are a subset of 2015 Mendoza CAMTRI Triathlon American Cup
+281891,Elite Men results are a subset of 2015 Buffalo City ATU Sprint Triathlon African Cup
+282002,Elite Men results are a subset of 2015 Hong Kong ASTC Sprint Triathlon Asian Cup
+282003,Elite Women results are a subset of 2015 Hong Kong ASTC Sprint Triathlon Asian Cup
+282142,Elite Men results are a subset of 2015 ITU World Triathlon Grand Final Chicago
+282143,Elite Women results are a subset of 2015 ITU World Triathlon Grand Final Chicago
+288080,Junior Women results are a subset of 2015 HUN Sprint Triathlon National Championships
+299265,U23 Men results are a subset of 2016 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Sprint Triathlon Championships
+299266,U23 Women results are a subset of 2016 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Sprint Triathlon Championships
+299357,Elite Men results are a subset of 2015 Kinloch OTU Sprint Triathlon Oceania Championships
+299358,Elite Women results are a subset of 2015 Kinloch OTU Sprint Triathlon Oceania Championships
+299360,Elite Men results are a subset of 2016 Kinloch OTU Sprint Triathlon Oceania Cup
+299361,Elite Women results are a subset of 2016 Kinloch OTU Sprint Triathlon Oceania Cup
+306831,Junior Men results are a subset of 2016 AUT Sprint Triathlon National Championship
+306832,Junior Women results are a subset of 2016 AUT Sprint Triathlon National Championship
+307094,Junior Men results are a subset of 2016 GRE Sprint Triathlon National Championships
+307411,Junior Men results are a subset of 2016 NOR Sprint Triathlon National Championships
+307412,Junior Women results are a subset of 2016 NOR Sprint Triathlon National Championships
+307754,Junior Men results are a subset of 2016 ROU Triathlon National Championships
+307755,Junior Women results are a subset of 2016 ROU Triathlon National Championships
+308051,Junior Women results are a subset of 2016 HUN Sprint Triathlon National Championships
+308124,Elite Men results are a subset of 2016 Ottawa CAMTRI Triathlon American Cup
+308125,Elite Women results are a subset of 2016 Ottawa CAMTRI Triathlon American Cup
+308173,Junior Women results are a subset of 2016 GBR Sprint Triathlon National Championships
+308200,U23 Men results are a subset of 2016 GER Triathlon National Championships
+308201,U23 Women results are a subset of 2016 GER Triathlon National Championships
+309165,Junior Women results are a subset of 2016 CRO Sprint Triathlon National Championships
+309178,Elite Men results are a subset of 2016 Honiara OTU Triathlon Pacific Islands Championships
+309179,Elite Women results are a subset of 2016 Honiara OTU Triathlon Pacific Islands Championships
+309269,U23 Men results are a subset of 2017 Yasmine Hammamet ATU Triathlon African Championships
+309270,U23 Women results are a subset of 2017 Yasmine Hammamet ATU Triathlon African Championships
+309524,U23 Women results are a subset of 2017 Puerto Lopez CAMTRI Triathlon American Championships
+309562,Elite Men results are a subset of 2015 Magog CAMTRI Triathlon American Cup
+309563,Elite Women results are a subset of 2015 Magog CAMTRI Triathlon American Cup
+309676,Junior Men results are a subset of 2016 Bloemfontein ATU Triathlon Junior African Championships
+309677,Junior Women results are a subset of 2016 Bloemfontein ATU Triathlon Junior African Championships
+310107,Junior Men results are a subset of 2016 MAC Sprint Triathlon National Championships
+312177,U23 Men results are a subset of 2017 Palembang ASTC Triathlon Asian Championships
+312178,U23 Women results are a subset of 2017 Palembang ASTC Triathlon Asian Championships
+312353,U23 Men results are a subset of 2017 Kinloch OTU Sprint Triathlon Oceania Championships
+312354,U23 Women results are a subset of 2017 Kinloch OTU Sprint Triathlon Oceania Championships
+312503,U23 Men results are a subset of 2017 Devonport OTU Triathlon Oceania Championships
+312504,U23 Women results are a subset of 2017 Devonport OTU Triathlon Oceania Championships
+314890,16-19 Female AG results are a subset of 2017 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+318956,"Race has 112 entries (likely combined AG/Elite), needs manual review"
+319750,Junior Men results are a subset of 2017 Ruse ETU Triathlon Balkan Championships
+319751,Junior Women results are a subset of 2017 Ruse ETU Triathlon Balkan Championships
+320223,"Race has 116 entries (likely combined AG/Elite), needs manual review"
+320224,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+320225,"Race has 126 entries (likely combined AG/Elite), needs manual review"
+320226,"Race has 145 entries (likely combined AG/Elite), needs manual review"
+320227,"Race has 125 entries (likely combined AG/Elite), needs manual review"
+321097,U23 Men results are a subset of 2018 Rabat ATU Triathlon African Championships and YOG Qualifier
+321098,U23 Women results are a subset of 2018 Rabat ATU Triathlon African Championships and YOG Qualifier
+321110,Junior Men results are a subset of 2017 GRE Sprint Triathlon National Championships
+321111,Junior Women results are a subset of 2017 GRE Sprint Triathlon National Championships
+321557,Junior Women results are a subset of 2017 HUN Sprint Triathlon National Championships
+321728,U23 Men results are a subset of 2018 Devonport OTU Sprint Triathlon Oceania Cup and Sprint Triathlon Oceania Championships
+321729,U23 Women results are a subset of 2018 Devonport OTU Sprint Triathlon Oceania Cup and Sprint Triathlon Oceania Championships
+321734,U23 Men results are a subset of 2018 St. Kilda OTU Triathlon Oceania Cup
+321735,U23 Women results are a subset of 2018 St. Kilda OTU Triathlon Oceania Cup
+321800,"Race has 139 entries (likely combined AG/Elite), needs manual review"
+322133,Elite Men results are a subset of 2016 Hong Kong ASTC Sprint Triathlon Asian Cup
+322134,Elite Women results are a subset of 2016 Hong Kong ASTC Sprint Triathlon Asian Cup
+322135,Junior Men results are a subset of 2016 Hong Kong ASTC Sprint Triathlon Asian Cup
+322136,Junior Women results are a subset of 2016 Hong Kong ASTC Sprint Triathlon Asian Cup
+322226,U23 Men results are a subset of 2018 Brasilia CAMTRI Triathlon American Championships
+322227,U23 Women results are a subset of 2018 Brasilia CAMTRI Triathlon American Championships
+324011,Elite Women results are a subset of 2017 Ottawa CAMTRI Sprint Triathlon Premium American Cup
+324049,U23 Men results are a subset of 2018 Sarasota-Bradenton CAMTRI Sprint Triathlon American Cup and North American Championships
+324050,U23 Women results are a subset of 2018 Sarasota-Bradenton CAMTRI Sprint Triathlon American Cup and North American Championships
+324069,U23 Men results are a subset of 2018 Montevideo CAMTRI Sprint Triathlon American Cup and South American Championships
+324070,U23 Women results are a subset of 2018 Montevideo CAMTRI Sprint Triathlon American Cup and South American Championships
+326814,Elite Men results are a subset of 2018 Troutbeck ATU Sprint Triathlon African Cup
+327775,U23 Men results are a subset of 2018 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+327776,U23 Women results are a subset of 2018 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+327971,Elite Men results are a subset of 2018 Free State ATU Triathlon African Cup
+328046,Youth Men results are a subset of 2018 New Plymouth OTU Triathlon Junior Oceania Championships and YOG Qualifier
+328047,Youth Women results are a subset of 2018 New Plymouth OTU Triathlon Junior Oceania Championships and YOG Qualifier
+335388,Junior Men results are a subset of 2018 ROU Sprint Triathlon National Championships
+335389,Junior Women results are a subset of 2018 ROU Sprint Triathlon National Championships
+336587,U23 Men results are a subset of 2019 Devonport OTU Sprint Triathlon Oceania Championships
+336588,U23 Women results are a subset of 2019 Devonport OTU Sprint Triathlon Oceania Championships
+336598,U23 Men results are a subset of 2019 Moreton Bay OTU Triathlon Oceania Championships
+336599,U23 Women results are a subset of 2019 Moreton Bay OTU Triathlon Oceania Cup
+336817,U23 Men results are a subset of 2019 Monterrey CAMTRI Triathlon American Championships
+336818,U23 Women results are a subset of 2019 Monterrey CAMTRI Triathlon American Championships
+336892,U23 Men results are a subset of 2019 Shandrani ATU Triathlon African Championships
+336893,U23 Women results are a subset of 2019 Shandrani ATU Triathlon African Championships
+337479,Junior Men results are a subset of 2018 MAC Sprint Triathlon National Championships
+337710,Junior Men results are a subset of 2019 Playa Hermosa CAMTRI Sprint Triathlon American Cup and Central American&Caribbean Championships
+337711,Junior Women results are a subset of 2019 Playa Hermosa CAMTRI Sprint Triathlon American Cup and Central American&Caribbean Championships
+338706,Elite Men results are a subset of 2018 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+338707,Elite Women results are a subset of 2018 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+340758,U23 Men results are a subset of 2019 Montevideo CAMTRI Sprint Triathlon American Cup and South American Championships
+340759,U23 Women results are a subset of 2019 Montevideo CAMTRI Sprint Triathlon American Cup and South American Championships
+341130,U23 Men results are a subset of 2019 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+341131,U23 Women results are a subset of 2019 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
+347143,Elite Men results are a subset of 2019 Durban ATU Triathlon Premium African Cup
+347144,Elite Women results are a subset of 2019 Durban ATU Triathlon Premium African Cup
+347145,Junior Men results are a subset of 2019 Durban ATU Triathlon Junior African Cup
+347146,Junior Women results are a subset of 2019 Durban ATU Triathlon Junior African Cup
+347489,"Race has 103 entries (likely combined AG/Elite), needs manual review"
+347493,"Race has 114 entries (likely combined AG/Elite), needs manual review"
+347495,"Race has 136 entries (likely combined AG/Elite), needs manual review"
+347497,"Race has 121 entries (likely combined AG/Elite), needs manual review"
+347499,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+347530,"Race has 115 entries (likely combined AG/Elite), needs manual review"
+347532,"Race has 123 entries (likely combined AG/Elite), needs manual review"
+347534,"Race has 139 entries (likely combined AG/Elite), needs manual review"
+347536,"Race has 158 entries (likely combined AG/Elite), needs manual review"
+347538,"Race has 134 entries (likely combined AG/Elite), needs manual review"
+347540,"Race has 154 entries (likely combined AG/Elite), needs manual review"
+349354,Junior Women results are a subset of 2019 IRL Sprint Triathlon National Championships
+349515,Junior Women results are a subset of 2019 ROU Sprint Triathlon National Championships
+349665,Elite Men results are a subset of 2019 Kelowna CAMTRI Sprint Triathlon American Cup
 349666,Canadian Championships results taken from within Continental Cup
+349667,Junior Men results are a subset of 2019 Kelowna CAMTRI Sprint Triathlon American Cup
+349668,Junior Women results are a subset of 2019 Kelowna CAMTRI Sprint Triathlon American Cup
+350943,Elite Men results are a subset of 2019 Ixtapa CAMTRI Sprint Triathlon American Cup
+350944,Elite Women results are a subset of 2019 Ixtapa CAMTRI Sprint Triathlon American Cup
+350946,Elite Men results are a subset of 2019 La Paz (MEX) CAMTRI Triathlon American Cup
+350947,Elite Women results are a subset of 2019 La Paz (MEX) CAMTRI Triathlon American Cup
+350952,Junior Men results are a subset of 2019 Troutbeck ATU Triathlon Junior African Cup
+350953,Junior Women results are a subset of 2019 Troutbeck ATU Triathlon Junior African Cup
+351792,Junior Women results are a subset of 2019 DEN Sprint Triathlon National Championships
+351966,Junior Men results are a subset of 2019 BLR Sprint Triathlon National Championships
+351967,Junior Women results are a subset of 2019 BLR Sprint Triathlon National Championships
+352302,U23 Men results are a subset of 2019 Bahrain ASTC Triathlon West Asian Championships
+352303,U23 Women results are a subset of 2019 Bahrain ASTC Triathlon West Asian Championships
+352304,Junior Men results are a subset of 2019 Bahrain ASTC Triathlon West Asian Championships
+352305,Junior Women results are a subset of 2019 Bahrain ASTC Triathlon West Asian Championships
+352603,Junior Women results are a subset of 2019 POR Sprint Triathlon National Championships
+352706,Junior Women results are a subset of 2019 SRB Sprint Triathlon National Championships
+355102,Junior Men results are a subset of 2019 Devonport OTU Sprint Triathlon Oceania Championships
+355103,Junior Women results are a subset of 2019 Devonport OTU Sprint Triathlon Oceania Championships
+357861,U23 Men results are a subset of 2020 Devonport OTU Sprint Triathlon Oceania Cup and Oceania Championships
+357862,U23 Women results are a subset of 2020 Devonport OTU Sprint Triathlon Oceania Cup and Oceania Championships
+378354,Elite Men results are a subset of 2020 Playa Hermosa PATCO Sprint Triathlon Panamerican Cup and Central American&Caribbean Championshi
 378355,Central American and Carribean Championships taken from within Continental Cup
-,,571588,Elite results combined with AG
+392871,"Race has 101 entries (likely combined AG/Elite), needs manual review"
+403706,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+405829,"Race has 103 entries (likely combined AG/Elite), needs manual review"
+405830,"Race has 127 entries (likely combined AG/Elite), needs manual review"
+405831,"Race has 107 entries (likely combined AG/Elite), needs manual review"
+405832,"Race has 104 entries (likely combined AG/Elite), needs manual review"
+425470,"Race has 104 entries (likely combined AG/Elite), needs manual review"
+450823,Junior Men results are a subset of 2020 BLR Sprint Triathlon National Championships
+450824,Junior Women results are a subset of 2020 BLR Sprint Triathlon National Championships
+454510,Junior Women results are a subset of 1998 Changi ASTC Triathlon Asian Championships
+473294,U23 Men results are a subset of 2021 Africa Triathlon Championships Sharm El Sheikh
+473295,U23 Women results are a subset of 2021 Africa Triathlon Championships Sharm El Sheikh
+478281,U23 Men results are a subset of 2021 Oceania Triathlon Championships and Cup Port Douglas
+478282,U23 Women results are a subset of 2021 Oceania Triathlon Championships and Cup Port Douglas
+480629,Final Junior Men results are a subset of 2021 Europe Triathlon Junior Cup Caorle
+480630,Final Junior Women results are a subset of 2021 Europe Triathlon Junior Cup Caorle
+481775,Final B Junior Men results are a subset of 2021 Europe Triathlon Junior Cup Caorle
+481776,Final B Junior Women results are a subset of 2021 Europe Triathlon Junior Cup Caorle
+498791,Junior Men results are a subset of 2021 MKD Sprint Triathlon National Championships
+498792,Junior Women results are a subset of 2021 MKD Sprint Triathlon National Championships
+505243,Final Men results are a subset of 2021 Europe Triathlon Cup Tiszaujvaros
+505244,Final Women results are a subset of 2021 Europe Triathlon Cup Tiszaujvaros
+510522,Qualifier 1 Elite Men results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+510523,Qualifier 2 Elite Men results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+510524,Qualifier 1 Elite Women results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+510525,Qualifier 2 Elite Women results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+510526,Repechage 1 Elite Women results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+510527,Repechage 1 Elite Men results are a subset of Groupe Copley 2021 World Triathlon Championship Series Montreal
+511809,Junior Men results are a subset of 2021 POL Sprint Triathlon National Championships
+511810,Junior Women results are a subset of 2021 POL Sprint Triathlon National Championships
+514858,Junior Men results are a subset of 2021 AUT Sprint Triathlon National Championships
+514859,Junior Women results are a subset of 2021 AUT Sprint Triathlon National Championships
+526434,Junior Men results are a subset of 2021 SLO Sprint Triathlon National Championships
+526435,Junior Women results are a subset of 2021 SLO Sprint Triathlon National Championships
+526576,U23 Men results are a subset of 2021 Americas Triathlon Championships St George
+526577,U23 Women results are a subset of 2021 Americas Triathlon Championships St George
+530737,Semifinal 1 Youth Men results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+530738,Semifinal 2 Youth Men results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+530739,Semifinal 3 Youth Men results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+530740,Semifinal 1 Youth Women results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+530741,Semifinal 2 Youth Women results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+530742,Semifinal 3 Youth Women results are a subset of 2021 Europe Triathlon Youth Championships Festival Alanya
+541605,U23 Men results are a subset of 2021 JPN Triathlon National Championships
+541606,U23 Women results are a subset of 2021 JPN Triathlon National Championships
+543110,Junior Men results are a subset of 2021 GBR Sprint Triathlon National championships
+543111,Junior Women results are a subset of 2021 GBR Sprint Triathlon National championships
+545251,U23 Men results are a subset of 2022 Africa Triathlon Championships Agadir
+545252,U23 Women results are a subset of 2022 Africa Triathlon Championships Agadir
+545907,U23 Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+545908,U23 Women results are a subset of 2022 Europe Triathlon Championships Olsztyn
+552754,Junior Men results are a subset of 2022 Europe Triathlon Nordic Championships Linköping
+552755,Junior Women results are a subset of 2022 Europe Triathlon Nordic Championships Linköping
+552756,Youth Men results are a subset of 2022 Europe Triathlon Nordic Championships Linköping
+552757,Youth Women results are a subset of 2022 Europe Triathlon Nordic Championships Linköping
+555858,U23 Men results are a subset of 2022 Americas Triathlon Cup and South American Championships Formosa
+555859,U23 Women results are a subset of 2022 Americas Triathlon Cup and South American Championships Formosa
+560866,U23 Women results are a subset of 2022 Pan-Arab Championships Sharm El Sheikh
+561472,Semifinal 1 Elite Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561474,Semifinal 1 Junior Women results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561476,Semifinal 3 Junior Women results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561477,Semifinal 1 Junior Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561478,Semifinal 2 Junior Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561479,Semifinal 3 Junior Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561480,Semifinal 1 Elite Women results are a subset of 2022 Europe Triathlon Championships Olsztyn
+561482,Semifinal 2 Elite Men results are a subset of 2022 Europe Triathlon Championships Olsztyn
+562242,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562243,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562246,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562247,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562248,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562249,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Amatique Bay
+562265,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Panama City
+562266,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Panama City
+562267,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Panama City
+562269,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Panama City
+562270,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Panama City
+562543,Junior Men results are a subset of 2022 Pan-Arab Championships Sharm El Sheikh
+562545,Junior Women results are a subset of 2022 Africa Triathlon Junior Cup Sharm El Sheikh
+563394,Elite Men results are a subset of 2022 Americas Triathlon Cup Punta Cana
+563395,Elite Women results are a subset of 2022 Americas Triathlon Cup Punta Cana
+563963,Junior Men results are a subset of 2022 SVK Sprint Triathlon National Championships
+563964,Junior Women results are a subset of 2022 SVK Sprint Triathlon National Championships
+564172,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564173,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564174,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564175,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564176,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564177,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Turrialba
+564691,Repechage 1 Elite Men results are a subset of 2022 World Triathlon Sprint and Relay Championships Montreal
+564692,Repechage 2 Elite Men results are a subset of 2022 World Triathlon Sprint and Relay Championships Montreal
+566479,U23 Men results are a subset of 2022 Americas Triathlon Championships Montevideo
+566480,U23 Women results are a subset of 2022 Americas Triathlon Championships Montevideo
+567663,Semifinal 1 Elite Men results are a subset of 2022 Europe Triathlon Premium Cup Tiszaujvaros
+567664,Semifinal 2 Elite Men results are a subset of 2022 Europe Triathlon Premium Cup Tiszaujvaros
+567665,Semifinal 3 Elite Men results are a subset of 2022 Europe Triathlon Premium Cup Tiszaujvaros
+567667,Semifinal 2 Elite Women results are a subset of 2022 Europe Triathlon Premium Cup Tiszaujvaros
+568886,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+568887,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+568890,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+568891,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+568892,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+568893,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+568896,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+568897,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+568898,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+568899,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+568900,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+568901,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+568902,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+568903,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Durazno
+569275,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+569276,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+569279,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+569280,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+569433,U23 Men results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+569434,U23 Women results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+569435,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+569436,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+569437,U17 Men results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+569438,U17 Women results are a subset of 2022 World Triathlon Development Regional Cup Santo Domingo
+571370,Junior Women results are a subset of 2022 MKD Sprint Triathlon National Championships
+571639,Junior Men results are a subset of 2022 NOR Sprint Triathlon National Championships
+571640,Junior Women results are a subset of 2022 NOR Sprint Triathlon National Championships
+573759,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+573760,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Asuncion
+574714,Junior Men results are a subset of 2022 VEN Sprint Triathlon National Championships
+574715,Junior Women results are a subset of 2022 VEN Sprint Triathlon National Championships
+574716,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+574717,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Costa del Sol
+574724,U19 Men results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+574725,U19 Women results are a subset of 2022 World Triathlon Development Regional Cup Santa Marta
+576424,Junior Women results are a subset of 2022 POL Sprint Triathlon National Championships
+578376,Junior Men results are a subset of 2022 SLO Sprint Triathlon National Championships
+581514,U23 Men results are a subset of 2022 JPN Triathlon National Championships
+581515,U23 Women results are a subset of 2022 JPN Triathlon National Championships
+581901,Elite Men results are a subset of 2022 Africa Triathlon Cup Swakopmund
+581902,Elite Women results are a subset of 2022 Africa Triathlon Cup Swakopmund
+582528,"Race has 114 entries (likely combined AG/Elite), needs manual review"
+582530,"Race has 105 entries (likely combined AG/Elite), needs manual review"
+583793,Junior Women results are a subset of 2022 POR Sprint Triathlon National Championships
+584153,Elite Men results are a subset of 2022 Africa Triathlon Cup Maselspoort
+584154,Elite Women results are a subset of 2022 Africa Triathlon Cup Maselspoort
+585505,Elite results combined with AG
+586238,Junior Women results are a subset of 2022 LAT Sprint Triathlon National Championships
+588368,U23 Men results are a subset of 2023 Oceania Triathlon Cup and Sprint Championships Devonport
+588369,U23 Women results are a subset of 2023 Oceania Triathlon Cup Devonport
+588376,U23 Men results are a subset of 2023 Oceania Triathlon Cup and Championships Port Douglas
+588377,U23 Women results are a subset of 2023 Oceania Triathlon Cup and Championships Port Douglas
+591563,Repechage 1 Elite Men results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591564,Repechage 2 Elite Men results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591565,Repechage 1 Elite Women results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591566,Repechage 2 Elite Women results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591568,Qualifier 2 Elite Men results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591569,Qualifier 1 Elite Women results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+591570,Qualifier 2 Elite Women results are a subset of 2023 World Triathlon Sprint and Relay Championships Hamburg
+599821,Junior Men results are a subset of 2023 Africa Triathlon Junior Cup Nelson Mandela Bay
+599822,Junior Women results are a subset of 2023 Africa Triathlon Junior Cup Nelson Mandela Bay
+599823,Elite Men results are a subset of 2023 Africa Triathlon Premium Cup Nelson Mandela Bay
+599824,Elite Women results are a subset of 2023 Africa Triathlon Premium Cup Nelson Mandela Bay
+600028,Elite Men results are a subset of 2023 Africa Triathlon Cup Maselspoort
+600029,Elite Women results are a subset of 2023 Africa Triathlon Cup Maselspoort
+600583,U23 Men results are a subset of 2023 Africa Triathlon Championships Hurghada
+600584,U23 Women results are a subset of 2023 Africa Triathlon Championships Hurghada
+600680,U23 Men results are a subset of 2023 Africa Triathlon Sprint Championships Blue Bay
+600681,U23 Women results are a subset of 2023 Africa Triathlon Sprint Championships Blue Bay
+613931,Semifinal 1 Elite Women results are a subset of 2023 World Triathlon Cup Tiszaujvaros
+613932,Semifinal 2 Elite Women results are a subset of 2023 World Triathlon Cup Tiszaujvaros
+613934,Semifinal 1 Elite Men results are a subset of 2023 World Triathlon Cup Tiszaujvaros
+613935,Semifinal 2 Elite Men results are a subset of 2023 World Triathlon Cup Tiszaujvaros
+613936,Semifinal 3 Elite Men results are a subset of 2023 World Triathlon Cup Tiszaujvaros
+617214,U23 Men results are a subset of 2023 Americas Triathlon Championships Veracruz
+617215,U23 Women results are a subset of 2023 Americas Triathlon Championships Veracruz
+618856,Junior Women results are a subset of 2023 LAT Sprint Triathlon National Championships
+619932,Junior Women results are a subset of 2023 POL Sprint Triathlon National Championships
+620050,Junior Men results are a subset of 2023 SUI Sprint Triathlon National Championships
+620051,Junior Women results are a subset of 2023 SUI Sprint Triathlon National Championships
+620333,Junior Men results are a subset of 2023 MKD Sprint Triathlon National Championships
+620334,Junior Women results are a subset of 2023 MKD Sprint Triathlon National Championships
+620538,Junior Women results are a subset of 2023 NED Sprint Triathlon National Championships
+627432,Junior Men results are a subset of 2023 SLO Sprint Triathlon National Championships
+627433,Junior Women results are a subset of 2023 SLO Sprint Triathlon National Championships
+628462,U23 Men results are a subset of 2024 Americas Triathlon Championships Miami
+628463,U23 Women results are a subset of 2024 Americas Triathlon Championships Miami
+628860,Semifinal 1 Elite Men results are a subset of 2023 Honiara Pacific Games. Triathlon
+628861,Semifinal 2 Elite Men results are a subset of 2023 Honiara Pacific Games. Triathlon
+628862,Semifinal 3 Elite Men results are a subset of 2023 Honiara Pacific Games. Triathlon
+628863,Semifinal 1 Elite Women results are a subset of 2023 Honiara Pacific Games. Triathlon
+628865,Semifinal 2 Elite Women results are a subset of 2023 Honiara Pacific Games. Triathlon
+629179,Junior Men results are a subset of 2023 GBR Sprint Triathlon National Championships
+629180,Seperate Junior results within Elite race
+630177,U23 Men results are a subset of 2024 Americas Triathlon Cup and South Americas Triathlon Championships La Guaira
+630178,U23 Women results are a subset of 2024 Americas Triathlon Cup and South Americas Triathlon Championships La Guaira
+630569,Junior Men results are a subset of 2023 HUN Sprint Triathlon National Championships
+630570,Junior Women results are a subset of 2023 HUN Sprint Triathlon National Championships
+631034,U23 Men results are a subset of 2023 JPN Triathlon National Championships
+631035,U23 Women results are a subset of 2023 JPN Triathlon National Championships
+632739,Elite Men results are a subset of 2023 Asia Triathlon Cup Xiamen
+632740,Elite Women results are a subset of 2023 Asia Triathlon Cup Xiamen
+632993,Junior Men results are a subset of 2023 POR Sprint Triathlon National Championships
+632994,Junior Women results are a subset of 2023 POR Sprint Triathlon National Championships
+635405,"Race has 102 entries (likely combined AG/Elite), needs manual review"
+635407,"Race has 123 entries (likely combined AG/Elite), needs manual review"
+635408,"Race has 108 entries (likely combined AG/Elite), needs manual review"
+635409,"Race has 115 entries (likely combined AG/Elite), needs manual review"
+635410,"Race has 120 entries (likely combined AG/Elite), needs manual review"
+635438,"Race has 113 entries (likely combined AG/Elite), needs manual review"
+635439,"Race has 106 entries (likely combined AG/Elite), needs manual review"
+635440,"Race has 117 entries (likely combined AG/Elite), needs manual review"
+635443,"Race has 110 entries (likely combined AG/Elite), needs manual review"
+635540,U23 Men results are a subset of 2024 Africa Triathlon Championships Hurghada
+635541,U23 Women results are a subset of 2024 Africa Triathlon Championships Hurghada
+640185,Elite Women results are a subset of 2024 Africa Triathlon Cup Troutbeck
+641241,U23 Men results are a subset of 2024 Oceania Triathlon Sprint Championships Devonport
+641242,U23 Women results are a subset of 2024 Oceania Triathlon Sprint Championships Devonport
+645468,Elite Men results are a subset of 2024 Asia Triathlon Cup Burabay
+645469,Elite Women results are a subset of 2024 Asia Triathlon Cup Burabay
+650718,Elite Men results are a subset of 2024 Africa Triathlon Cup Maselspoort
+650719,Elite Women results are a subset of 2024 Africa Triathlon Cup Maselspoort
+655267,Semifinal 1 Elite Men results are a subset of 2024 World Triathlon Cup Tiszaujvaros
+655268,Semifinal 2 Elite Men results are a subset of 2024 World Triathlon Cup Tiszaujvaros
+655269,Semifinal 3 Elite Men results are a subset of 2024 World Triathlon Cup Tiszaujvaros
+655270,Semifinal 1 Elite Women results are a subset of 2024 World Triathlon Cup Tiszaujvaros
+655271,Semifinal 2 Elite Women results are a subset of 2024 World Triathlon Cup Tiszaujvaros
+656315,Junior Men results are a subset of 2024 SWE Sprint Triathlon National Championships
+656316,Junior Women results are a subset of 2024 SWE Sprint Triathlon National Championships
+657791,Junior Men results are a subset of 2024 MKD Sprint Triathlon National Championships
+660674,PTS4 Men results are a subset of 2024 LUX Sprint Triathlon National Championships
+662300,Elite Men results are a subset of 2024 Americas Triathlon Cup and Central America Caribbean Championships Punta Cana
+662301,Elite Women results are a subset of 2024 Americas Triathlon Cup and Central America Caribbean Championships Punta Cana
+668608,Elite Men results are a subset of 2024 Asia Triathlon Cup Putrajaya
+668609,Elite Women results are a subset of 2024 Asia Triathlon Cup Putrajaya
+668673,Junior Women results are a subset of 2024 AUT Sprint Triathlon National Championships
+668791,Junior Women results are a subset of 2024 SVK Sprint Triathlon National Championships
+670246,U23 Men results are a subset of 2024 IRI Sprint Triathlon National Championships
+670758,Elite Men results are a subset of 2024 Europe Triathlon Balkan Championships Izvorani
+670759,Elite Women results are a subset of 2024 Europe Triathlon Balkan Championships Izvorani
+671237,Junior Men results are a subset of 2024 POR Sprint Triathlon National Championships
+671238,Junior Women results are a subset of 2024 POR Sprint Triathlon National Championships
+671323,Junior Men results are a subset of 2024 FIN Sprint Triathlon National Championships
+671324,Junior Women results are a subset of 2024 FIN Sprint Triathlon National Championships
+672247,Junior Men results are a subset of 2024 DEN Sprint Triathlon National Championships
+672656,Junior Women results are a subset of 2024 POL Sprint Triathlon National Championships
+673281,U23 Men results are a subset of 2024 JPN Triathlon National Championships
+673282,U23 Women results are a subset of 2024 JPN Triathlon National Championships
+673615,U23 Men results are a subset of 2025 Oceania Triathlon Championships Devonport
+673616,U23 Women results are a subset of 2025 Oceania Triathlon Championships Devonport
+674036,U23 Men results are a subset of 2025 Africa Triathlon Championships Nelson Mandela Bay
+674037,U23 Women results are a subset of 2025 Africa Triathlon Championships Nelson Mandela Bay
+674372,Junior Men results are a subset of 2024 KOS Sprint Triathlon National Championships
+674779,U23 Men results are a subset of 2025 Europe Triathlon Sprint and Relay Championships Melilla
+674780,U23 Women results are a subset of 2025 Europe Triathlon Sprint and Relay Championships Melilla
+674829,U23 Men results are a subset of 2025 Africa Triathlon Sprint Championships El Galala
+674830,U23 Women results are a subset of 2025 Africa Triathlon Sprint Championships El Galala
+675091,U23 Men results are a subset of 2025 Americas Triathlon Championships Calima
+675092,Separate U23 results within Elite race
+675840,Semifinal 1 Elite Men results are a subset of 2025 World Triathlon Cup Tiszaujvaros
+675841,Semifinal 2 Elite Men results are a subset of 2025 World Triathlon Cup Tiszaujvaros
+675842,Semifinal 3 Elite Men results are a subset of 2025 World Triathlon Cup Tiszaujvaros
+675843,Semifinal 1 Elite Women results are a subset of 2025 World Triathlon Cup Tiszaujvaros
+675844,Semifinal 2 Elite Women results are a subset of 2025 World Triathlon Cup Tiszaujvaros
+676240,Junior Men results are a subset of 2025 RSA Sprint Triathlon National Championships
+676241,Junior Women results are a subset of 2025 RSA Sprint Triathlon National Championships
+676244,Elite Men results are a subset of 2025 Africa Triathlon Championships Nelson Mandela Bay
+676245,Elite Women results are a subset of 2025 Africa Triathlon Championships Nelson Mandela Bay
+676252,Junior Men results are a subset of 2025 AUT Sprint Triathlon National Championships
+676253,Junior Women results are a subset of 2025 AUT Sprint Triathlon National Championships
+676256,Junior Men results are a subset of 2025 SWE Sprint Triathlon National Championships
+676257,Junior Women results are a subset of 2025 SWE Sprint Triathlon National Championships
+676334,Junior Men results are a subset of 2025 SUI Sprint Triathlon National Championships
+676335,Junior Women results are a subset of 2025 SUI Sprint Triathlon National Championships
+676500,Junior Men results are a subset of 2025 Americas Triathlon Cup and Iberoamerican Championships Maldonado
+676501,Junior Women results are a subset of 2025 Americas Triathlon Cup and Iberoamerican Championships Maldonado
+676527,Elite Men results are a subset of 2025 Africa Triathlon Cup and Pan-Arab Championships Hurghada
+676528,Elite Women results are a subset of 2025 Africa Triathlon Cup and Pan-Arab Championships Hurghada
+676717,PTVI Men results are a subset of 2026 Africa Triathlon Para Cup El Galala
+677046,U23 Men results are a subset of 2025 JPN Triathlon National Championships
+677047,U23 Women results are a subset of 2025 JPN Triathlon National Championships
+677121,Junior Women results are a subset of 2025 POR Sprint Triathlon National Championships
+677124,Junior Men results are a subset of 2025 HUN Sprint Triathlon National Championships
+677125,Junior Women results are a subset of 2025 HUN Sprint Triathlon National Championships
+677134,Junior Men results are a subset of 2025 DEN Sprint Triathlon National Championships
+677135,Junior Women results are a subset of 2025 DEN Sprint Triathlon National Championships
+677136,Junior Men results are a subset of 2025 ROU Sprint Triathlon National Championships
+677137,Junior Women results are a subset of 2025 ROU Sprint Triathlon National Championships
+677266,U23 Men results are a subset of 2026 Oceania Triathlon Sprint Championships Napier
+677267,U23 Women results are a subset of 2026 Oceania Triathlon Cup Napier
+677477,Junior Men results are a subset of 2025 POL Sprint Triathlon National Championships
+677478,Junior Women results are a subset of 2025 POL Sprint Triathlon National Championships
+677550,Junior Men results are a subset of 2025 KOS Sprint Triathlon National Championships
+677551,Junior Women results are a subset of 2025 KOS Sprint Triathlon National Championships
+677685,U23 Men results are a subset of 2026 Americas Triathlon Cup and South Americas Triathlon Championships Formosa
+677686,U23 Women results are a subset of 2026 Americas Triathlon Cup and South Americas Triathlon Championships Formosa

@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
 
 from ptd_data import queries
-from app.routers.router_utils import format_rating_change
+from app.routers.router_utils import format_rating, format_rating_change
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -23,6 +23,8 @@ def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, off
         a["rank"]               = offset + i + 1
         a["win_count"]          = a["wins"]
         a["profile_img_exists"] = bool(a.get("profile_img"))
+        for d in ["overall", "swim", "bike", "run", "transition"]:
+            a[f"{d}_rating"] = format_rating(a[f"{d}_rating"])
 
     if order == "hot":
         for a in athletes:

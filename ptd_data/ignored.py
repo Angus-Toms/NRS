@@ -13,6 +13,7 @@ Usage:
 from collections import defaultdict
 
 from ptd_data import db
+from ptd_data.db import load_manual_ignored
 
 
 MAX_RACE_SIZE = 100
@@ -96,6 +97,9 @@ def detect_all(conn):
     print(f"Detected {len(ignored)} ignored races")
     for race_id, reason in sorted(ignored.items()):
         print(f"  {race_id}: {reason}")
+
+    # Always finish by re-applying manual overrides — detect_all cleared the table above.
+    load_manual_ignored(conn)
 
 
 if __name__ == "__main__":

@@ -123,7 +123,6 @@
                 <div class="rating-change-1yr {{ rating_changes_1yr.overall_change_1yr.css_class }}">
                     {{ rating_changes_1yr.overall_change_1yr.formatted_str }}
                 </div>
-                <div class="rating-rank">{{ current_ratings.overall_rank }}</div>
             </div>
             <div class="rating-box">
                 <div class="rating-discipline">Swim</div>
@@ -131,7 +130,6 @@
                 <div class="rating-change-1yr {{ rating_changes_1yr.swim_change_1yr.css_class }}">
                     {{ rating_changes_1yr.swim_change_1yr.formatted_str }}
                 </div>
-                <div class="rating-rank">{{ current_ratings.swim_rank }}</div>
             </div>
             <div class="rating-box">
                 <div class="rating-discipline">Bike</div>
@@ -139,7 +137,6 @@
                 <div class="rating-change-1yr {{ rating_changes_1yr.bike_change_1yr.css_class }}">
                     {{ rating_changes_1yr.bike_change_1yr.formatted_str }}
                 </div>
-                <div class="rating-rank">{{ current_ratings.bike_rank }}</div>
             </div>
             <div class="rating-box">
                 <div class="rating-discipline">Run</div>
@@ -147,7 +144,6 @@
                 <div class="rating-change-1yr {{ rating_changes_1yr.run_change_1yr.css_class }}">
                     {{ rating_changes_1yr.run_change_1yr.formatted_str }}
                 </div>
-                <div class="rating-rank">{{ current_ratings.run_rank }}</div>
             </div>
             <div class="rating-box">
                 <div class="rating-discipline">Transition</div>
@@ -155,7 +151,37 @@
                 <div class="rating-change-1yr {{ rating_changes_1yr.transition_change_1yr.css_class }}">
                     {{ rating_changes_1yr.transition_change_1yr.formatted_str }}
                 </div>
-                <div class="rating-rank">{{ current_ratings.transition_rank }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ratings-section">
+        <h3 class="card-title">Current Rankings</h3>
+        <div class="ratings-grid">
+            <div class="rating-box">
+                <div class="rating-discipline">Overall</div>
+                <div class="ranking-world">{% if current_rankings.world_overall %}#{{ current_rankings.world_overall }}{% else %}—{% endif %}</div>
+                <div class="ranking-national">{% if current_rankings.national_overall %}#{{ current_rankings.national_overall }} {{ athlete.country_alpha3 }}{% endif %}</div>
+            </div>
+            <div class="rating-box">
+                <div class="rating-discipline">Swim</div>
+                <div class="ranking-world">{% if current_rankings.world_swim %}#{{ current_rankings.world_swim }}{% else %}—{% endif %}</div>
+                <div class="ranking-national">{% if current_rankings.national_swim %}#{{ current_rankings.national_swim }} {{ athlete.country_alpha3 }}{% endif %}</div>
+            </div>
+            <div class="rating-box">
+                <div class="rating-discipline">Bike</div>
+                <div class="ranking-world">{% if current_rankings.world_bike %}#{{ current_rankings.world_bike }}{% else %}—{% endif %}</div>
+                <div class="ranking-national">{% if current_rankings.national_bike %}#{{ current_rankings.national_bike }} {{ athlete.country_alpha3 }}{% endif %}</div>
+            </div>
+            <div class="rating-box">
+                <div class="rating-discipline">Run</div>
+                <div class="ranking-world">{% if current_rankings.world_run %}#{{ current_rankings.world_run }}{% else %}—{% endif %}</div>
+                <div class="ranking-national">{% if current_rankings.national_run %}#{{ current_rankings.national_run }} {{ athlete.country_alpha3 }}{% endif %}</div>
+            </div>
+            <div class="rating-box">
+                <div class="rating-discipline">Transition</div>
+                <div class="ranking-world">{% if current_rankings.world_transition %}#{{ current_rankings.world_transition }}{% else %}—{% endif %}</div>
+                <div class="ranking-national">{% if current_rankings.national_transition %}#{{ current_rankings.national_transition }} {{ athlete.country_alpha3 }}{% endif %}</div>
             </div>
         </div>
     </div>
@@ -310,8 +336,8 @@
                             <td class="program-col" data-value="{{ race.race }}">
                                 {{ race.program }}
                             </td>
-                            <td class="position-cell {{ 'position-gold' if race.position == '1' else ('position-silver' if race.position == '2' else ('position-bronze' if race.position == '3' else ('position-dnf' if race.position in ['DNF', 'DQ', 'LAP'] else ''))) }}" data-value="{{ race.position }}">
-                                {{ race.position }}
+                            <td class="position-cell {{ 'position-gold' if race.position == 1 else ('position-silver' if race.position == 2 else ('position-bronze' if race.position == 3 else ('position-dnf' if race.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''))) }}" data-value="{{ race.position }}">
+                                {{ race.position or race.status }}
                             </td>
                             <td class="time-col overall-time" data-value="{{ race.overall }}">
                                 <div class="time-cell">
@@ -392,8 +418,8 @@
                                 </a>
                             </td>
                             <td data-value="{{ rating.race_program }}">{{ rating.race_program }}</td>
-                            <td class="position-cell {{ 'position-gold' if rating.position == '1' else ('position-silver' if rating.position == '2' else ('position-bronze' if rating.position == '3' else ('position-dnf' if rating.position in ['DNF', 'DQ', 'LAP', 'NC'] else ''))) }}" data-value="{{ rating.position }}">
-                                {{ rating.position }}
+                            <td class="position-cell {{ 'position-gold' if rating.position == 1 else ('position-silver' if rating.position == 2 else ('position-bronze' if rating.position == 3 else ('position-dnf' if rating.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''))) }}" data-value="{{ rating.position }}">
+                                {{ rating.position or rating.status }}
                             </td>
                             <td class="overall-time" data-value="{{ rating.overall_rating }}">
                                 <div class="rating-cell">
