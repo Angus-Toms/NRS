@@ -1,37 +1,21 @@
-# ================================
-# PYTHON
-# ================================
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Virtual environments
-venv/
 .venv/
-env/
-ENV/
 
-# ================================
-# VS CODE
-# ================================
+# IDE
 .vscode/
-*.code-workspace
 
-# ================================
-# SYSTEM FILES
-# ================================
+# System
 .DS_Store
 
-# ================================
-# ENV / SECRETS
-# ================================
+# Secrets
 .env
 .env.*
-secrets.json
 
-# ================================
-# RUNTIME DATA
-# ================================
+# Data
 data/
 *.pkl
 *.webp
+*.duckdb
+*.duckdb.wal
