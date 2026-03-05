@@ -13,8 +13,10 @@ __pycache__/
 .env
 .env.*
 
-# Data
+# Data (runtime only — source data in ptd_data/data/ is tracked)
 data/
+!ptd_data/data/
+!ptd_data/data/**
 *.pkl
 *.webp
 *.duckdb
