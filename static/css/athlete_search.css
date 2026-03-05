@@ -156,7 +156,9 @@
 }
 
 .search-result-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
     padding: var(--spacing-md);
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;

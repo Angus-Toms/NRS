@@ -37,17 +37,24 @@ def get_counts():
 # Athlete search
 # ---------------------------------------------------------------------------
 
-def search_athletes(query):
+def search_athletes(query, gender=None):
     """
     Substring search by name (case-insensitive).
     Returns list of dicts ordered by current overall rating desc.
+    Optionally filtered by gender ('male' or 'female').
     """
     conn = _get_conn()
-    rows = conn.execute("""
+    params = [f"%{query}%"]
+    gender_clause = ""
+    if gender:
+        gender_clause = " AND a.gender = ?"
+        params.append(gender)
+    rows = conn.execute(f"""
         SELECT
             a.athlete_id,
             a.name,
             a.year_of_birth,
+            a.gender,
             n.alpha3   AS country_alpha3,
             n.emoji    AS country_emoji,
             a.country_full,
@@ -61,12 +68,12 @@ def search_athletes(query):
             QUALIFY ROW_NUMBER() OVER (PARTITION BY ra.athlete_id
                                        ORDER BY r.race_date DESC, ra.race_id DESC) = 1
         ) latest ON a.athlete_id = latest.athlete_id
-        WHERE a.name ILIKE ?
+        WHERE a.name ILIKE ?{gender_clause}
         ORDER BY rating DESC
         LIMIT 50
-    """, [f"%{query}%"]).fetchall()
+    """, params).fetchall()
 
-    cols = ["athlete_id", "name", "year_of_birth", "country_alpha3",
+    cols = ["athlete_id", "name", "year_of_birth", "gender", "country_alpha3",
             "country_emoji", "country_full", "rating"]
     return [dict(zip(cols, r)) for r in rows]
 

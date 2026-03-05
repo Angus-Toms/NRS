@@ -137,7 +137,8 @@ _COUNTRY_SPECIAL_CASES = {
     "Virgin Islands": ("ISV", "🇻🇮"),
     "Tahiti": ("PYF", "🇵🇫"),
     "Bolivia": ("BOL", "🇧🇴"),
-    "Moldova": ("MDA", "🇲🇩")
+    "Moldova": ("MDA", "🇲🇩"),
+    "Saint Maarten": ("SX", "🇸🇽")
 }
 
 

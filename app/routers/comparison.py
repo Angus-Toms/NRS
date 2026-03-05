@@ -55,10 +55,10 @@ async def compare_page(request: Request):
 
 
 @router.get("/compare/search")
-async def search_athletes_for_compare(q: str = ""):
+async def search_athletes_for_compare(q: str = "", gender: str = ""):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
-    results = queries.search_athletes(q.strip())
+    results = queries.search_athletes(q.strip(), gender=gender or None)
     for r in results:
         r["country_name"] = r.pop("country_full")
     return JSONResponse(results)
@@ -72,6 +72,7 @@ async def get_athlete_for_compare(athlete_id: int):
     return JSONResponse({
         "athlete_id":   info["athlete_id"],
         "name":         info["name"],
+        "gender":       info["gender"],
         "country_emoji": info["country_emoji"],
         "country_name": info["country_full"],
         "country_alpha3": info["country_alpha3"],

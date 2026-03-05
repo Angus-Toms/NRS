@@ -17,7 +17,7 @@ def format_time_behind(seconds_behind: int) -> str:
         return ""
 
     if seconds_behind == 0:
-        return "+00:00"
+        return ""
     
     time_fmt = format_time(seconds_behind)
     return f"+{time_fmt}"

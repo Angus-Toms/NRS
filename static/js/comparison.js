@@ -18,7 +18,8 @@ function debounce(func, wait) {
 }
 
 // Initialize search for both search boxes
-function initSearch(searchId, resultsId, selectedId, athleteKey) {
+// genderFilter: optional fn returning a gender string to filter results by
+function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = null) {
     const searchInput = document.getElementById(searchId);
     const resultsDiv = document.getElementById(resultsId);
     const selectedDiv = document.getElementById(selectedId);
@@ -31,27 +32,37 @@ function initSearch(searchId, resultsId, selectedId, athleteKey) {
         }
 
         try {
-            const response = await fetch(`/compare/search?q=${encodeURIComponent(query)}`);
+            let url = `/compare/search?q=${encodeURIComponent(query)}`;
+            if (genderFilter) {
+                const gender = genderFilter();
+                if (gender) url += `&gender=${encodeURIComponent(gender)}`;
+            }
+            const response = await fetch(url);
             const data = await response.json();
 
             if (data && data.length > 0) {
-                resultsDiv.innerHTML = data.map(athlete => `
+                const baseUrl = window.STATIC_BASE_URL || '';
+                const defaultImg = `${baseUrl}imgs/default_user.jpg`;
+                resultsDiv.innerHTML = data.map(athlete => {
+                    const imgSrc = `${baseUrl}athlete_imgs/128/${athlete.athlete_id}.webp`;
+                    return `
                     <div class="search-result-item"
-                        data-id="${athlete.athlete_id}" 
-                        data-name="${athlete.name}" 
+                        data-id="${athlete.athlete_id}"
+                        data-name="${athlete.name}"
+                        data-gender="${athlete.gender}"
                         data-country-emoji="${athlete.country_emoji}"
                         data-country-name="${athlete.country_name}"
                         data-country-alpha3="${athlete.country_alpha3}"
                         data-yob="${athlete.year_of_birth || ''}">
+                        <img class="result-avatar" src="${imgSrc}" onerror="this.src='${defaultImg}'" alt="${escapeHtml(athlete.name)}">
                         <div class="result-info">
                             <div class="result-name">${escapeHtml(athlete.name)}</div>
-                            <div class="result-meta">
-                                ${athlete.country_emoji} ${escapeHtml(athlete.country_alpha3)}
-                                ${athlete.year_of_birth ? ` • ${athlete.year_of_birth}` : ''}
-                            </div>
+                            <div class="result-country">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}</div>
+                            <hr class="result-divider">
+                            <div class="result-yob">${athlete.year_of_birth || '—'}</div>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
                 resultsDiv.classList.add('active');
 
                 // Add click handlers
@@ -60,6 +71,7 @@ function initSearch(searchId, resultsId, selectedId, athleteKey) {
                         selectAthlete(athleteKey, {
                             id: parseInt(item.dataset.id),
                             name: item.dataset.name,
+                            gender: item.dataset.gender,
                             country_emoji: item.dataset.countryEmoji,
                             country_name: item.dataset.countryName,
                             country_alpha3: item.dataset.countryAlpha3,
@@ -98,26 +110,23 @@ function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selectedDiv
         searchWrapper.classList.add('hidden');
     }
     
-    const baseUrl = window.STATIC_BASE_URL || "https://www.static.protridata/";
+    const baseUrl = window.STATIC_BASE_URL || '';
     const imgSrc = `${baseUrl}athlete_imgs/128/${athlete.id}.webp`;
     const defaultImgSrc = `${baseUrl}imgs/default_user.jpg`;
     selectedDiv.innerHTML = `
         <button class="selected-athlete-remove" aria-label="Clear selection">&times;</button>
-
         <div class="selected-athlete-container">
-            <img 
+            <img
                 class="selected-athlete-img"
                 src="${imgSrc}"
-                data-fallback="${defaultImgSrc}"
-                onerror="${defaultImgSrc}"
+                onerror="this.src='${defaultImgSrc}'"
                 alt="${athlete.name}"
             >
-
             <div class="selected-athlete-text">
-                <div class="selected-athlete-name">${athlete.name} ${athlete.country_emoji}</div>
-                <div class="selected-athlete-info">
-                    ${athlete.country_name} ${athlete.year_of_birth ? `YOB: ${athlete.year_of_birth}` : ''}
-                </div>
+                <div class="selected-athlete-name">${escapeHtml(athlete.name)}</div>
+                <div class="result-country">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}</div>
+                <hr class="result-divider">
+                <div class="result-yob">${athlete.year_of_birth || '—'}</div>
             </div>
         </div>
     `;
@@ -185,6 +194,7 @@ async function prefillFromQuery() {
         selectAthlete('athlete1', {
             id: athlete.athlete_id,
             name: athlete.name,
+            gender: athlete.gender,
             country_emoji: athlete.country_emoji,
             country_name: athlete.country_name,
             country_alpha3: athlete.country_alpha3,
@@ -257,7 +267,7 @@ function loadComparisonResultsJs() {
 
 // Initialize
 initSearch('search1', 'results1', 'selected1', 'athlete1');
-initSearch('search2', 'results2', 'selected2', 'athlete2');
+initSearch('search2', 'results2', 'selected2', 'athlete2', () => selectedAthletes.athlete1?.gender);
 prefillFromQuery();
 
 document.getElementById('compareBtn').addEventListener('click', performComparison);

@@ -474,6 +474,18 @@ th.sortable.desc::after {
     margin-top: var(--spacing-xs);
 }
 
+.ranking-world {
+    font-size: 1.8rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.ranking-national {
+    color: var(--text-light);
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-xs);
+}
+
 .rating-race {
     font-size: 0.7rem;
     color: var(--text-lighter);
@@ -481,6 +493,36 @@ th.sortable.desc::after {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ============================================
+   SEARCH RESULT CARDS (shared across pages)
+   ============================================ */
+.result-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.result-country {
+    font-size: var(--font-size-sm);
+    color: var(--text-light);
+    margin-top: var(--spacing-xs);
+}
+
+.result-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: var(--spacing-xs) 0;
+}
+
+.result-yob {
+    font-size: var(--font-size-sm);
+    color: var(--text-lighter);
 }
 
 /* Rating changes */
