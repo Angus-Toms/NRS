@@ -55,9 +55,7 @@ function displayResults(results) {
             <img class="result-avatar" src="${imgSrc}" onerror="this.src='${defaultImg}'" alt="${escapeHtml(athlete.name)}">
             <div class="result-info">
                 <div class="result-name">${escapeHtml(athlete.name)}</div>
-                <div class="result-country">${athlete.country} ${escapeHtml(athlete.country_full)}</div>
-                <hr class="result-divider">
-                <div class="result-yob">${athlete.year_of_birth || '—'}</div>
+                <div class="result-meta">${athlete.country} ${escapeHtml(athlete.country_full)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</div>
             </div>
         </a>`;
     }).join('');

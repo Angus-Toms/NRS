@@ -72,7 +72,7 @@
                             </div>
                             <div class="podium-time">
                                 {{ athlete.overall_s }}
-                                {% if athlete.overall_behind_s != "+00:00" %}
+                                {% if athlete.overall_behind_s %}
                                     ({{ athlete.overall_behind_s }})
                                 {% endif %}
                             </div>

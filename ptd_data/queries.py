@@ -893,7 +893,7 @@ def get_race_rating_values(race_id):
 
 def get_common_races(athlete1_id, athlete2_id):
     """
-    Races where both athletes competed, with each athlete's time + position.
+    Races where both athletes competed, with each athlete's time + position + status.
     Returns list of dicts ordered by race_date desc.
     """
     conn = _get_conn()
@@ -903,8 +903,10 @@ def get_common_races(athlete1_id, athlete2_id):
             r.race_title,
             r.race_date,
             r1.position    AS a1_position,
+            r1.status      AS a1_status,
             r1.overall_s   AS a1_overall_s,
             r2.position    AS a2_position,
+            r2.status      AS a2_status,
             r2.overall_s   AS a2_overall_s
         FROM results r1
         JOIN results r2 ON r1.race_id = r2.race_id
@@ -915,5 +917,31 @@ def get_common_races(athlete1_id, athlete2_id):
     """, [athlete1_id, athlete2_id]).fetchall()
 
     cols = ["race_id", "race_title", "race_date",
-            "a1_position", "a1_overall_s", "a2_position", "a2_overall_s"]
+            "a1_position", "a1_status", "a1_overall_s",
+            "a2_position", "a2_status", "a2_overall_s"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def get_athlete_rankings_data(athlete_id):
+    """
+    World and national rankings per race for chart rendering (chronological order).
+    Returns list of dicts ordered by race_date asc.
+    """
+    conn = _get_conn()
+    rows = conn.execute("""
+        SELECT
+            rk.race_id,
+            r.race_date,
+            r.race_title,
+            rk.world_overall,    rk.world_swim,    rk.world_bike,    rk.world_run,    rk.world_transition,
+            rk.national_overall, rk.national_swim, rk.national_bike, rk.national_run, rk.national_transition
+        FROM rankings rk
+        JOIN races r ON rk.race_id = r.race_id
+        WHERE rk.athlete_id = ?
+        ORDER BY r.race_date ASC, rk.race_id ASC
+    """, [athlete_id]).fetchall()
+
+    cols = ["race_id", "race_date", "race_title",
+            "world_overall",    "world_swim",    "world_bike",    "world_run",    "world_transition",
+            "national_overall", "national_swim", "national_bike", "national_run", "national_transition"]
     return [dict(zip(cols, r)) for r in rows]

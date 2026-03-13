@@ -43,9 +43,39 @@ def create_schema(conn):
     """)
 
     conn.execute("""
+        CREATE TABLE IF NOT EXISTS series (
+            series_id       INTEGER PRIMARY KEY,
+            name            VARCHAR NOT NULL,
+            description     VARCHAR NOT NULL DEFAULT ''
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recurring_events (
+            recurring_event_id  INTEGER PRIMARY KEY,
+            name                VARCHAR NOT NULL,
+            series_id           INTEGER REFERENCES series(series_id),
+            description         VARCHAR NOT NULL DEFAULT ''
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            event_id            INTEGER PRIMARY KEY,
+            recurring_event_id  INTEGER REFERENCES recurring_events(recurring_event_id),
+            year                INTEGER,
+            name                VARCHAR NOT NULL,
+            location            VARCHAR NOT NULL DEFAULT '',
+            start_date          DATE,
+            end_date            DATE,
+            description         VARCHAR NOT NULL DEFAULT ''
+        )
+    """)
+
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS races (
             race_id         INTEGER PRIMARY KEY,
-            event_id        INTEGER NOT NULL,
+            event_id        INTEGER NOT NULL REFERENCES events(event_id),
             race_title      VARCHAR NOT NULL,
             prog_name       VARCHAR NOT NULL,
             race_date       DATE NOT NULL,
@@ -133,6 +163,9 @@ def create_schema(conn):
     """)
 
     # ART indexes on non-PK columns used in WHERE/JOIN clauses
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_recurring_event_id ON events(recurring_event_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_year ON events(year)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_recurring_events_series_id ON recurring_events(series_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_event_id ON races(event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_race_date ON races(race_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_athletes_country_full ON athletes(country_full)")

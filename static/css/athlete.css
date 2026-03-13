@@ -246,6 +246,34 @@
 }
 
 /* ============================================
+   RANKINGS
+   ============================================ */
+.ranking-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color var(--transition-fast);
+}
+
+.ranking-link:hover {
+    color: var(--primary-color);
+}
+
+sup.ordinal-suffix {
+    font-size: 0.55em;
+    vertical-align: super;
+    font-weight: 600;
+    line-height: 0;
+}
+
+.ranking-national-label {
+    font-size: 0.65em;
+    color: var(--text-lighter);
+    text-transform: capitalize;
+    letter-spacing: 0.4px;
+    margin-left: 0.2em;
+}
+
+/* ============================================
    RATINGS
    ============================================ */
 /* Used when no splits have been recorded for particular performance */

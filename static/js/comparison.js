@@ -57,9 +57,7 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
                         <img class="result-avatar" src="${imgSrc}" onerror="this.src='${defaultImg}'" alt="${escapeHtml(athlete.name)}">
                         <div class="result-info">
                             <div class="result-name">${escapeHtml(athlete.name)}</div>
-                            <div class="result-country">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}</div>
-                            <hr class="result-divider">
-                            <div class="result-yob">${athlete.year_of_birth || '—'}</div>
+                            <div class="result-meta">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -124,9 +122,7 @@ function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selectedDiv
             >
             <div class="selected-athlete-text">
                 <div class="selected-athlete-name">${escapeHtml(athlete.name)}</div>
-                <div class="result-country">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}</div>
-                <hr class="result-divider">
-                <div class="result-yob">${athlete.year_of_birth || '—'}</div>
+                <div class="result-meta">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</div>
             </div>
         </div>
     `;
@@ -245,7 +241,12 @@ function loadComparisonResultsJs() {
         initSwimChart();
         initBikeChart();
         initRunChart();
-        initTransitionChart();  
+        initTransitionChart();
+        initOverallRankingsChart();
+        initSwimRankingsChart();
+        initBikeRankingsChart();
+        initRunRankingsChart();
+        initTransitionRankingsChart();
         return;
     }
     

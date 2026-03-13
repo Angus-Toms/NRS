@@ -33,7 +33,7 @@
                             <span class="meta-label">Status</span>
                             <span class="meta-value">
                                 <span class="status-badge {{ 'active' if athlete.active else 'inactive' }}">
-                                    {{ 'Active' if athlete.active else 'Inactive' }}
+                                    {{ 'Active' if athlete.active else 'Retired' }}
                                 </span>
                             </span>
                         </div>
@@ -156,33 +156,28 @@
     </div>
 
     <div class="ratings-section">
-        <h3 class="card-title">Current Rankings</h3>
+        <h3 class="card-title">Current World Rankings</h3>
         <div class="ratings-grid">
+            {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
             <div class="rating-box">
-                <div class="rating-discipline">Overall</div>
-                <div class="ranking-world">{% if current_rankings.world_overall %}#{{ current_rankings.world_overall }}{% else %}—{% endif %}</div>
-                <div class="ranking-national">{% if current_rankings.national_overall %}#{{ current_rankings.national_overall }} {{ athlete.country_alpha3 }}{% endif %}</div>
+                <div class="rating-discipline">{{ label }}</div>
+                <div class="ranking-world">
+                    {% if current_rankings['world_' ~ disc] %}
+                    <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}" class="ranking-link">
+                        {{ current_rankings['world_' ~ disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_' ~ disc].suffix }}</sup>
+                    </a>
+                    {% else %}—{% endif %}
+                </div>
+                <div class="ranking-national">
+                    {% if current_rankings['national_' ~ disc] %}
+                    <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&country={{ athlete.country_full | urlencode }}" class="ranking-link ranking-link-national">
+                        {{ current_rankings['national_' ~ disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_' ~ disc].suffix }}</sup>
+                        <span class="ranking-national-label">national</span>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Swim</div>
-                <div class="ranking-world">{% if current_rankings.world_swim %}#{{ current_rankings.world_swim }}{% else %}—{% endif %}</div>
-                <div class="ranking-national">{% if current_rankings.national_swim %}#{{ current_rankings.national_swim }} {{ athlete.country_alpha3 }}{% endif %}</div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Bike</div>
-                <div class="ranking-world">{% if current_rankings.world_bike %}#{{ current_rankings.world_bike }}{% else %}—{% endif %}</div>
-                <div class="ranking-national">{% if current_rankings.national_bike %}#{{ current_rankings.national_bike }} {{ athlete.country_alpha3 }}{% endif %}</div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Run</div>
-                <div class="ranking-world">{% if current_rankings.world_run %}#{{ current_rankings.world_run }}{% else %}—{% endif %}</div>
-                <div class="ranking-national">{% if current_rankings.national_run %}#{{ current_rankings.national_run }} {{ athlete.country_alpha3 }}{% endif %}</div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Transition</div>
-                <div class="ranking-world">{% if current_rankings.world_transition %}#{{ current_rankings.world_transition }}{% else %}—{% endif %}</div>
-                <div class="ranking-national">{% if current_rankings.national_transition %}#{{ current_rankings.national_transition }} {{ athlete.country_alpha3 }}{% endif %}</div>
-            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -487,33 +482,80 @@
 
 <div class="chart-section collapsible-card">
     <h3 class="card-title">
-    % Behind Leader
+    Historical World Rankings
     <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
     </h3>
     <div class="collapsible-content">
         <div class="charts-grid">
-            <div class="mini-chart">
-                <h4>Overall % Behind Leader</h4>
+            <div class="mini-chart full-width">
+                <h4>Overall</h4>
                 <div class="chart-container-compact">
-                    <canvas id="overall-pct-behind-chart-canvas"></canvas>
+                    <canvas id="overall-world-rankings-canvas"></canvas>
                 </div>
             </div>
             <div class="mini-chart">
-                <h4>Swim % Behind Leader</h4>
+                <h4>Swim</h4>
                 <div class="chart-container-compact">
-                    <canvas id="swim-pct-behind-chart-canvas"></canvas>
+                    <canvas id="swim-world-rankings-canvas"></canvas>
                 </div>
             </div>
             <div class="mini-chart">
-                <h4>Bike % Behind Leader</h4>
+                <h4>Bike</h4>
                 <div class="chart-container-compact">
-                    <canvas id="bike-pct-behind-chart-canvas"></canvas>
+                    <canvas id="bike-world-rankings-canvas"></canvas>
                 </div>
             </div>
             <div class="mini-chart">
-                <h4>Run % Behind Leader</h4>
+                <h4>Run</h4>
                 <div class="chart-container-compact">
-                    <canvas id="run-pct-behind-chart-canvas"></canvas>
+                    <canvas id="run-world-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Transition</h4>
+                <div class="chart-container-compact">
+                    <canvas id="transition-world-rankings-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="chart-section collapsible-card">
+    <h3 class="card-title">
+    Historical National Rankings
+    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
+    </h3>
+    <div class="collapsible-content">
+        <div class="charts-grid">
+            <div class="mini-chart full-width">
+                <h4>Overall</h4>
+                <div class="chart-container-compact">
+                    <canvas id="overall-national-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Swim</h4>
+                <div class="chart-container-compact">
+                    <canvas id="swim-national-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Bike</h4>
+                <div class="chart-container-compact">
+                    <canvas id="bike-national-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Run</h4>
+                <div class="chart-container-compact">
+                    <canvas id="run-national-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Transition</h4>
+                <div class="chart-container-compact">
+                    <canvas id="transition-national-rankings-canvas"></canvas>
                 </div>
             </div>
         </div>
@@ -545,7 +587,42 @@
                     <canvas id="bike-times-chart-canvas"></canvas>
                 </div>
             </div>
-        </div> 
+        </div>
+    </div>
+</div>
+
+<div class="chart-section collapsible-card">
+    <h3 class="card-title">
+    % Behind Leader
+    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
+    </h3>
+    <div class="collapsible-content">
+        <div class="charts-grid">
+            <div class="mini-chart">
+                <h4>Overall % Behind Leader</h4>
+                <div class="chart-container-compact">
+                    <canvas id="overall-pct-behind-chart-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Swim % Behind Leader</h4>
+                <div class="chart-container-compact">
+                    <canvas id="swim-pct-behind-chart-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Bike % Behind Leader</h4>
+                <div class="chart-container-compact">
+                    <canvas id="bike-pct-behind-chart-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Run % Behind Leader</h4>
+                <div class="chart-container-compact">
+                    <canvas id="run-pct-behind-chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -590,6 +667,20 @@
 <script id="run-times-chart-data" type="application/json">
     {{ run_times_chart | tojson }}
 </script>
+
+<!-- World rankings charts -->
+<script id="overall-world-rankings-data" type="application/json">{{ overall_world_rankings_chart | tojson }}</script>
+<script id="swim-world-rankings-data" type="application/json">{{ swim_world_rankings_chart | tojson }}</script>
+<script id="bike-world-rankings-data" type="application/json">{{ bike_world_rankings_chart | tojson }}</script>
+<script id="run-world-rankings-data" type="application/json">{{ run_world_rankings_chart | tojson }}</script>
+<script id="transition-world-rankings-data" type="application/json">{{ transition_world_rankings_chart | tojson }}</script>
+
+<!-- National rankings charts -->
+<script id="overall-national-rankings-data" type="application/json">{{ overall_national_rankings_chart | tojson }}</script>
+<script id="swim-national-rankings-data" type="application/json">{{ swim_national_rankings_chart | tojson }}</script>
+<script id="bike-national-rankings-data" type="application/json">{{ bike_national_rankings_chart | tojson }}</script>
+<script id="run-national-rankings-data" type="application/json">{{ run_national_rankings_chart | tojson }}</script>
+<script id="transition-national-rankings-data" type="application/json">{{ transition_national_rankings_chart | tojson }}</script>
 
 <!-- Load JS -->
 <script src="{{ STATIC_BASE_URL }}js/utils.js"></script>

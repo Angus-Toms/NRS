@@ -7,6 +7,10 @@ from ptd_data import queries
 from app.routers import router_utils
 from app.routers.router_utils import format_1yr_rating_change, format_rating
 
+# Consistent athlete colours used across all charts and tables
+A1_COLOR = "#357ABD"  # blue
+A2_COLOR = "#E91E63"  # red
+
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
@@ -110,15 +114,17 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
         elif a2_time["css_class"] == "h2h-winner":
             a2_wins += 1
         head_to_head.append({
-            "race_id":         race["race_id"],
-            "race_name":       race["race_title"],
-            "race_date":       race["race_date"],
+            "race_id":           race["race_id"],
+            "race_name":         race["race_title"],
+            "race_date":         race["race_date"],
             "athlete1_position": race["a1_position"],
-            "athlete1_time":   a1_time,
-            "athlete1_behind": a1_behind,
+            "athlete1_status":   race["a1_status"],
+            "athlete1_time":     a1_time,
+            "athlete1_behind":   a1_behind,
             "athlete2_position": race["a2_position"],
-            "athlete2_time":   a2_time,
-            "athlete2_behind": a2_behind,
+            "athlete2_status":   race["a2_status"],
+            "athlete2_time":     a2_time,
+            "athlete2_behind":   a2_behind,
         })
 
     athlete1_data = {
@@ -164,16 +170,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     ratings_data1 = queries.get_athlete_ratings_data(athlete1_id)
     ratings_data2 = queries.get_athlete_ratings_data(athlete2_id)
 
-    colors = {
-        "overall":    ("#4CAF50", "#357ABD"),
-        "swim":       ("#357ABD", "#FF9800"),
-        "bike":       ("#FF9800", "#E91E63"),
-        "run":        ("#E91E63", "#9C27B0"),
-        "transition": ("#9C27B0", "#4CAF50"),
-    }
-
     h2h_ratings_chart = {}
-    for disc, (c1, c2) in colors.items():
+    for disc in ["overall", "swim", "bike", "run", "transition"]:
         h2h_ratings_chart[disc] = {
             "datasets": [
                 {
@@ -183,8 +181,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                          "race_name": r["race_title"]}
                         for r in ratings_data1
                     ],
-                    "borderColor": c1, "backgroundColor": c1 + "20",
-                    "pointBackgroundColor": c1,
+                    "borderColor": A1_COLOR, "backgroundColor": A1_COLOR + "20",
+                    "pointBackgroundColor": A1_COLOR,
                     "borderWidth": 2, "pointRadius": 3,
                 },
                 {
@@ -194,8 +192,42 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                          "race_name": r["race_title"]}
                         for r in ratings_data2
                     ],
-                    "borderColor": c2, "backgroundColor": c2 + "20",
-                    "pointBackgroundColor": c2,
+                    "borderColor": A2_COLOR, "backgroundColor": A2_COLOR + "20",
+                    "pointBackgroundColor": A2_COLOR,
+                    "borderWidth": 2, "pointRadius": 3,
+                },
+            ]
+        }
+
+    # Rankings charts — chronological world ranking data for both athletes
+    rankings_data1 = queries.get_athlete_rankings_data(athlete1_id)
+    rankings_data2 = queries.get_athlete_rankings_data(athlete2_id)
+
+    h2h_rankings_chart = {}
+    for disc in ["overall", "swim", "bike", "run", "transition"]:
+        col = f"world_{disc}"
+        h2h_rankings_chart[disc] = {
+            "datasets": [
+                {
+                    "label": info1["name"],
+                    "data": [
+                        {"x": str(r["race_date"])[:10], "y": r[col],
+                         "race_name": r["race_title"]}
+                        for r in rankings_data1 if r[col] is not None
+                    ],
+                    "borderColor": A1_COLOR, "backgroundColor": A1_COLOR + "20",
+                    "pointBackgroundColor": A1_COLOR,
+                    "borderWidth": 2, "pointRadius": 3,
+                },
+                {
+                    "label": info2["name"],
+                    "data": [
+                        {"x": str(r["race_date"])[:10], "y": r[col],
+                         "race_name": r["race_title"]}
+                        for r in rankings_data2 if r[col] is not None
+                    ],
+                    "borderColor": A2_COLOR, "backgroundColor": A2_COLOR + "20",
+                    "pointBackgroundColor": A2_COLOR,
                     "borderWidth": 2, "pointRadius": 3,
                 },
             ]
@@ -212,4 +244,9 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
         "bike_ratings_chart":       h2h_ratings_chart["bike"],
         "run_ratings_chart":        h2h_ratings_chart["run"],
         "transition_ratings_chart": h2h_ratings_chart["transition"],
+        "overall_rankings_chart":    h2h_rankings_chart["overall"],
+        "swim_rankings_chart":       h2h_rankings_chart["swim"],
+        "bike_rankings_chart":       h2h_rankings_chart["bike"],
+        "run_rankings_chart":        h2h_rankings_chart["run"],
+        "transition_rankings_chart": h2h_rankings_chart["transition"],
     })

@@ -137,6 +137,28 @@ def _build_pct_behind_chart(times_data):
     return charts
 
 
+def _build_rankings_charts(rankings_data):
+    """Build separate world and national Chart.js ranking charts per discipline."""
+    world    = {}
+    national = {}
+    for disc in ["overall", "swim", "bike", "run", "transition"]:
+        world[disc] = {"datasets": [{
+            "label": "World Ranking",
+            "data": [{"x": str(r["race_date"])[:10], "y": r[f"world_{disc}"], "race_name": r["race_title"]}
+                     for r in rankings_data if r[f"world_{disc}"]],
+            "borderColor": "#357ABD", "backgroundColor": "rgba(53,122,189,0.1)",
+            "pointBackgroundColor": "#357ABD", "borderWidth": 2, "pointRadius": 3,
+        }]}
+        national[disc] = {"datasets": [{
+            "label": "National Ranking",
+            "data": [{"x": str(r["race_date"])[:10], "y": r[f"national_{disc}"], "race_name": r["race_title"]}
+                     for r in rankings_data if r[f"national_{disc}"]],
+            "borderColor": "#FF9800", "backgroundColor": "rgba(255,152,0,0.1)",
+            "pointBackgroundColor": "#FF9800", "borderWidth": 2, "pointRadius": 3,
+        }]}
+    return world, national
+
+
 def _build_splits_chart(times_data):
     """Build Chart.js split times charts from times query results."""
     charts = {}
@@ -190,8 +212,9 @@ async def get_athlete(request: Request, athlete_id: int):
     notable_raw  = queries.get_athlete_notable_results(athlete_id)
     race_hist    = queries.get_athlete_race_history(athlete_id)
     rating_hist  = queries.get_athlete_rating_history(athlete_id)
-    times_data   = queries.get_athlete_times_data(athlete_id)
-    ratings_data = queries.get_athlete_ratings_data(athlete_id)
+    times_data    = queries.get_athlete_times_data(athlete_id)
+    ratings_data  = queries.get_athlete_ratings_data(athlete_id)
+    rankings_data = queries.get_athlete_rankings_data(athlete_id)
 
     # --- current ratings card ---
     current_ratings = {}
@@ -200,11 +223,18 @@ async def get_athlete(request: Request, athlete_id: int):
             current_ratings[f"{disc}_rating"] = round(current[f"{disc}_rating"])
 
     # --- current rankings card ---
+    def _make_ranking(rank):
+        if not rank or rank <= 0:
+            return None
+        n = int(rank)
+        suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+        return {"n": n, "suffix": suffix}
+
     current_rankings = {}
     if current:
         for disc in ["overall", "swim", "bike", "run", "transition"]:
-            current_rankings[f"world_{disc}"]    = current.get(f"world_{disc}")
-            current_rankings[f"national_{disc}"] = current.get(f"national_{disc}")
+            current_rankings[f"world_{disc}"]    = _make_ranking(current.get(f"world_{disc}"))
+            current_rankings[f"national_{disc}"] = _make_ranking(current.get(f"national_{disc}"))
 
     # --- 1yr changes card ---
     rating_changes_1yr = {}
@@ -301,9 +331,10 @@ async def get_athlete(request: Request, athlete_id: int):
     ]
 
     # --- charts ---
-    pct_behind = _build_pct_behind_chart(times_data)
-    splits     = _build_splits_chart(times_data)
-    ratings_chart = _build_ratings_chart(ratings_data, {})
+    pct_behind      = _build_pct_behind_chart(times_data)
+    splits          = _build_splits_chart(times_data)
+    ratings_chart   = _build_ratings_chart(ratings_data, {})
+    world_rankings_charts, national_rankings_charts = _build_rankings_charts(rankings_data)
 
     return templates.TemplateResponse("athlete.html", {
         "request":        request,
@@ -325,4 +356,14 @@ async def get_athlete(request: Request, athlete_id: int):
         "swim_times_chart":  splits["swim"],
         "bike_times_chart":  splits["bike"],
         "run_times_chart":   splits["run"],
+        "overall_world_rankings_chart":    world_rankings_charts["overall"],
+        "swim_world_rankings_chart":       world_rankings_charts["swim"],
+        "bike_world_rankings_chart":       world_rankings_charts["bike"],
+        "run_world_rankings_chart":        world_rankings_charts["run"],
+        "transition_world_rankings_chart": world_rankings_charts["transition"],
+        "overall_national_rankings_chart":    national_rankings_charts["overall"],
+        "swim_national_rankings_chart":       national_rankings_charts["swim"],
+        "bike_national_rankings_chart":       national_rankings_charts["bike"],
+        "run_national_rankings_chart":        national_rankings_charts["run"],
+        "transition_national_rankings_chart": national_rankings_charts["transition"],
     })

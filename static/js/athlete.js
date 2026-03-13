@@ -1,3 +1,91 @@
+// --- Calendar year band plugin ---
+// Draws alternating grey/white columns based on actual calendar years.
+const calendarYearBandsPlugin = {
+    id: 'calendarYearBands',
+    beforeDraw(chart) {
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        if (!xScale || !yScale) return;
+
+        const ctx = chart.ctx;
+        const top = yScale.top;
+        const bottom = yScale.bottom;
+        const startYear = new Date(xScale.min).getFullYear();
+        const endYear   = new Date(xScale.max).getFullYear() + 1;
+
+        ctx.save();
+        for (let year = startYear; year <= endYear; year++) {
+            const x1 = Math.max(xScale.getPixelForValue(new Date(year,     0, 1).getTime()), xScale.left);
+            const x2 = Math.min(xScale.getPixelForValue(new Date(year + 1, 0, 1).getTime()), xScale.right);
+            if (x2 <= x1) continue;
+
+            if (year % 2 === 0) {
+                ctx.fillStyle = 'rgba(0,0,0,0.04)';
+                ctx.fillRect(x1, top, x2 - x1, bottom - top);
+            }
+        }
+        ctx.restore();
+    }
+};
+
+// --- Ranking charts ---
+function makeRankingChart(canvasId, dataId) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    const data = getJSON(dataId);
+    return new Chart(ctx, {
+        type: 'line',
+        data: data,
+        plugins: [calendarYearBandsPlugin],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            clip: false,
+            elements: { line: { tension: 0 } },
+            plugins: {
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    mode: 'nearest',
+                    intersect: true,
+                    callbacks: {
+                        title: function(context) {
+                            const dataPoint = context[0].raw;
+                            const date = new Date(dataPoint.x);
+                            return [dataPoint.race_name, date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })];
+                        },
+                        label: context => context.dataset.label + ': #' + context.parsed.y
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { unit: 'year', tooltipFormat: 'dd-MM-yyyy' },
+                    grid: { display: false },
+                    title: { display: false }
+                },
+                y: {
+                    reverse: true,
+                    min: 1,
+                    ticks: { stepSize: 1, callback: value => '#' + value },
+                    title: { display: true, text: 'Ranking' }
+                }
+            }
+        }
+    });
+}
+
+makeRankingChart('overall-world-rankings-canvas',    'overall-world-rankings-data');
+makeRankingChart('swim-world-rankings-canvas',       'swim-world-rankings-data');
+makeRankingChart('bike-world-rankings-canvas',       'bike-world-rankings-data');
+makeRankingChart('run-world-rankings-canvas',        'run-world-rankings-data');
+makeRankingChart('transition-world-rankings-canvas', 'transition-world-rankings-data');
+makeRankingChart('overall-national-rankings-canvas',    'overall-national-rankings-data');
+makeRankingChart('swim-national-rankings-canvas',       'swim-national-rankings-data');
+makeRankingChart('bike-national-rankings-canvas',       'bike-national-rankings-data');
+makeRankingChart('run-national-rankings-canvas',        'run-national-rankings-data');
+makeRankingChart('transition-national-rankings-canvas', 'transition-national-rankings-data');
+
 function toggleNotableResults(button, targetId) {
     const dropdown = document.getElementById(targetId);
     if (!dropdown) return;
@@ -104,6 +192,7 @@ new Chart(overallPctBehindCtx, {
         spanGaps: true,
         responsive: true,
         maintainAspectRatio: false,
+        clip: false,
         elements: {
             line: {
                 tension: 0
@@ -143,7 +232,7 @@ new Chart(overallPctBehindCtx, {
                 title: { display: false }
             },
             y: {
-                beginAtZero: true,
+                suggestedMin: -0.3,
                 title: {
                     display: true,
                     text: '% Behind Leader'
@@ -164,6 +253,7 @@ new Chart(swimPctBehindCtx, {
         spanGaps: true,
         responsive: true,
         maintainAspectRatio: false,
+        clip: false,
         elements: {
             line: {
                 tension: 0
@@ -203,7 +293,7 @@ new Chart(swimPctBehindCtx, {
                 title: { display: false }
             },
             y: {
-                beginAtZero: true,
+                suggestedMin: -0.3,
                 title: {
                     display: true,
                     text: '% Behind Leader'
@@ -224,6 +314,7 @@ new Chart(bikePctBehindCtx, {
         spanGaps: true,
         responsive: true,
         maintainAspectRatio: false,
+        clip: false,
         elements: {
             line: {
                 tension: 0
@@ -263,7 +354,7 @@ new Chart(bikePctBehindCtx, {
                 title: { display: false }
             },
             y: {
-                beginAtZero: true,
+                suggestedMin: -0.3,
                 title: {
                     display: true,
                     text: '% Behind Leader'
@@ -284,6 +375,7 @@ new Chart(runPctBehindCtx, {
         spanGaps: true,
         responsive: true,
         maintainAspectRatio: false,
+        clip: false,
         elements: {
             line: {
                 tension: 0
@@ -323,7 +415,7 @@ new Chart(runPctBehindCtx, {
                 title: { display: false }
             },
             y: {
-                beginAtZero: true,
+                suggestedMin: -0.3,
                 title: {
                     display: true,
                     text: '% Behind Leader'

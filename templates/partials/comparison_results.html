@@ -126,8 +126,8 @@
                     </td>
 
                     <!-- Athlete 1 position, time, and time behind -->
-                    <td class="position-col position-cell {{ 'position-gold' if race.athlete1_position == '1' else 'position-silver' if race.athlete1_position == '2' else 'position-bronze' if race.athlete1_position == '3' else 'position-dnf' if race.athlete1_position in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
-                        {{ race.athlete1_position }}
+                    <td class="position-col position-cell {{ 'position-gold' if race.athlete1_position == 1 else 'position-silver' if race.athlete1_position == 2 else 'position-bronze' if race.athlete1_position == 3 else 'position-dnf' if race.athlete1_status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
+                        {{ race.athlete1_position if race.athlete1_position else race.athlete1_status }}
                     </td>
 
                     <td class="{{ race.athlete1_time.css_class }}">
@@ -140,8 +140,8 @@
                     </td>
 
                     <!-- Athlete 2 position, time, and time behind -->
-                    <td class="position-cell {{ 'position-gold' if race.athlete2_position == '1' else 'position-silver' if race.athlete2_position == '2' else 'position-bronze' if race.athlete2_position == '3' else 'position-dnf' if race.athlete2_position in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
-                        {{ race.athlete2_position }}
+                    <td class="position-cell {{ 'position-gold' if race.athlete2_position == 1 else 'position-silver' if race.athlete2_position == 2 else 'position-bronze' if race.athlete2_position == 3 else 'position-dnf' if race.athlete2_status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
+                        {{ race.athlete2_position if race.athlete2_position else race.athlete2_status }}
                     </td>
                     <td class="{{ race.athlete2_time.css_class }}">
                         <div class="time-cell">
@@ -217,6 +217,48 @@
     </div>
 </div>
 
+<!-- Rankings Comparison -->
+<div class="collapsible-card">
+    <h3 class="card-title">
+        Rankings Comparison
+        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
+    </h3>
+    <div class="collapsible-content">
+        <div class="charts-grid">
+            <div class="mini-chart full-width">
+                <h4>Overall World Rankings</h4>
+                <div class="chart-container-compact">
+                    <canvas id="overall-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Swim Rankings</h4>
+                <div class="chart-container-compact">
+                    <canvas id="swim-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Bike Rankings</h4>
+                <div class="chart-container-compact">
+                    <canvas id="bike-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Run Rankings</h4>
+                <div class="chart-container-compact">
+                    <canvas id="run-rankings-canvas"></canvas>
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h4>Transition Rankings</h4>
+                <div class="chart-container-compact">
+                    <canvas id="transition-rankings-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block comparison_specific_js %}
 <!-- Rating comparison charts -->
 <script id="overall-ratings-data" type="application/json">
@@ -233,5 +275,21 @@
 </script>
 <script id="transition-ratings-data" type="application/json">
     {{ transition_ratings_chart | tojson }}
+</script>
+<!-- Rankings comparison charts -->
+<script id="overall-rankings-data" type="application/json">
+    {{ overall_rankings_chart | tojson }}
+</script>
+<script id="swim-rankings-data" type="application/json">
+    {{ swim_rankings_chart | tojson }}
+</script>
+<script id="bike-rankings-data" type="application/json">
+    {{ bike_rankings_chart | tojson }}
+</script>
+<script id="run-rankings-data" type="application/json">
+    {{ run_rankings_chart | tojson }}
+</script>
+<script id="transition-rankings-data" type="application/json">
+    {{ transition_rankings_chart | tojson }}
 </script>
 {% endblock %}

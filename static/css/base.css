@@ -549,6 +549,13 @@ th.sortable.desc::after {
     align-items: center;
 }
 
+/* Time-behind span: always takes up one line of height so the fastest split
+   remains top-aligned with split cells that do have a time-behind value. */
+.time-cell .time-behind {
+    display: block;
+    min-height: 1.1em;
+}
+
 /* ============================================
    CHARTS
    ============================================ */
