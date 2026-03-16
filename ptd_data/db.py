@@ -22,6 +22,10 @@ def create_schema(conn):
         "CREATE TYPE IF NOT EXISTS result_status_enum AS ENUM "
         "('Finished', 'DNF', 'DNS', 'DQ', 'LAP', 'NC')"
     )
+    conn.execute(
+        "CREATE TYPE IF NOT EXISTS continent_enum AS ENUM "
+        "('Americas', 'Europe', 'Asia', 'Africa', 'Oceania', 'Other')"
+    )
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS nationalities (
@@ -62,13 +66,16 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS events (
             event_id            INTEGER PRIMARY KEY,
-            recurring_event_id  INTEGER REFERENCES recurring_events(recurring_event_id),
-            year                INTEGER,
+            recurring_event_id  INTEGER REFERENCES recurring_events(recurring_event_id), -- Max one of these FKs should be set at any time
+            series_id           INTEGER REFERENCES series(series_id),                    -- Max one of these FKs should be set at any time
             name                VARCHAR NOT NULL,
-            location            VARCHAR NOT NULL DEFAULT '',
-            start_date          DATE,
-            end_date            DATE,
-            description         VARCHAR NOT NULL DEFAULT ''
+            venue               VARCHAR NOT NULL DEFAULT '',
+            country             VARCHAR NOT NULL DEFAULT '',
+            continent           continent_enum NOT NULL DEFAULT 'Other',
+            start_date          DATE NOT NULL,
+            end_date            DATE NOT NULL,
+            longitude           DOUBLE NOT NULL DEFAULT 0, 
+            latitude            DOUBLE NOT NULL DEFAULT 0
         )
     """)
 
@@ -79,8 +86,6 @@ def create_schema(conn):
             race_title      VARCHAR NOT NULL,
             prog_name       VARCHAR NOT NULL,
             race_date       DATE NOT NULL,
-            location        VARCHAR NOT NULL DEFAULT '',
-            country         VARCHAR NOT NULL DEFAULT '',
             gender          gender_enum NOT NULL,
             cat_ids         VARCHAR NOT NULL DEFAULT '[]',
             race_handle     VARCHAR NOT NULL DEFAULT '',
@@ -164,7 +169,7 @@ def create_schema(conn):
 
     # ART indexes on non-PK columns used in WHERE/JOIN clauses
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_recurring_event_id ON events(recurring_event_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_year ON events(year)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_date ON events(start_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_recurring_events_series_id ON recurring_events(series_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_event_id ON races(event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_race_date ON races(race_date)")
@@ -191,7 +196,13 @@ _COUNTRY_SPECIAL_CASES = {
     "Tahiti": ("PYF", "🇵🇫"),
     "Bolivia": ("BOL", "🇧🇴"),
     "Moldova": ("MDA", "🇲🇩"),
-    "Saint Maarten": ("SX", "🇸🇽")
+    "Saint Maarten": ("SXM", "🇸🇽"),
+    "Federal Republic of Germany": ("DEU", "🇩🇪"),
+    "Czechoslovakia": ("CSK", "🇨🇿"),
+    "Iran": ("IRN", "🇮🇷"),
+    "Netherlands Antilles": ("ANT", "🇧🇶"),
+    "Yugoslavia": ("YUG", "🏴"),
+    "Swaziland": ("SWZ", "🇸🇿")
 }
 
 
@@ -233,18 +244,29 @@ def upsert_athlete(conn, athlete_id, name, country_full, year_of_birth, profile_
     )
 
 
-def insert_race(conn, race_id, event_id, race_title, prog_name, race_date, location, country,
-                gender, cat_ids, race_handle='', event_spec_ids='[]'):
+def insert_race(conn, race_id, event_id, race_title, prog_name, race_date, gender, cat_ids, race_handle='', event_spec_ids='[]'):
     """Insert a race, skip if it already exists."""
     conn.execute(
         """
         INSERT OR IGNORE INTO races
-            (race_id, event_id, race_title, prog_name, race_date, location, country, gender,
+            (race_id, event_id, race_title, prog_name, race_date, gender,
              cat_ids, race_handle, event_spec_ids)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        [race_id, event_id, race_title, prog_name, race_date, location, country, gender,
+        [race_id, event_id, race_title, prog_name, race_date, gender,
          cat_ids, race_handle, event_spec_ids],
+    )
+
+
+def insert_event(conn, event_id, name, venue, country, continent, start_date, end_date, longitude, latitude):
+    """Insert an event, skip if it already exists."""
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO events
+            (event_id, name, venue, country, continent, start_date, end_date, longitude, latitude)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [event_id, name, venue, country, continent, start_date, end_date, longitude, latitude],
     )
 
 
@@ -338,9 +360,35 @@ def load_manual_ignored(conn):
                 continue  # skip blank/malformed lines
             reason = row.get('reason', '').strip()
             rows.append((race_id, reason))
-    if rows:
+    valid = []
+    for race_id, reason in rows:
+        if not conn.execute("SELECT 1 FROM races WHERE race_id = ?", [race_id]).fetchone():
+            print(f"Warning: manual ignored race {race_id} not in DB, skipping")
+            continue
+        valid.append((race_id, reason))
+    if valid:
         conn.executemany(
             "INSERT OR REPLACE INTO ignored_races (race_id, reason) VALUES (?, ?)",
-            rows,
+            valid,
         )
-    print(f"Loaded {len(rows)} manual ignored races")
+    print(f"Loaded {len(valid)} manual ignored races")
+
+
+if __name__ == "__main__":
+    conn = get_conn()
+    
+    tables = conn.execute("""
+    SELECT table_name, column_name, data_type
+    FROM information_schema.columns
+    WHERE table_schema = 'main'
+    ORDER BY table_name, ordinal_position
+    """).fetchall()
+
+    current = None
+    for table, col, dtype in tables:
+        if table != current:
+            print(f"\nTable: {table}")
+            current = table
+        print(f"  {col} ({dtype})")
+
+    conn.close()

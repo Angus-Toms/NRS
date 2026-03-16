@@ -1,3 +1,24 @@
+// --- Sort icons: inject SVG chevrons into every th.sortable on load ---
+function initSortIcons() {
+    const SI_NEUTRAL = `<svg class="si-neutral" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,5.5 5,1.5 9,5.5"/><polyline points="1,8.5 5,12.5 9,8.5"/></svg>`;
+    const SI_UP      = `<svg class="si-up"      viewBox="0 0 10 8"  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,6.5 5,1.5 9,6.5"/></svg>`;
+    const SI_DOWN    = `<svg class="si-down"    viewBox="0 0 10 8"  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,1.5 5,6.5 9,1.5"/></svg>`;
+    document.querySelectorAll('th.sortable').forEach(th => {
+        if (th.querySelector('.sort-icon')) return; // already injected
+        // Wrap all existing th content in a flex span so the icon centres properly
+        const inner = document.createElement('span');
+        inner.className = 'th-inner';
+        while (th.firstChild) inner.appendChild(th.firstChild);
+        const icon = document.createElement('span');
+        icon.className = 'sort-icon';
+        icon.innerHTML = SI_NEUTRAL + SI_UP + SI_DOWN;
+        inner.appendChild(icon);
+        th.appendChild(inner);
+    });
+}
+document.addEventListener('DOMContentLoaded', initSortIcons);
+if (document.readyState !== 'loading') { initSortIcons(); }
+
 // --- Hint popup ---
 function toggleHint(icon) {
     const popup = icon.nextElementSibling;
@@ -39,10 +60,16 @@ function formatTime(seconds) {
     return `${sign}${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function toggleCollapse(toggle) {
-    const content = toggle.closest('.collapsible-card').querySelector('.collapsible-content');
+function toggleCollapse(cardOrToggle) {
+    // Accept either the card element itself (race page tables) or the toggle button inside it
+    const card = cardOrToggle.classList.contains('collapsible-card')
+        ? cardOrToggle
+        : cardOrToggle.closest('.collapsible-card');
+    const content = card.querySelector('.collapsible-content');
     content.classList.toggle('collapsed');
-    toggle.textContent = content.classList.contains('collapsed') ? '+' : '−';
+    // Update the toggle button text wherever it is
+    const btn = card.querySelector('.collapse-toggle') ?? cardOrToggle;
+    btn.textContent = content.classList.contains('collapsed') ? '+' : '−';
 }
 
 function parseTime(timeStr) {

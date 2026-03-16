@@ -125,41 +125,116 @@ def get_podium(gender):
 # Race search
 # ---------------------------------------------------------------------------
 
-def get_recent_races(offset, limit):
-    """Races sorted by date desc, paginated."""
+def _fmt_time(seconds):
+    if not seconds or seconds <= 0:
+        return None
+    s = int(seconds)
+    h, rem = divmod(s, 3600)
+    m, sec = divmod(rem, 60)
+    return f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
+
+def get_recent_events(offset, limit):
+    """Events sorted by start_date desc, paginated, with constituent races."""
     conn = _get_conn()
-    rows = conn.execute("""
-        SELECT race_id, race_title, race_handle, country, prog_name,
-               race_date, EXTRACT(year FROM race_date) AS race_year
-        FROM races
-        ORDER BY race_date DESC
+    event_rows = conn.execute("""
+        SELECT event_id, name, venue, country, start_date, end_date
+        FROM events e
+        WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
+        ORDER BY start_date DESC
         LIMIT ? OFFSET ?
     """, [limit, offset]).fetchall()
-    cols = ["race_id", "race_title", "race_handle", "race_country",
-            "prog_name", "race_date", "race_year"]
-    return [dict(zip(cols, r)) for r in rows]
+    if not event_rows:
+        return []
+
+    event_ids = [r[0] for r in event_rows]
+    event_map = {r[0]: {
+        "event_id": r[0], "name": r[1], "venue": r[2], "country": r[3],
+        "start_date": r[4], "end_date": r[5], "races": []
+    } for r in event_rows}
+
+    placeholders = ",".join("?" * len(event_ids))
+    race_rows = conn.execute(f"""
+        SELECT event_id, race_id, race_title, prog_name, gender
+        FROM races
+        WHERE event_id IN ({placeholders})
+        ORDER BY race_date ASC, race_id ASC
+    """, event_ids).fetchall()
+    for event_id, race_id, race_title, prog_name, gender in race_rows:
+        event_map[event_id]["races"].append({
+            "race_id": race_id, "race_title": race_title,
+            "prog_name": prog_name, "gender": gender, "podium": [],
+        })
+
+    # Fetch podiums for the first 2 races of every event in one batch
+    podium_race_ids = []
+    for event_id in event_ids:
+        for race in event_map[event_id]["races"][:2]:
+            podium_race_ids.append(race["race_id"])
+
+    if podium_race_ids:
+        ph = ",".join("?" * len(podium_race_ids))
+        podium_rows = conn.execute(f"""
+            SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s
+            FROM results res
+            JOIN athletes a ON res.athlete_id = a.athlete_id
+            JOIN nationalities n ON a.country_full = n.country_full
+            WHERE res.race_id IN ({ph})
+              AND res.position IN (1, 2, 3)
+              AND res.status = 'Finished'
+            ORDER BY res.race_id, res.position
+        """, podium_race_ids).fetchall()
+
+        podium_by_race = {}
+        for race_id, position, athlete_id, name, emoji, overall_s in podium_rows:
+            podium_by_race.setdefault(race_id, []).append(
+                {"position": position, "athlete_id": athlete_id, "name": name,
+                 "emoji": emoji, "time": _fmt_time(overall_s)}
+            )
+        for event in event_map.values():
+            for race in event["races"][:2]:
+                race["podium"] = podium_by_race.get(race["race_id"], [])
+
+    return [event_map[r[0]] for r in event_rows]
 
 
-def get_total_races():
-    return _get_conn().execute("SELECT COUNT(*) FROM races").fetchone()[0]
+def get_total_events():
+    return _get_conn().execute(
+        "SELECT COUNT(*) FROM events e WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)"
+    ).fetchone()[0]
 
 
-def search_races(query, limit=20):
-    """Search races by title / prog_name / country. Returns up to `limit` most recent matches."""
+def search_events(query, limit=20):
+    """Search events by name / venue / country. Returns up to `limit` most recent matches with constituent races."""
     conn = _get_conn()
     q = f"%{query}%"
-    rows = conn.execute("""
-        SELECT race_id, race_title, race_handle, country AS race_country,
-               prog_name, race_date
-        FROM races
-        WHERE race_title ILIKE ?
-           OR prog_name  ILIKE ?
-           OR country    ILIKE ?
-        ORDER BY race_date DESC
+    event_rows = conn.execute("""
+        SELECT event_id, name, venue, country, start_date
+        FROM events e
+        WHERE (name ILIKE ? OR venue ILIKE ? OR country ILIKE ?)
+          AND EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
+        ORDER BY start_date DESC
         LIMIT ?
     """, [q, q, q, limit]).fetchall()
-    cols = ["race_id", "race_title", "race_handle", "race_country", "prog_name", "race_date"]
-    return [dict(zip(cols, r)) for r in rows]
+    if not event_rows:
+        return []
+
+    event_ids = [r[0] for r in event_rows]
+    event_map = {r[0]: {
+        "event_id": r[0], "name": r[1], "venue": r[2],
+        "country": r[3], "start_date": r[4], "races": []
+    } for r in event_rows}
+
+    placeholders = ",".join("?" * len(event_ids))
+    race_rows = conn.execute(f"""
+        SELECT event_id, race_id, prog_name
+        FROM races
+        WHERE event_id IN ({placeholders})
+        ORDER BY race_date ASC, race_id ASC
+    """, event_ids).fetchall()
+    for event_id, race_id, prog_name in race_rows:
+        event_map[event_id]["races"].append({"race_id": race_id, "prog_name": prog_name})
+
+    return [event_map[r[0]] for r in event_rows]
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +442,52 @@ def get_athlete_current_ratings(athlete_id):
     return result
 
 
+def get_athlete_active_rankings(athlete_id):
+    """
+    Rank among currently active athletes (raced in last 12 months), same gender.
+    Returns None if the athlete themselves is not active.
+    """
+    conn = _get_conn()
+    row = conn.execute("""
+        WITH current AS (
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id,
+                   ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                   r.race_date AS last_race_date
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+        ),
+        active AS (
+            SELECT c.athlete_id, c.overall, c.swim, c.bike, c.run, c.transition,
+                   a.country_full
+            FROM current c
+            JOIN athletes a ON c.athlete_id = a.athlete_id
+            WHERE c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR
+              AND a.gender = (SELECT gender FROM athletes WHERE athlete_id = ?)
+        ),
+        me AS (SELECT * FROM active WHERE athlete_id = ?)
+        SELECT
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.overall    > me.overall)    AS world_overall,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.swim       > me.swim)       AS world_swim,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.bike       > me.bike)       AS world_bike,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.run        > me.run)        AS world_run,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.transition > me.transition) AS world_transition,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.overall    > me.overall    AND aa.country_full = me.country_full) AS national_overall,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.swim       > me.swim       AND aa.country_full = me.country_full) AS national_swim,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.bike       > me.bike       AND aa.country_full = me.country_full) AS national_bike,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.run        > me.run        AND aa.country_full = me.country_full) AS national_run,
+            (SELECT COUNT(*) + 1 FROM active aa WHERE aa.transition > me.transition AND aa.country_full = me.country_full) AS national_transition
+        FROM me
+    """, [athlete_id, athlete_id]).fetchone()
+
+    if not row:
+        return None
+    cols = ["world_overall", "world_swim", "world_bike", "world_run", "world_transition",
+            "national_overall", "national_swim", "national_bike", "national_run", "national_transition"]
+    return dict(zip(cols, row))
+
+
 def get_athlete_1yr_changes(athlete_id):
     """Rating change over the past year per discipline. None if no data."""
     conn = _get_conn()
@@ -467,7 +588,7 @@ def get_athlete_notable_results(athlete_id):
     """
     conn = _get_conn()
     rows = conn.execute("""
-        SELECT res.race_id, res.position, r.race_title, r.race_handle, r.cat_ids
+        SELECT res.race_id, res.position, r.race_title, r.race_handle, r.cat_ids, r.race_date
         FROM results res
         JOIN races r ON res.race_id = r.race_id
         WHERE res.athlete_id = ?
@@ -477,7 +598,7 @@ def get_athlete_notable_results(athlete_id):
     """, [athlete_id]).fetchall()
 
     notable = []
-    for race_id, position, race_title, race_handle, cat_ids_str in rows:
+    for race_id, position, race_title, race_handle, cat_ids_str, race_date in rows:
         try:
             cat_ids = set(literal_eval(cat_ids_str))
         except (ValueError, SyntaxError):
@@ -491,7 +612,7 @@ def get_athlete_notable_results(athlete_id):
         if 343 in cat_ids:
             if "olympic" in race_title.lower():
                 notable.append({"tier": "olympic", "position": position,
-                                 "race_id": race_id, "race_handle": race_handle})
+                                 "race_id": race_id, "race_handle": race_handle, "race_date": race_date})
                 continue
             else:
                 cat_ids.discard(343)
@@ -499,16 +620,16 @@ def get_athlete_notable_results(athlete_id):
 
         if 624 in cat_ids or 348 in cat_ids:
             notable.append({"tier": "world_champs", "position": position,
-                             "race_id": race_id, "race_handle": race_handle})
+                             "race_id": race_id, "race_handle": race_handle, "race_date": race_date})
         elif 351 in cat_ids:
             notable.append({"tier": "wtcs", "position": position,
-                             "race_id": race_id, "race_handle": race_handle})
+                             "race_id": race_id, "race_handle": race_handle, "race_date": race_date})
         elif 349 in cat_ids:
             notable.append({"tier": "world_cup", "position": position,
-                             "race_id": race_id, "race_handle": race_handle})
+                             "race_id": race_id, "race_handle": race_handle, "race_date": race_date})
         elif 341 in cat_ids:
             notable.append({"tier": "continental_cup", "position": position,
-                             "race_id": race_id, "race_handle": race_handle})
+                             "race_id": race_id, "race_handle": race_handle, "race_date": race_date})
 
     return notable
 
@@ -688,6 +809,36 @@ def get_athlete_ratings_data(athlete_id):
 
 
 # ---------------------------------------------------------------------------
+# Event page
+# ---------------------------------------------------------------------------
+
+def get_event_info(event_id):
+    """Basic event info."""
+    conn = _get_conn()
+    row = conn.execute("""
+        SELECT event_id, name, venue, country, start_date, end_date
+        FROM events WHERE event_id = ?
+    """, [event_id]).fetchone()
+    if not row:
+        return None
+    cols = ["event_id", "name", "venue", "country", "start_date", "end_date"]
+    return dict(zip(cols, row))
+
+
+def get_races_by_event(event_id):
+    """All races for an event, ordered by race date."""
+    conn = _get_conn()
+    rows = conn.execute("""
+        SELECT race_id, race_title, prog_name, race_date, gender
+        FROM races
+        WHERE event_id = ?
+        ORDER BY race_date ASC
+    """, [event_id]).fetchall()
+    cols = ["race_id", "race_title", "prog_name", "race_date", "gender"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+# ---------------------------------------------------------------------------
 # Race page
 # ---------------------------------------------------------------------------
 
@@ -695,13 +846,16 @@ def get_race_info(race_id):
     """Basic race info."""
     conn = _get_conn()
     row = conn.execute("""
-        SELECT race_id, race_title, prog_name, race_date, location, country, gender, race_handle
-        FROM races WHERE race_id = ?
+        SELECT r.race_id, r.race_title, r.prog_name, r.race_date, 
+               e.venue AS location, e.country, r.gender, r.race_handle, r.event_id
+        FROM races r
+        JOIN events e ON r.event_id = e.event_id
+        WHERE r.race_id = ?
     """, [race_id]).fetchone()
     if not row:
         return None
     cols = ["race_id", "race_title", "prog_name", "race_date",
-            "location", "country", "gender", "race_handle"]
+            "location", "country", "gender", "race_handle", "event_id"]
     return dict(zip(cols, row))
 
 

@@ -106,6 +106,13 @@ def clean_field(value):
     return cleaned.title() if cleaned else ""
 
 
+def parse_lnglat(coord):
+    """Convert degree measurement to float if possible."""
+    try:
+        return float(coord)
+    except (ValueError, TypeError):
+        return 0.0
+
 _HANDLE_SKIP_WORDS = {
     'world', 'triathlon', 'championships', 'americas', 'europe', 'africa', 'asia', 'oceania',
     'cup', 'american', 'european', 'asian', 'games', 't100', 'tour', 'winter', 'development',
@@ -115,7 +122,7 @@ _HANDLE_SKIP_WORDS = {
 
 
 def generate_race_handle(race_id, race_title, location, race_date):
-    """Generate a short display name for a race.
+    """Generate display name for a race.
 
     Priority:
     1. National champs: 2nd title word is a 3-letter country code → "{CODE} National Champs {YY}"
@@ -185,6 +192,9 @@ class Ingester:
         short_events = [e for e in events if is_short_course(e)]
         print(f"Found {len(short_events)} short course events")
 
+        with open("all_events.csv", "w") as f:
+            pd.DataFrame(events).to_csv(f, index=False)
+
         self._ingest_events(short_events)
 
     def _fetch_all_events(self):
@@ -213,6 +223,7 @@ class Ingester:
 
         return all_events
 
+
     def _ingest_events(self, events):
         """Single pass over events — fetches programs once, processes both genders."""
         existing_event_ids = set(
@@ -235,6 +246,9 @@ class Ingester:
             checked += 1
             if checked % 100 == 0:
                 print(f"  Checked {checked}/{total_new} new events, ingested {new_count} programs")
+
+            # Insert event (once per API event, regardless of programs)
+            self._insert_event(event)
 
             programs = self._fetch_programs(event_id)
             if not programs:
@@ -360,8 +374,6 @@ class Ingester:
             race_title=race_title,
             prog_name=str(prog.get('prog_name', '')),
             race_date=race_date,
-            location=location,
-            country=clean_field(event.get('event_country', '')),
             gender=gender,
             cat_ids=str(get_category_ids(event)),
             race_handle=generate_race_handle(prog_id, race_title, location, race_date),
@@ -369,6 +381,31 @@ class Ingester:
         )
         db.insert_results_bulk(self.conn, result_rows)
         return True
+
+    def _insert_event(self, event):
+        """Insert event data into events table."""
+        event_id = int(event['event_id'])
+        name = str(event.get('event_title', ''))
+        venue = clean_field(event.get('event_venue', ''))
+        country = clean_field(event.get('event_country', ''))
+        continent = clean_field(event.get('event_region_name', ''))
+        start_date = str(event.get('event_date', ''))
+        end_date = str(event.get('event_finish_date', ''))
+        longitude = parse_lnglat(event.get('event_longitude', 0))
+        latitude = parse_lnglat(event.get('event_latitude', 0))
+        
+        db.insert_event(
+            self.conn,
+            event_id=event_id,
+            name=name,
+            venue=venue,
+            country=country,
+            continent=continent,
+            start_date=start_date if start_date else None,
+            end_date=end_date if end_date else None,
+            longitude=longitude,
+            latitude=latitude
+        )
 
 
 if __name__ == "__main__":

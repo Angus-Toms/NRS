@@ -6,466 +6,277 @@
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete.css">
 {% endblock %}
 
-{% block content %}
+{% block hero %}
 <div class="athlete-hero">
-    <div class="athlete-hero-main">
-        <div class="athlete-hero-content">
-            <div class="athlete-hero-overview">
-                <a href="/compare?athlete1={{ athlete.athlete_id }}" class="athlete-compare-link">
-                    Compare
-                </a>
-                <!-- Image + Name in horizontal layout -->
-                <div class="athlete-profile-header">
-                    <img
-                        src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}"
-                        alt="{{ athlete.name }}"
-                        class="athlete-hero-img {{ 'active' if athlete.active else 'inactive' }}"
-                    >
-                    <div class="athlete-hero-info">
-                        <h1>{{ athlete.name }} {{ athlete.country_emoji }}</h1>
-                    </div>
-                </div>
+    <div class="athlete-hero-inner">
 
-                <!-- Meta info and stats below -->
-                <div class="athlete-basic-info">
-                    <div class="meta-grid">
-                        <div class="meta-item">
-                            <span class="meta-label">Status</span>
-                            <span class="meta-value">
-                                <span class="status-badge {{ 'active' if athlete.active else 'inactive' }}">
-                                    {{ 'Active' if athlete.active else 'Retired' }}
-                                </span>
-                            </span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Country</span>
-                            <span class="meta-value">{{ athlete.country_full }}</span>
-                        </div>
-                        {% if athlete.year_of_birth != 0 %}
-                        <div class="meta-item">
-                            <span class="meta-label">YOB</span>
-                            <span class="meta-value">{{ athlete.year_of_birth|int }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="meta-item">
-                            <span class="meta-label">ID</span>
-                            <span class="meta-value">{{ athlete.athlete_id }}</span>
-                        </div>
-                    </div>
+        <!-- Photo -->
+        <img
+            src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}"
+            alt="{{ athlete.name }}"
+            class="athlete-hero-img{{ ' inactive' if not athlete.active else '' }}"
+        >
 
-                    <div class="stats-bar">
-                        <div class="stat-item">
-                            <div class="stat-number">{{ athlete.race_starts }}</div>
-                            <div class="stat-label">Race Starts</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">{{ athlete.win_count }}</div>
-                            <div class="stat-label">Wins ({{ "%.1f"|format(athlete.win_pct * 100) }}%)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">{{ athlete.podium_count }}</div>
-                            <div class="stat-label">Podiums ({{ "%.1f"|format(athlete.podium_pct * 100) }}%)</div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Name, meta, stats -->
+        <div class="athlete-hero-info">
+            <div class="athlete-hero-name-row">
+                <h1 class="athlete-hero-name">
+                    {{ athlete.name }} {{ athlete.country_emoji }}
+                    <span class="athlete-status-chip {{ 'status-active' if athlete.active else 'status-retired' }}">{{ 'Active' if athlete.active else 'Retired' }}</span>
+                </h1>
+                <a href="/compare?athlete1={{ athlete.athlete_id }}" class="athlete-compare-link">⇆ Compare</a>
+            </div>
+            <div class="athlete-hero-meta">
+                {{ athlete.country_full }}
+                {% if athlete.year_of_birth != 0 %}
+                <span class="hero-meta-dot">·</span> b. {{ athlete.year_of_birth|int }}
+                {% endif %}
+            </div>
+            <div class="athlete-hero-stats">
+                <span class="hero-stat-n">{{ athlete.race_starts }}</span> starts
+                <span class="hero-meta-dot">·</span>
+                <span class="hero-stat-n">{{ athlete.win_count }}</span> wins <span class="hero-stat-pct">({{ "%.1f"|format(athlete.win_pct * 100) }}%)</span>
+                <span class="hero-meta-dot">·</span>
+                <span class="hero-stat-n">{{ athlete.podium_count }}</span> podiums <span class="hero-stat-pct">({{ "%.1f"|format(athlete.podium_pct * 100) }}%)</span>
             </div>
         </div>
 
-        {% if notable_results %}
-        <div class="notable-results-section">
-            <div class="notable-results-header">
-                <span class="notable-results-label">Palmares</span>
-            </div>
-            <div class="notable-results-list">
-                {% for result in notable_results %}
-                    <div class="notable-result-item">
-                        <div class="notable-result-line">
-                            <span class="notable-result-description">{{ result.description }}</span>
-                            {% if result.races|length == 1 %}
-                            <a href="/race/{{ result.races[0].race_id }}" class="small-link">
-                                {{ result.races[0].race_name }}
-                            </a>
-                            {% else %}
-                                <button
-                                    class="notable-result-toggle"
-                                    type="button"
-                                    aria-expanded="false"
-                                    onclick="toggleNotableResults(this, 'notable-races-{{ loop.index }}')"
-                                >
-                                    See All
-                                </button>
-                            {% endif %}
-                        </div>
-                        {% if result.races|length > 1 %}
-                            <div id="notable-races-{{ loop.index }}" class="notable-result-dropdown" hidden>
-                                {% for race in result.races %}
-                                    <a href="/race/{{ race.race_id }}" class="notable-result-dropdown-link">
-                                        {{ race.race_name }}
-                                    </a>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
+{% endblock %}
 
-<div class="ratings-overview">
-    <div class="ratings-section">
-        <h3 class="card-title">Current Ratings</h3>
-        <div class="ratings-grid">
-            <div class="rating-box">
-                <div class="rating-discipline">Overall</div>
-                <div class="rating-number">{{ current_ratings.overall_rating }}</div>
-                <div class="rating-change-1yr {{ rating_changes_1yr.overall_change_1yr.css_class }}">
-                    {{ rating_changes_1yr.overall_change_1yr.formatted_str }}
-                </div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Swim</div>
-                <div class="rating-number">{{ current_ratings.swim_rating }}</div>
-                <div class="rating-change-1yr {{ rating_changes_1yr.swim_change_1yr.css_class }}">
-                    {{ rating_changes_1yr.swim_change_1yr.formatted_str }}
-                </div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Bike</div>
-                <div class="rating-number">{{ current_ratings.bike_rating }}</div>
-                <div class="rating-change-1yr {{ rating_changes_1yr.bike_change_1yr.css_class }}">
-                    {{ rating_changes_1yr.bike_change_1yr.formatted_str }}
-                </div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Run</div>
-                <div class="rating-number">{{ current_ratings.run_rating }}</div>
-                <div class="rating-change-1yr {{ rating_changes_1yr.run_change_1yr.css_class }}">
-                    {{ rating_changes_1yr.run_change_1yr.formatted_str }}
-                </div>
-            </div>
-            <div class="rating-box">
-                <div class="rating-discipline">Transition</div>
-                <div class="rating-number">{{ current_ratings.transition_rating }}</div>
-                <div class="rating-change-1yr {{ rating_changes_1yr.transition_change_1yr.css_class }}">
-                    {{ rating_changes_1yr.transition_change_1yr.formatted_str }}
-                </div>
-            </div>
-        </div>
-    </div>
+{% block content %}
+{% set discs = [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
 
-    <div class="ratings-section">
-        <h3 class="card-title">Current World Rankings</h3>
-        <div class="ratings-grid">
-            {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
-            <div class="rating-box">
-                <div class="rating-discipline">{{ label }}</div>
-                <div class="ranking-world">
-                    {% if current_rankings['world_' ~ disc] %}
-                    <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}" class="ranking-link">
-                        {{ current_rankings['world_' ~ disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_' ~ disc].suffix }}</sup>
-                    </a>
-                    {% else %}—{% endif %}
-                </div>
-                <div class="ranking-national">
-                    {% if current_rankings['national_' ~ disc] %}
-                    <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&country={{ athlete.country_full | urlencode }}" class="ranking-link ranking-link-national">
-                        {{ current_rankings['national_' ~ disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_' ~ disc].suffix }}</sup>
-                        <span class="ranking-national-label">national</span>
-                    </a>
-                    {% endif %}
-                </div>
+<!-- Palmares -->
+{% if notable_col1 %}
+<div class="palmares-card">
+    <div class="palmares-card-header">Palmares</div>
+    <div class="palmares-grid">
+        {% for col in [notable_col1, notable_col2] %}
+        <div class="palmares-col">
+            {% for result in col %}
+            <div class="palmares-item">
+                <span class="palmares-item-label">{{ result.description }}</span>
+                <span class="palmares-item-sep">—</span>
+                <span class="palmares-item-races">
+                    {% for race in result.races %}
+                        <a href="/race/{{ race.race_id }}" class="palmares-race-link">{{ race.race_name }}</a>{% if not loop.last %}<span class="palmares-race-sep"> · </span>{% endif %}
+                    {% endfor %}
+                </span>
             </div>
             {% endfor %}
         </div>
-    </div>
-
-    <div class="ratings-section">
-        <h3 class="card-title">Peak Ratings</h3>
-        <div class="ratings-grid">
-            <div class="rating-box highlight">
-                <div class="rating-discipline">Overall</div>
-                <div class="rating-number">{{ rating_peaks.max_overall }}</div>
-                <div class="rating-race">
-                    <a href="/race/{{ athlete.max_overall_race_id }}" class="small-link">
-                        {{ rating_peaks.max_overall_race }}
-                    </a>
-                </div>
-            </div>
-            <div class="rating-box highlight">
-                <div class="rating-discipline">Swim</div>
-                <div class="rating-number">{{ rating_peaks.max_swim }}</div>
-                <div class="rating-race">
-                    <a href="/race/{{ athlete.max_swim_race_id }}" class="small-link">
-                        {{ rating_peaks.max_swim_race }}
-                    </a>
-                </div>
-            </div>
-            <div class="rating-box highlight">
-                <div class="rating-discipline">Bike</div>
-                <div class="rating-number">{{ rating_peaks.max_bike }}</div>
-                <div class="rating-race">
-                    <a href="/race/{{ athlete.max_bike_race_id}}" class="small-link">
-                        {{ rating_peaks.max_bike_race }}
-                    </a>
-                </div>
-            </div>
-            <div class="rating-box highlight">
-                <div class="rating-discipline">Run</div>
-                <div class="rating-number">{{ rating_peaks.max_run }}</div>
-                <div class="rating-race">
-                    <a href="/race/{{ athlete.max_run_race_id }}" class="small-link">
-                        {{ rating_peaks.max_run_race }}
-                    </a>
-                </div>
-            </div>
-            <div class="rating-box highlight">
-                <div class="rating-discipline">Transition</div>
-                <div class="rating-number">{{ rating_peaks.max_transition }}</div>
-                <div class="rating-race">
-                    <a href="/race/{{ athlete.max_transition_race_id }}" class="small-link">
-                        {{ rating_peaks.max_transition_race }}
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="ratings-section">
-        <h3 class="card-title">Best Single Performances</h3>          
-        <div class="ratings-grid">
-            <div class="rating-box best">
-                <div class="rating-discipline">Overall</div>
-                <div class="rating-number {{ best_performances.overall_change.css_class }}">{{ best_performances.overall_change.formatted_str }}</div>
-                <div class="rating-race">
-                    {% if athlete.overall_increase_race_id != 0 %}
-                        <a href="/race/{{ athlete.overall_increase_race_id }}" class="small-link">
-                            {{ best_performances.overall_race }}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="rating-box best">
-                <div class="rating-discipline">Swim</div>
-                <div class="rating-number {{ best_performances.swim_change.css_class }}">{{ best_performances.swim_change.formatted_str }}</div>
-                <div class="rating-race">
-                    {% if athlete.swim_increase_race_id != 0 %}
-                        <a href="/race/{{ athlete.swim_increase_race_id }}" class="small-link">
-                            {{ best_performances.swim_race }}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="rating-box best">
-                <div class="rating-discipline">Bike</div>
-                <div class="rating-number {{ best_performances.bike_change.css_class }}">{{ best_performances.bike_change.formatted_str }}</div>
-                <div class="rating-race">
-                    {% if athlete.bike_increase_race_id != 0 %}
-                        <a href="/race/{{ athlete.bike_increase_race_id }}" class="small-link">
-                            {{ best_performances.bike_race }}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="rating-box best">
-                <div class="rating-discipline">Run</div>
-                <div class="rating-number {{ best_performances.run_change.css_class }}">{{ best_performances.run_change.formatted_str }}</div>
-                <div class="rating-race">
-                    {% if athlete.run_increase_race_id != 0 %}
-                        <a href="/race/{{ athlete.run_increase_race_id }}" class="small-link">
-                            {{ best_performances.run_race }}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="rating-box best">
-                <div class="rating-discipline">Transition</div>
-                <div class="rating-number {{ best_performances.transition_change.css_class }}">{{ best_performances.transition_change.formatted_str }}</div>
-                <div class="rating-race">
-                    {% if athlete.transition_increase_race_id != 0 %}
-                        <a href="/race/{{ athlete.transition_increase_race_id }}" class="small-link">
-                            {{ best_performances.transition_race }}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 </div>
+{% endif %}
 
-<div class="data-table collapsible-card results-table">
-    <h3 class="card-title">
-        Race Results
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <table class="sortable-table">
-            <thead>
-                <tr>
-                    <th class="sortable date-col" data-sort="date">Date</th>
-                    <th class="sortable race-col" data-sort="string">Race</th>
-                    <th class="sortable program-col" data-sort="string">Program</th>
-                    <th class="sortable position-col" data-sort="position">Position</th>
-                    <th class="sortable time-col" data-sort="time">Overall</th>
-                    <th class="sortable time-col" data-sort="time">Swim</th>
-                    <th class="sortable time-col" data-sort="time">T1</th>
-                    <th class="sortable time-col" data-sort="time">Bike</th>
-                    <th class="sortable time-col" data-sort="time">T2</th>
-                    <th class="sortable time-col" data-sort="time">Run</th>
-                </tr>
-
-            </thead>
-            <tbody>
-                {% if race_history %}
-                    {% for race in race_history %}
-                        <tr>
-                            <td class="date-col" data-value="{{ race.race_date }}">
-                                {{ race.race_date.strftime('%d %b %Y') }}
-                            </td>
-                            <td class="race-col" data-value="{{ race.race_title }}">
-                                <a href="/race/{{ race.race_id }}" class="link">
-                                    {{ race.race_title }}
-                                </a>
-                            </td>
-                            <td class="program-col" data-value="{{ race.race }}">
-                                {{ race.program }}
-                            </td>
-                            <td class="position-cell {{ 'position-gold' if race.position == 1 else ('position-silver' if race.position == 2 else ('position-bronze' if race.position == 3 else ('position-dnf' if race.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''))) }}" data-value="{{ race.position }}">
-                                {{ race.position or race.status }}
-                            </td>
-                            <td class="time-col overall-time" data-value="{{ race.overall }}">
-                                <div class="time-cell">
-                                    {{ race.overall }}
-                                    <span class="time-behind">{{ race.overall_behind }}</span>
-                                </div>
-                            </td>
-                            <td class="time-col" data-value="{{ race.swim }}">
-                                <div class="time-cell">
-                                    {{ race.swim }}
-                                    <span class="time-behind">{{ race.swim_behind }}</span>
-                                </div>
-                            </td>
-                            <td class="time-col" data-value="{{ race.t1 }}">
-                                <div class="time-cell">
-                                    {{ race.t1 }}
-                                    <span class="time-behind">{{ race.t1_behind }}</span>
-                                </div>
-                            </td>
-                            <td class="time-col" data-value="{{ race.bike }}">
-                                <div class="time-cell">
-                                    {{ race.bike }}
-                                    <span class="time-behind">{{ race.bike_behind }}</span>
-                                </div>
-                            </td>
-                            <td class="time-col" data-value="{{ race.t2 }}">
-                                <div class="time-cell">
-                                    {{ race.t2 }}
-                                    <span class="time-behind">{{ race.t2_behind }}</span>
-                                </div>
-                            </td>
-                            <td class="time-col" data-value="{{ race.run }}">
-                                <div class="time-cell">
-                                    {{ race.run }}
-                                    <span class="time-behind">{{ race.run_behind }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="9" class="no-data">No race results available</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
+<!-- Current Ratings -->
+<div class="page-section-head">Current Ratings</div>
+<div class="race-stat-cards">
+    {% for disc, label in discs %}
+    <div class="race-stat-card">
+        <div class="race-stat-disc">{{ label }}</div>
+        <div class="race-stat-num">{{ current_ratings[disc~'_rating'] }}</div>
+        {% if rating_changes_1yr[disc~'_change_1yr'].formatted_str %}
+        <div class="race-stat-sub rating-change-1yr {{ rating_changes_1yr[disc~'_change_1yr'].css_class }}">
+            {{ rating_changes_1yr[disc~'_change_1yr'].formatted_str | safe }}
+        </div>
+        {% endif %}
     </div>
+    {% endfor %}
 </div>
 
-<div class="data-table collapsible-card rating-table">
-    <h3 class="card-title">
-        Rating History
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <table class="sortable-table">
-            <thead>
-                <tr>
-                    <th class="sortable date-col" data-sort="date">Date</th>
-                    <th class="sortable race-col" data-sort="race-id">Race</th>
-                    <th class="sortable program-col" data-sort="string">Program</th>
-                    <th class="sortable position-col" data-sort="position">Position</th>
-                    <th class="sortable rating-col" data-sort="rating">Overall</th>
-                    <th class="sortable rating-col" data-sort="rating">Swim</th>
-                    <th class="sortable rating-col" data-sort="rating">Bike</th>
-                    <th class="sortable rating-col" data-sort="rating">Run</th>
-                    <th class="sortable rating-col" data-sort="rating">Transition</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if rating_history %}
-                    {% for rating in rating_history %}
-                        <tr>
-                            <td data-value="{{ rating.race_date }}">{{ rating.race_date.strftime('%d %b %Y') }}</td>
-                            <td data-value="{{ rating.race_title }}">
-                                <a href="/race/{{ rating.race_id }}" class="link">
-                                    {{ rating.race_title }}
-                                </a>
-                            </td>
-                            <td data-value="{{ rating.race_program }}">{{ rating.race_program }}</td>
-                            <td class="position-cell {{ 'position-gold' if rating.position == 1 else ('position-silver' if rating.position == 2 else ('position-bronze' if rating.position == 3 else ('position-dnf' if rating.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else ''))) }}" data-value="{{ rating.position }}">
-                                {{ rating.position or rating.status }}
-                            </td>
-                            <td class="overall-time" data-value="{{ rating.overall_rating }}">
-                                <div class="rating-cell">
-                                    {{ rating.overall_rating }}
-                                    <span class="rating-change {{ rating.overall_change.css_class }}">
-                                        {{ rating.overall_change.formatted_str }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td data-value="{{ rating.swim_rating }}">
-                                <div class="rating-cell">
-                                    {{ rating.swim_rating }}
-                                    <span class="rating-change {{ rating.swim_change.css_class }}">
-                                        {{ rating.swim_change.formatted_str }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td data-value="{{ rating.bike_rating }}">
-                                <div class="rating-cell">
-                                    {{ rating.bike_rating }}
-                                    <span class="rating-change {{ rating.bike_change.css_class }}">
-                                        {{ rating.bike_change.formatted_str }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td data-value="{{ rating.run_rating }}">
-                                <div class="rating-cell">
-                                    {{ rating.run_rating }}
-                                    <span class="rating-change {{ rating.run_change.css_class }}">
-                                        {{ rating.run_change.formatted_str }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td data-value="{{ rating.transition_rating }}">
-                                <div class="rating-cell">
-                                    {{ rating.transition_rating }}
-                                    <span class="rating-change {{ rating.transition_change.css_class }}">
-                                        {{ rating.transition_change.formatted_str }}
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="7" class="no-data">No race history available</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
+{% if athlete.active %}
+<!-- World Rankings -->
+<div class="page-section-head">Current World Rankings</div>
+<div class="race-stat-cards">
+    {% for disc, label in discs %}
+    <div class="race-stat-card">
+        <div class="race-stat-disc">{{ label }}</div>
+        <div class="race-stat-num ranking-num">
+            {% if current_rankings['world_'~disc] %}
+            <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}" class="ranking-link">
+                {{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup>
+            </a>
+            {% else %}—{% endif %}
+        </div>
+        {% if current_rankings['national_'~disc] %}
+        <div class="race-stat-sub">
+            <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&country={{ athlete.country_full | urlencode }}" class="ranking-link">
+                {{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup>
+                <span class="ranking-national-label">national</span>
+            </a>
+        </div>
+        {% endif %}
     </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Peak Ratings -->
+<div class="page-section-head">Peak Ratings</div>
+<div class="race-stat-cards">
+    {% for disc, label in discs %}
+    <div class="race-stat-card">
+        <div class="race-stat-disc">{{ label }}</div>
+        <div class="race-stat-num">{{ rating_peaks['max_'~disc] }}</div>
+        <div class="race-stat-sub">
+            <a href="/race/{{ athlete['max_'~disc~'_race_id'] }}" class="small-link">
+                {{ rating_peaks['max_'~disc~'_race'] }}
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Best Single Performances -->
+<div class="page-section-head">Best Single Performances</div>
+<div class="race-stat-cards">
+    {% for disc, label in discs %}
+    <div class="race-stat-card">
+        <div class="race-stat-disc">{{ label }}</div>
+        <div class="race-stat-num {{ best_performances[disc~'_change'].css_class }}">
+            {{ best_performances[disc~'_change'].formatted_str | safe }}
+        </div>
+        {% if athlete[disc~'_increase_race_id'] != 0 %}
+        <div class="race-stat-sub">
+            <a href="/race/{{ athlete[disc~'_increase_race_id'] }}" class="small-link">
+                {{ best_performances[disc~'_race'] }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="page-section-head">Race Results</div>
+<div class="table-section results-table">
+    <table class="sortable-table">
+        <thead>
+            <tr>
+                <th class="sortable date-col" data-sort="date">Date</th>
+                <th class="sortable race-col" data-sort="string">Race</th>
+                <th class="sortable program-col" data-sort="string">Program</th>
+                <th class="sortable position-col" data-sort="position">Pos</th>
+                <th class="sortable time-col" data-sort="time">Swim</th>
+                <th class="sortable time-col" data-sort="time">T1</th>
+                <th class="sortable time-col" data-sort="time">Bike</th>
+                <th class="sortable time-col" data-sort="time">T2</th>
+                <th class="sortable time-col" data-sort="time">Run</th>
+                <th class="sortable time-col overall-col" data-sort="time">Overall</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for race in race_history %}
+            <tr>
+                <td class="date-col muted-col" data-value="{{ race.race_date }}">{{ race.race_date.strftime('%d %b %Y') }}</td>
+                <td class="race-col" data-value="{{ race.race_title }}">
+                    <a href="/race/{{ race.race_id }}" class="link">{{ race.race_title }}</a>
+                </td>
+                <td class="program-col muted-col" data-value="{{ race.program }}">{{ race.program }}</td>
+                <td class="position-col" data-value="{{ race.position or 9999 }}">
+                    {% if race.position == 1 %}<span class="pos-circle gold">1</span>
+                    {% elif race.position == 2 %}<span class="pos-circle silver">2</span>
+                    {% elif race.position == 3 %}<span class="pos-circle bronze">3</span>
+                    {% elif race.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ race.status }}</span>
+                    {% else %}<span class="pos-other">{{ race.position }}</span>
+                    {% endif %}
+                </td>
+                <td class="time-col" data-value="{{ race.swim }}">
+                    <span class="time-cell-main{{ ' fastest' if race.swim_fastest }}">{{ race.swim }}</span>
+                    {% if race.swim_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif race.swim_behind %}<span class="time-cell-gap">{{ race.swim_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ race.t1 }}">
+                    <span class="time-cell-main{{ ' fastest' if race.t1_fastest }}">{{ race.t1 }}</span>
+                    {% if race.t1_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif race.t1_behind %}<span class="time-cell-gap">{{ race.t1_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ race.bike }}">
+                    <span class="time-cell-main{{ ' fastest' if race.bike_fastest }}">{{ race.bike }}</span>
+                    {% if race.bike_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif race.bike_behind %}<span class="time-cell-gap">{{ race.bike_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ race.t2 }}">
+                    <span class="time-cell-main{{ ' fastest' if race.t2_fastest }}">{{ race.t2 }}</span>
+                    {% if race.t2_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif race.t2_behind %}<span class="time-cell-gap">{{ race.t2_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ race.run }}">
+                    <span class="time-cell-main{{ ' fastest' if race.run_fastest }}">{{ race.run }}</span>
+                    {% if race.run_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif race.run_behind %}<span class="time-cell-gap">{{ race.run_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col overall-col" data-value="{{ race.overall }}">
+                    <span class="overall-time">{{ race.overall }}</span>
+                    {% if race.overall_behind %}<span class="time-cell-gap">{{ race.overall_behind }}</span>{% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10" class="no-data">No race results available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="page-section-head">Rating History</div>
+<div class="table-section rating-table">
+    <table class="sortable-table">
+        <thead>
+            <tr>
+                <th class="sortable date-col" data-sort="date">Date</th>
+                <th class="sortable race-col" data-sort="race-id">Race</th>
+                <th class="sortable program-col" data-sort="string">Program</th>
+                <th class="sortable position-col" data-sort="position">Pos</th>
+                <th class="sortable rating-col" data-sort="rating">Swim</th>
+                <th class="sortable rating-col" data-sort="rating">Bike</th>
+                <th class="sortable rating-col" data-sort="rating">Run</th>
+                <th class="sortable rating-col" data-sort="rating">Transition</th>
+                <th class="sortable rating-col overall-col" data-sort="rating">Overall</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rating in rating_history %}
+            <tr>
+                <td class="date-col muted-col" data-value="{{ rating.race_date }}">{{ rating.race_date.strftime('%d %b %Y') }}</td>
+                <td class="race-col" data-value="{{ rating.race_title }}">
+                    <a href="/race/{{ rating.race_id }}" class="link">{{ rating.race_title }}</a>
+                </td>
+                <td class="program-col muted-col" data-value="{{ rating.race_program }}">{{ rating.race_program }}</td>
+                <td class="position-col" data-value="{{ rating.position or 9999 }}">
+                    {% if rating.position == 1 %}<span class="pos-circle gold">1</span>
+                    {% elif rating.position == 2 %}<span class="pos-circle silver">2</span>
+                    {% elif rating.position == 3 %}<span class="pos-circle bronze">3</span>
+                    {% elif rating.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ rating.status }}</span>
+                    {% else %}<span class="pos-other">{{ rating.position }}</span>
+                    {% endif %}
+                </td>
+                <td data-value="{{ rating.swim_rating }}">
+                    <div class="rating-cell">{{ rating.swim_rating }}<span class="rating-change {{ rating.swim_change.css_class }}">{{ rating.swim_change.formatted_str | safe }}</span></div>
+                </td>
+                <td data-value="{{ rating.bike_rating }}">
+                    <div class="rating-cell">{{ rating.bike_rating }}<span class="rating-change {{ rating.bike_change.css_class }}">{{ rating.bike_change.formatted_str | safe }}</span></div>
+                </td>
+                <td data-value="{{ rating.run_rating }}">
+                    <div class="rating-cell">{{ rating.run_rating }}<span class="rating-change {{ rating.run_change.css_class }}">{{ rating.run_change.formatted_str | safe }}</span></div>
+                </td>
+                <td data-value="{{ rating.transition_rating }}">
+                    <div class="rating-cell">{{ rating.transition_rating }}<span class="rating-change {{ rating.transition_change.css_class }}">{{ rating.transition_change.formatted_str | safe }}</span></div>
+                </td>
+                <td class="overall-col" data-value="{{ rating.overall_rating }}">
+                    <div class="rating-cell">
+                        <span class="overall-time">{{ rating.overall_rating }}</span>
+                        <span class="rating-change {{ rating.overall_change.css_class }}">{{ rating.overall_change.formatted_str | safe }}</span>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="no-data">No rating history available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <div class="collapsible-card">

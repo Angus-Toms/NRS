@@ -6,24 +6,14 @@ const searchResults = document.getElementById('searchResults');
 if (searchInput && searchResults) {
     searchInput.addEventListener('input', function() {
         const query = this.value.trim();
-        
-        // Clear previous timeout
         clearTimeout(searchTimeout);
-        
-        // Hide results if query is too short
         if (query.length < 2) {
             searchResults.style.display = 'none';
             return;
         }
-        
-        // Show loading state
         searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
         searchResults.style.display = 'block';
-        
-        // Debounce search
-        searchTimeout = setTimeout(() => {
-            performSearch(query);
-        }, 300);
+        searchTimeout = setTimeout(() => performSearch(query), 300);
     });
 }
 
@@ -31,7 +21,6 @@ async function performSearch(query) {
     try {
         const response = await fetch(`/races/search?q=${encodeURIComponent(query)}`);
         const results = await response.json();
-        
         displayResults(results);
     } catch (error) {
         console.error('Search error:', error);
@@ -41,22 +30,34 @@ async function performSearch(query) {
 
 function displayResults(results) {
     if (results.length === 0) {
-        searchResults.innerHTML = '<div class="no-results">No races found</div>';
+        searchResults.innerHTML = '<div class="no-results">No events found</div>';
         return;
     }
-    
-    const html = results.map(race => `
-        <a href="/race/${race.race_id}" class="search-result-item">
-            <div class="result-info">
-                <div class="result-race-title">${escapeHtml(race.race_title)}</div>
-                <div class="result-prog-name">${escapeHtml(race.prog_name)}</div>
+
+    const PILL_LIMIT = 4;
+    const html = results.map(event => {
+        const races = event.races || [];
+        const visibleRaces = races.slice(0, PILL_LIMIT);
+        const overflow = races.length - PILL_LIMIT;
+
+        const pillsHtml = visibleRaces.map(r =>
+            `<span class="race-pill">${escapeHtml(r.prog_name)}</span>`
+        ).join('');
+        const overflowHtml = overflow > 0
+            ? `<span class="race-pill race-pill-more">+${overflow}</span>`
+            : '';
+
+        return `
+            <a href="/event/${event.event_id}" class="search-result-item">
+                <div class="result-name">${escapeHtml(event.name)}</div>
                 <div class="result-meta">
-                    ${escapeHtml(race.race_country)} • ${race.prog_date}
+                    ${escapeHtml(event.country)}${event.venue ? ` · ${escapeHtml(event.venue)}` : ''} · ${event.event_date}
                 </div>
-            </div>
-        </a>
-    `).join('');
-    
+                ${races.length > 0 ? `<div class="result-races">${pillsHtml}${overflowHtml}</div>` : ''}
+            </a>
+        `;
+    }).join('');
+
     searchResults.innerHTML = html;
 }
 
@@ -66,7 +67,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Close search results when clicking outside
 document.addEventListener('click', function(event) {
     if (!searchResults || !searchInput) return;
     if (!event.target.closest('.search-container')) {
@@ -74,7 +74,6 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Reopen results when focusing on input with existing query
 if (searchInput && searchResults) {
     searchInput.addEventListener('focus', function() {
         if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
@@ -83,13 +82,13 @@ if (searchInput && searchResults) {
     });
 }
 
-// Load more races
-function initRaceLoadMore() {
+// Load more events
+function initLoadMore() {
     const loadMoreBtn = document.getElementById('loadMoreRaces');
-    const raceGrid = document.getElementById('raceGrid');
+    const grid = document.getElementById('raceGrid');
     const pageSize = 30;
 
-    if (!loadMoreBtn || !raceGrid) return;
+    if (!loadMoreBtn || !grid) return;
 
     let offset = parseInt(loadMoreBtn.dataset.offset, 10) || 0;
 
@@ -100,22 +99,18 @@ function initRaceLoadMore() {
 
         try {
             const res = await fetch(`/races/more?offset=${offset}`);
-            if (!res.ok) {
-                throw new Error('Failed to fetch more races');
-            }
-
+            if (!res.ok) throw new Error('Failed to fetch');
             const html = await res.text();
-            if (html.trim().length === 0) {
+            if (!html.trim()) {
                 loadMoreBtn.style.display = 'none';
                 return;
             }
-
-            raceGrid.insertAdjacentHTML('beforeend', html);
+            grid.insertAdjacentHTML('beforeend', html);
             offset += pageSize;
             loadMoreBtn.dataset.offset = offset;
             loadMoreBtn.textContent = originalText;
         } catch (err) {
-            console.error('Error loading more races', err);
+            console.error('Error loading more events', err);
             loadMoreBtn.textContent = 'Try again';
         } finally {
             loadMoreBtn.disabled = false;
@@ -123,4 +118,4 @@ function initRaceLoadMore() {
     });
 }
 
-initRaceLoadMore();
+initLoadMore();

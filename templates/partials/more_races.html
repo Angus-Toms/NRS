@@ -1,26 +1,42 @@
-{% for race in races %}
-<div class="race-card">
-    <div class="race-card-content">
-        <div class="race-card-top">
-            {% if race.prog_name %}
-            <span class="race-program-tag">{{ race.prog_name }}</span>
-            {% endif %}
+{% for event in events %}
+<div class="event-card">
+    <a href="/event/{{ event.event_id }}" class="event-card-overlay" aria-label="{{ event.name }}"></a>
+
+    <div class="event-card-main">
+        <div class="event-info">
+            <h3 class="event-card-name">{{ event.name }}</h3>
+            <p class="event-card-meta">
+                {% if event.venue %}{{ event.venue }}<span class="meta-sep">·</span>{% endif %}{{ event.country }}
+            </p>
+            <p class="event-card-date">{{ event.start_date.strftime('%d %b %Y') }}</p>
         </div>
 
-        <div class="race-card-main">
-            <h3 class="race-title">{{ race.race_title }}</h3>
-            <p class="race-meta">
-                <span class="race-location">{{ race.race_country }}</span>
-                <span class="race-separator">•</span>
-                <span class="race-date-inline">{{ race.race_date.strftime('%d %B %Y') }}</span>
-            </p>
+        <div class="event-podiums">
+            {% for race in event.races[:2] %}
+            <div class="race-podium">
+                <a href="/race/{{ race.race_id }}" class="race-podium-label">{{ race.prog_name }}</a>
+                {% if race.podium %}
+                <ol class="podium-list">
+                    {% for p in race.podium %}
+                    <li class="podium-entry podium-pos-{{ p.position }}">
+                        <span class="podium-num">{{ p.position }}</span>
+                        <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ p.emoji }} {{ p.name }}</a>
+                        {% if p.time %}<span class="podium-time">{{ p.time }}</span>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="podium-empty">No results yet</p>
+                {% endif %}
+            </div>
+            {% endfor %}
         </div>
     </div>
 
-    <a href="/race/{{ race.race_id }}" class="race-card-link" aria-label="View race {{ race.race_title }}">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-    </a>
+    {% if event.races|length > 2 %}
+    <div class="event-card-footer">
+        <a href="/event/{{ event.event_id }}" class="more-races-link">+{{ event.races|length - 2 }} more races</a>
+    </div>
+    {% endif %}
 </div>
 {% endfor %}

@@ -1,4 +1,15 @@
 # Formatting functions for FastAPI routers
+
+# SVG chevron arrows — stroke-based so they scale cleanly with font size
+# and align geometrically rather than relying on Unicode glyph metrics.
+_SVG_UP   = ('<svg class="chg-arrow" viewBox="0 0 10 8" fill="none" '
+             'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+             'stroke-linejoin="round" aria-hidden="true">'
+             '<polyline points="1,6.5 5,1.5 9,6.5"/></svg>')
+_SVG_DOWN = ('<svg class="chg-arrow" viewBox="0 0 10 8" fill="none" '
+             'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+             'stroke-linejoin="round" aria-hidden="true">'
+             '<polyline points="1,1.5 5,6.5 9,1.5"/></svg>')
 def format_time(seconds: int) -> str:
     """Convert seconds to HH:MM:SS or MM:SS format.""" 
     if seconds == 0: return ""
@@ -48,12 +59,12 @@ def format_rating_change(change: float) -> dict:
     
     if change > 0:
         return {
-            "formatted_str": f"▲{change:.1f}",
+            "formatted_str": f"{_SVG_UP}{change:.1f}",
             "css_class": "rating-increase"
         }
-        
+
     return {
-        "formatted_str": f"▼{-change:.1f}",
+        "formatted_str": f"{_SVG_DOWN}{-change:.1f}",
         "css_class": "rating-decrease"
     }
 
@@ -66,14 +77,14 @@ def format_1yr_rating_change(change: float) -> dict:
             "formatted_str": "",
             "css_class": ""
         }
-    
+
     if change > 0:
         return {
-            "formatted_str": f"▲{change:.1f} last year",
+            "formatted_str": f"{_SVG_UP}{change:.1f} last year",
             "css_class": "positive"
         }
-    
+
     return {
-        "formatted_str": f"▼{-change:.1f} last year",
+        "formatted_str": f"{_SVG_DOWN}{-change:.1f} last year",
         "css_class": "negative"
     }

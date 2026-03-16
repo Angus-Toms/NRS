@@ -199,31 +199,31 @@
                 <div class="rating-item">
                     <span class="rating-label">Overall</span>
                     <span class="rating-value {{ athlete.overall_change.css_class }} {{ 'rating-highlight' if disc == 'overall' }}">
-                        {{ athlete.overall_change.formatted_str }}
+                        {{ athlete.overall_change.formatted_str | safe }}
                     </span>
                 </div>
                 <div class="rating-item">
                     <span class="rating-label">Swim</span>
                     <span class="rating-value {{ athlete.swim_change.css_class }} {{ 'rating-highlight' if disc == 'swim' }}">
-                        {{ athlete.swim_change.formatted_str }}
+                        {{ athlete.swim_change.formatted_str | safe }}
                     </span>
                 </div>
                 <div class="rating-item">
                     <span class="rating-label">Bike</span>
                     <span class="rating-value {{ athlete.bike_change.css_class }} {{ 'rating-highlight' if disc == 'bike' }}">
-                        {{ athlete.bike_change.formatted_str }}
+                        {{ athlete.bike_change.formatted_str | safe }}
                     </span>
                 </div>
                 <div class="rating-item">
                     <span class="rating-label">Run</span>
                     <span class="rating-value {{ athlete.run_change.css_class }} {{ 'rating-highlight' if disc == 'run' }}">
-                        {{ athlete.run_change.formatted_str }}
+                        {{ athlete.run_change.formatted_str | safe }}
                     </span>
                 </div>
                 <div class="rating-item">
                     <span class="rating-label">Transition</span>
                     <span class="rating-value {{ athlete.transition_change.css_class }} {{ 'rating-highlight' if disc == 'transition' }}">
-                        {{ athlete.transition_change.formatted_str }}
+                        {{ athlete.transition_change.formatted_str | safe }}
                     </span>
                 </div>
             </div>

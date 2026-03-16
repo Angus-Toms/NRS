@@ -115,18 +115,24 @@ async def get_race(request: Request, race_id: int):
     # Format splits data
     splits_data = [{
         **r,
-        "overall_s":      format_time(r["overall_s"]),
+        "overall_s":        format_time(r["overall_s"]),
         "overall_behind_s": format_time_behind(r["overall_behind_s"]),
-        "swim_s":         format_time(r["swim_s"]),
-        "swim_behind_s":  format_time_behind(r["swim_behind_s"]),
-        "bike_s":         format_time(r["bike_s"]),
-        "bike_behind_s":  format_time_behind(r["bike_behind_s"]),
-        "run_s":          format_time(r["run_s"]),
-        "run_behind_s":   format_time_behind(r["run_behind_s"]),
-        "t1_s":           format_time(r["t1_s"]),
-        "t1_behind_s":    format_time_behind(r["t1_behind_s"]),
-        "t2_s":           format_time(r["t2_s"]),
-        "t2_behind_s":    format_time_behind(r["t2_behind_s"]),
+        "swim_s":           format_time(r["swim_s"]),
+        "swim_behind_s":    format_time_behind(r["swim_behind_s"]),
+        "bike_s":           format_time(r["bike_s"]),
+        "bike_behind_s":    format_time_behind(r["bike_behind_s"]),
+        "run_s":            format_time(r["run_s"]),
+        "run_behind_s":     format_time_behind(r["run_behind_s"]),
+        "t1_s":             format_time(r["t1_s"]),
+        "t1_behind_s":      format_time_behind(r["t1_behind_s"]),
+        "t2_s":             format_time(r["t2_s"]),
+        "t2_behind_s":      format_time_behind(r["t2_behind_s"]),
+        # fastest flags: behind == 0 AND the split was actually recorded
+        "swim_fastest": r["swim_behind_s"] == 0 and (r["swim_s"] or 0) > 0,
+        "bike_fastest": r["bike_behind_s"] == 0 and (r["bike_s"] or 0) > 0,
+        "run_fastest":  r["run_behind_s"]  == 0 and (r["run_s"]  or 0) > 0,
+        "t1_fastest":   r["t1_behind_s"]   == 0 and (r["t1_s"]   or 0) > 0,
+        "t2_fastest":   r["t2_behind_s"]   == 0 and (r["t2_s"]   or 0) > 0,
     } for r in results]
 
     # Format ratings data
@@ -157,7 +163,8 @@ async def get_race(request: Request, race_id: int):
     time_hists   = _build_time_histograms(queries.get_race_time_values(race_id))
     rating_hists = _build_rating_histograms(queries.get_race_rating_values(race_id))
 
-    race_location = str(race["location"]).replace('"', '').replace("'", "")
+    _venue = race["location"]
+    race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
     race_country  = str(race["country"]).replace('"', '').replace("'", "")
 
     # Augment race dict with fields the template accesses directly on `race`
@@ -172,6 +179,7 @@ async def get_race(request: Request, race_id: int):
         "race":           race,
         "race_location":  race_location,
         "race_country":   race_country,
+        "event_id":       race.get("event_id"),
         "finish_count":   finish_count,
         "dnf_count":      dnf_count,
         "race_standards": race_standards,

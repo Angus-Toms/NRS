@@ -10,11 +10,6 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import sys
-from pathlib import Path
-
-# Allow running as `python ptd_data/sync_images.py` from project root
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import boto3
 import cv2

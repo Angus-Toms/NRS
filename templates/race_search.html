@@ -17,12 +17,12 @@
             <div class="hero-stats">
                 <div class="stat-pill">
                     <span class="stat-label">Events tracked</span>
-                    <span class="stat-value">{{ total_races }}</span>
+                    <span class="stat-value">{{ total_events }}</span>
                 </div>
-                {% if races %}
+                {% if events %}
                 <div class="stat-pill">
                     <span class="stat-label">Most recent</span>
-                    <span class="stat-value">{{ races[0].race_date.strftime('%d %B %Y') }}</span>
+                    <span class="stat-value">{{ events[0].start_date.strftime('%d %B %Y') }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -35,10 +35,10 @@
             </div>
             <div class="search-container">
                 <div class="search-input-wrapper">
-                    <input 
-                        type="text" 
-                        id="raceSearch" 
-                        class="search-input" 
+                    <input
+                        type="text"
+                        id="raceSearch"
+                        class="search-input"
                         placeholder="Search for a race..."
                         autocomplete="off"
                     >
@@ -47,7 +47,7 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                 </div>
-                
+
                 <div id="searchResults" class="search-results" style="display: none;">
                     <!-- Results populated by JS -->
                 </div>
@@ -56,21 +56,21 @@
     </section>
 
     <section class="race-listing">
-        <h2 class="section-title">Recent races</h2>
+        <h2 class="section-title">Recent events</h2>
 
-        <div id="raceGrid" class="race-grid">
-            {% if races %}
+        <div id="raceGrid" class="event-grid">
+            {% if events %}
                 {% include "partials/more_races.html" %}
             {% else %}
                 <div class="empty-state">
-                    <p>No races available right now.</p>
+                    <p>No events available right now.</p>
                 </div>
             {% endif %}
         </div>
 
-        {% if has_more_races %}
+        {% if has_more %}
         <div class="load-more-container">
-            <button id="loadMoreRaces" class="btn" data-offset="{{ initial_offset }}">Load more races</button>
+            <button id="loadMoreRaces" class="btn" data-offset="{{ initial_offset }}">Load more events</button>
         </div>
         {% endif %}
     </section>

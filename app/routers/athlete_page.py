@@ -69,7 +69,7 @@ def _build_notable_results(notable_raw):
         for r in sorted(tier_results, key=lambda x: x["position"]):
             desc = _format_position(tier, r["position"])
             entry = grouped.setdefault(desc, {"description": desc, "races": [], "count": 0})
-            entry["races"].append({"race_id": r["race_id"], "race_name": r["race_handle"]})
+            entry["races"].append({"race_id": r["race_id"], "race_name": r["race_handle"], "race_date": r["race_date"]})
             entry["count"] += 1
 
         for i, entry in enumerate(grouped.values()):
@@ -78,7 +78,8 @@ def _build_notable_results(notable_raw):
             desc = entry["description"]
             if entry["count"] > 1:
                 desc = f"{entry['count']} x {desc}s" if desc.endswith("Win") else f"{entry['count']} x {desc}"
-            formatted.append({"description": desc, "races": entry["races"]})
+            races_sorted = sorted(entry["races"], key=lambda x: x["race_date"] or "", reverse=True)
+            formatted.append({"description": desc, "races": races_sorted})
 
     return formatted[:10]
 
@@ -222,7 +223,7 @@ async def get_athlete(request: Request, athlete_id: int):
         for disc in ["overall", "swim", "bike", "run", "transition"]:
             current_ratings[f"{disc}_rating"] = round(current[f"{disc}_rating"])
 
-    # --- current rankings card ---
+    # --- current rankings card (active athletes only) ---
     def _make_ranking(rank):
         if not rank or rank <= 0:
             return None
@@ -230,11 +231,18 @@ async def get_athlete(request: Request, athlete_id: int):
         suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
         return {"n": n, "suffix": suffix}
 
+    # Compute active before rankings so we can skip the query for retired athletes.
+    # (athlete_dict isn't built yet, so derive it here from stats directly.)
+    _last_date = stats["last_race_date"]
+    _active    = bool(_last_date and _last_date >= (date.today() - timedelta(days=365)))
+
     current_rankings = {}
-    if current:
-        for disc in ["overall", "swim", "bike", "run", "transition"]:
-            current_rankings[f"world_{disc}"]    = _make_ranking(current.get(f"world_{disc}"))
-            current_rankings[f"national_{disc}"] = _make_ranking(current.get(f"national_{disc}"))
+    if _active:
+        active_ranks = queries.get_athlete_active_rankings(athlete_id)
+        if active_ranks:
+            for disc in ["overall", "swim", "bike", "run", "transition"]:
+                current_rankings[f"world_{disc}"]    = _make_ranking(active_ranks.get(f"world_{disc}"))
+                current_rankings[f"national_{disc}"] = _make_ranking(active_ranks.get(f"national_{disc}"))
 
     # --- 1yr changes card ---
     rating_changes_1yr = {}
@@ -282,6 +290,19 @@ async def get_athlete(request: Request, athlete_id: int):
     # --- notable results ---
     notable_results = _build_notable_results(notable_raw)
 
+    # Split into two display columns balanced by visual height.
+    # Height model (×2 scaled): label row ≈ 1 line + each race row ≈ 0.5 lines → 2 + ceil(races/4)
+    heights = [2 + (len(r["races"]) + 3) // 4 for r in notable_results]
+    total = sum(heights)
+    best_split, best_diff, cumulative = 1, float("inf"), 0
+    for i, h in enumerate(heights):
+        cumulative += h
+        if abs(cumulative - total / 2) < best_diff:
+            best_diff = abs(cumulative - total / 2)
+            best_split = i + 1
+    notable_col1 = notable_results[:best_split]
+    notable_col2 = notable_results[best_split:]
+
     # --- race history table ---
     race_history = [
         {
@@ -295,14 +316,19 @@ async def get_athlete(request: Request, athlete_id: int):
             "overall_behind": format_time_behind(r["overall_behind_s"]),
             "swim":          format_time(r["swim_s"]),
             "swim_behind":   format_time_behind(r["swim_behind_s"]),
+            "swim_fastest":  r["swim_behind_s"] == 0 and (r["swim_s"] or 0) > 0,
             "t1":            format_time(r["t1_s"]),
             "t1_behind":     format_time_behind(r["t1_behind_s"]),
+            "t1_fastest":    r["t1_behind_s"] == 0 and (r["t1_s"] or 0) > 0,
             "bike":          format_time(r["bike_s"]),
             "bike_behind":   format_time_behind(r["bike_behind_s"]),
+            "bike_fastest":  r["bike_behind_s"] == 0 and (r["bike_s"] or 0) > 0,
             "t2":            format_time(r["t2_s"]),
             "t2_behind":     format_time_behind(r["t2_behind_s"]),
+            "t2_fastest":    r["t2_behind_s"] == 0 and (r["t2_s"] or 0) > 0,
             "run":           format_time(r["run_s"]),
             "run_behind":    format_time_behind(r["run_behind_s"]),
+            "run_fastest":   r["run_behind_s"] == 0 and (r["run_s"] or 0) > 0,
         }
         for r in race_hist
     ]
@@ -340,7 +366,8 @@ async def get_athlete(request: Request, athlete_id: int):
         "request":        request,
         "active_page":    "athletes",
         "athlete":        athlete_dict,
-        "notable_results":     notable_results,
+        "notable_col1":        notable_col1,
+        "notable_col2":        notable_col2,
         "current_ratings":     current_ratings,
         "current_rankings":    current_rankings,
         "rating_changes_1yr":  rating_changes_1yr,

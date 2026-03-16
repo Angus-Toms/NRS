@@ -4,328 +4,249 @@
 .race-hero {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 2rem;
     border: 1px solid var(--border-color);
     overflow: hidden;
 }
 
-.race-hero-main {
+/* Slim back navigation above the main body */
+.race-hero-nav {
+    padding: 0.75rem 1.5rem 0;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-lighter);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.back-link:hover {
+    color: var(--primary-color);
+}
+
+/* Two-column layout: info left, podium right */
+.race-hero-body {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 300px;
     gap: 0;
 }
 
-/* Left section - Race info */
-.race-hero-info {
-    padding: 2.5rem 2rem;
+/* Left — race title + metadata */
+.race-hero-left {
+    padding: 1rem 2rem 1.75rem;
     border-right: 1px solid var(--border-color);
 }
 
-.race-hero-info h1 {
-    font-size: 2rem;
+.race-hero-title {
+    font-size: 1.875rem;
+    font-weight: 800;
     color: var(--text-color);
-    margin: 0 0 1.25rem 0;
-    line-height: 1.3;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
-/* Right section - Podium */
-.race-podium-section {
-    padding: 2rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.podium-header {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--text-light);
-    font-weight: 600;
-    margin-bottom: 1.25rem;
-    text-align: center;
-}
-
-.podium-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.podium-item {
+/* Single-line: date · location · program */
+.race-hero-meta {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.75rem;
-    border-radius: 8px;
-    transition: background 0.15s ease;
-}
-
-.podium-item:hover {
-    background: rgba(53, 122, 189, 0.05);
-}
-
-.podium-item.gold {
-    background: var(--gold);
-}
-
-.podium-item.silver {
-    background: var(--silver);
-}
-
-.podium-item.bronze {
-    background: var(--bronze);
-}
-
-.podium-position {
-    font-size: 1.25rem;
-    font-weight: 700;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    font-size: 0.875rem;
     color: var(--text-light);
-    width: 30px;
-    text-align: center;
-    flex-shrink: 0;
 }
 
-.podium-item.gold .podium-position {
-    color: var(--gold-accent);
+.race-meta-dot {
+    color: #d1d5db;
+    user-select: none;
 }
 
-.podium-item.silver .podium-position {
-    color: var(--silver-accent);
+/* Secondary line: athlete counts */
+.race-hero-counts {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    color: var(--text-lighter);
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
 }
 
-.podium-item.bronze .podium-position {
-    color: var(--bronze-accent);
+/* Right — podium */
+.race-hero-right {
+    padding: 1.25rem 1.5rem 1.75rem;
 }
 
-.podium-avatar {
-    width: 50px;
-    height: 50px;
+.podium-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+/* Each podium entry mirrors a table row visually */
+.podium-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.podium-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.podium-row-avatar {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    border: none;
 }
 
-.podium-item.gold .podium-avatar {
-    box-shadow: 0 0 0 3px var(--gold-accent);
-}
-
-.podium-item.silver .podium-avatar {
-    box-shadow: 0 0 0 3px var(--silver-accent);
-}
-
-.podium-item.bronze .podium-avatar {
-    box-shadow: 0 0 0 3px var(--bronze-accent);
-}
-
-.podium-details {
+.podium-row-info {
     flex: 1;
     min-width: 0;
 }
 
-.podium-name {
-    font-size: 1rem;
-    font-weight: 500;
+.podium-row-name {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 0.25rem;
+    text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 0.1rem;
+    transition: color var(--transition-fast);
 }
 
-.podium-name a {
-    color: var(--text-color);
-    text-decoration: none;
-}
-
-.podium-name a:hover {
+.podium-row-name:hover {
     color: var(--primary-color);
 }
 
-.podium-time {
-    font-size: 0.875rem;
-    color: var(--text-light);
-    font-weight: 500;
-}
-
-.podium-country {
-    font-size: 1.25rem;
-    margin-left: 0.25rem;
+.podium-row-time {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
 }
 
 /* ============================================
-   TABLES
+   RACE META CARDS (Standards + Best Perf)
+   Card grid + card styles are in base.css (.race-stat-cards etc.)
    ============================================ */
-.time-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+.race-stat-section {
+    margin-bottom: 2rem;
 }
 
-.time-behind {
-    font-size: 0.75em;
-    white-space: nowrap;
-    color: var(--text-light);
+/* ============================================
+   TABLE SECTIONS — card with rounded corners
+   Generic .table-section is in base.css; .race-table-section is an alias.
+   ============================================ */
+.race-table-section {
+    background: var(--white);
+    border-radius: 8px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-bottom: 2rem;
 }
 
-.results-table .athlete-col {
-    width: 200px;
+.race-table-section table { margin-top: 0; border-radius: 0; }
+
+/* Position circles + time cells are in base.css */
+
+/* Athlete links in race tables — bold black, orange on hover */
+.race-table-section td a.link {
+    color: var(--text-color);
+    font-weight: 600;
+    text-decoration: none;
 }
 
-.results-table .yob-col {
-    width: 100px;
+.race-table-section td a.link:hover {
+    color: var(--primary-color);
 }
 
-.results-table .position-col {
-    width: 70px;
-}
+.results-table .athlete-col  { width: 190px; }
+.results-table .yob-col      { width: 90px; }
+.results-table .position-col { width: 52px; }
+.results-table .time-col     { width: calc((100% - 332px) / 6); }
 
-.results-table .time-col {
-    width: calc((100% - 370px) / 6);
-}
-
-/* Ratings table ------------------ */
-.rating-table .athlete-col {
-    width: 200px;
-}
-
-.rating-table .yob-col {
-    width: 100px;
-}
-
-.rating-table .position-col {
-    width: 70px;
-}
-
-.rating-table .time-col {
-    width: calc((100% - 370px) / 5);
-}
+.rating-table .athlete-col   { width: 190px; }
+.rating-table .yob-col       { width: 90px; }
+.rating-table .position-col  { width: 52px; }
+.rating-table .time-col      { width: calc((100% - 332px) / 5); }
 
 .rating-change {
-    font-size: 0.75em;
+    font-size: 0.7rem;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+/* YOB column — de-emphasised, smaller and lighter than main data */
+.results-table .yob-col,
+.rating-table  .yob-col {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
 }
 
 /* ============================================
    RESPONSIVE
    ============================================ */
 @media (max-width: 1024px) {
-    .race-hero-main {
-        grid-template-columns: 1fr 350px;
-    }
-
-    /* Center align race info */
-    .race-hero-info {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-
-    .race-hero-info .meta-grid {
-        width: 100%;
-        max-width: 500px;
-    }
-
-    .race-hero-info h1 {
-        text-align: center;
+    .race-hero-body {
+        grid-template-columns: 1fr 270px;
     }
 }
 
 @media (max-width: 768px) {
-    /* Move podium below race info */
-    .race-hero-main {
+    .race-hero-body {
         grid-template-columns: 1fr;
     }
 
-    .race-hero-info {
+    .race-hero-left {
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
 
-    .race-podium-section {
-        background: white;
+    .race-hero-title {
+        font-size: 1.375rem;
     }
 
-    .race-hero-info h1 {
-        font-size: 1.5rem;
+    .race-stat-cards {
+        grid-template-columns: repeat(3, 1fr);
     }
 
-    .podium-list {
-        flex-direction: row;
-        gap: 0.75rem;
-    }
-
-    .podium-item {
-        flex-direction: column;
-        align-items: center;
-        padding: 1rem 0.5rem;
-        flex: 1;
-        position: relative;
-        text-align: center;
-    }
-
-    .podium-position {
-        position: absolute;
-        top: 0.5rem;
-        left: 0.5rem;
-        font-size: 1rem;
-        width: auto;
-    }
-
-    .podium-avatar {
-        width: 60px;
-        height: 60px;
-        margin-bottom: 0.5rem;
-    }
-
-    .podium-details {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .podium-name {
-        font-size: 0.875rem;
-        text-align: center;
-        white-space: normal;
-        overflow: visible;
-    }
-
-    .podium-time {
-        font-size: 0.75rem;
-    }
-
-    .podium-country {
-        display: block;
-        margin: 0.25rem 0 0 0;
-    }
-
-    .race-header h1 {
-        font-size: var(--font-size-xl);
-    }
-    
-    .race-meta {
-        font-size: var(--font-size-base);
-    }
-    
     .data-table {
         font-size: var(--font-size-sm);
     }
-    
+
     .time-col, .rating-col {
         font-size: 0.75rem;
     }
 }
 
 @media (max-width: 480px) {
-    .race-hero-info {
-        padding: 1.5rem;
+    .race-hero-left {
+        padding: 1rem 1.25rem 1.5rem;
     }
 
-    .podium-avatar {
-        width: 50px;
-        height: 50px;
+    .race-stat-cards {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

@@ -12,7 +12,7 @@
             <div class="rating-block left {% if discipline.rating1 > discipline.rating2 %}winner{% endif %}">
                 <div class="rating-number">{{ discipline.rating1 }}</div>
                 <div class="rating-change {{ discipline.change1.css_class }}">
-                    {{ discipline.change1.formatted_str }}
+                    {{ discipline.change1.formatted_str | safe }}
                 </div>
             </div>
             <!-- Discipline in middle -->
@@ -23,7 +23,7 @@
             <div class="rating-block right {% if discipline.rating2 > discipline.rating1 %}winner{% endif %}">
                 <div class="rating-number">{{ discipline.rating2 }}</div>
                 <div class="rating-change {{ discipline.change2.css_class }}">
-                    {{ discipline.change2.formatted_str }}
+                    {{ discipline.change2.formatted_str | safe }}
                 </div>
             </div>
         </div>
