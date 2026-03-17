@@ -6,54 +6,72 @@
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css">
 {% endblock %}
 
-{% block content %}
-<div class="event-page">
-    <section class="event-header">
-        <div class="event-header-content">
-            <h1 class="event-title">{{ event.name }}</h1>
-            <p class="event-meta">
-                <span class="event-location">{{ event.venue }}, {{ event.country }}</span>
-                <span class="event-separator">•</span>
-                <span class="event-dates">
-                    {{ event.start_date.strftime('%d %B %Y') }}
-                    {% if event.end_date != event.start_date %}
-                    – {{ event.end_date.strftime('%d %B %Y') }}
-                    {% endif %}
-                </span>
-            </p>
+{% block hero %}
+<div class="event-hero">
+    <div class="event-hero-inner">
+        <h1 class="event-hero-title">{{ event.name }}</h1>
+        <div class="event-hero-meta">
+            {% if event.venue %}
+            <span>{{ event.venue }}</span>
+            <span class="event-meta-dot">·</span>
+            {% endif %}
+            <span>{{ event.country }}</span>
+            <span class="event-meta-dot">·</span>
+            <span>
+                {{ event.start_date.strftime('%d %b %Y') }}
+                {% if event.end_date and event.end_date != event.start_date %}
+                – {{ event.end_date.strftime('%d %b %Y') }}
+                {% endif %}
+            </span>
         </div>
-    </section>
-
-    <section class="races-section">
-        <h2 class="section-title">Races</h2>
-        
-        {% if races %}
-        <div class="races-list">
-            {% for race in races %}
-            <div class="race-item">
-                <div class="race-item-content">
-                    <div class="race-item-top">
-                        {% if race.prog_name %}
-                        <span class="race-program-tag">{{ race.prog_name }}</span>
-                        {% endif %}
-                        <span class="race-gender-tag">{{ race.gender|capitalize }}</span>
-                    </div>
-                    <h3 class="race-item-title">{{ race.race_title }}</h3>
-                    <p class="race-item-date">{{ race.race_date.strftime('%d %B %Y') }}</p>
-                </div>
-                <a href="/race/{{ race.race_id }}" class="race-item-link" aria-label="View race {{ race.race_title }}">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <p>No races available for this event.</p>
-        </div>
-        {% endif %}
-    </section>
+    </div>
 </div>
+{% endblock %}
+
+{% macro race_card(race) %}
+<div class="event-race-card">
+    <div class="event-race-card-header">
+        <span class="event-race-prog">{{ race.prog_name }}</span>
+        <span class="event-race-date">{{ race.race_date.strftime('%d %b') }}</span>
+    </div>
+    <div class="event-race-card-body">
+        {% for p in race.podium %}
+        <div class="event-podium-row">
+            <div class="event-podium-left">
+                <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
+                <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
+            </div>
+            <div class="event-podium-right">
+                {% if p.gap %}
+                <span class="event-podium-gap">{{ p.gap }}</span>
+                {% else %}
+                <span class="event-podium-time">{{ p.time }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="event-race-card-footer">
+        <a href="/race/{{ race.race_id }}" class="event-race-link">
+            Full Results
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </a>
+    </div>
+    <a href="/race/{{ race.race_id }}" class="event-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
+</div>
+{% endmacro %}
+
+{% block content %}
+{% if race_pairs %}
+<div class="event-races-grid">
+    {% for f_race, m_race in race_pairs %}
+        {% if f_race %}{{ race_card(f_race) }}{% else %}<div></div>{% endif %}
+        {% if m_race %}{{ race_card(m_race) }}{% else %}<div></div>{% endif %}
+    {% endfor %}
+</div>
+{% else %}
+<p class="no-data" style="padding: 2rem 0;">No races available for this event.</p>
+{% endif %}
 {% endblock %}

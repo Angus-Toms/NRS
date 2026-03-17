@@ -788,23 +788,55 @@ def get_athlete_times_data(athlete_id):
 def get_athlete_ratings_data(athlete_id):
     """
     Raw ratings per race for chart rendering (chronological order).
-    Returns list of dicts ordered by race_date asc.
+    Includes discipline times, diffs from race leader, and world rankings.
     """
     conn = _get_conn()
     rows = conn.execute("""
+        WITH leader AS (
+            SELECT race_id,
+                MIN(CASE WHEN overall_s > 0 THEN overall_s END) AS overall_s,
+                MIN(CASE WHEN swim_s    > 0 THEN swim_s    END) AS swim_s,
+                MIN(CASE WHEN bike_s    > 0 THEN bike_s    END) AS bike_s,
+                MIN(CASE WHEN run_s     > 0 THEN run_s     END) AS run_s,
+                MIN(CASE WHEN t1_s      > 0 THEN t1_s      END) AS t1_s,
+                MIN(CASE WHEN t2_s      > 0 THEN t2_s      END) AS t2_s
+            FROM results
+            GROUP BY race_id
+        )
         SELECT
             ra.race_id,
             r.race_date,
             r.race_title,
-            ra.overall, ra.swim, ra.bike, ra.run, ra.transition
+            ra.overall,    ra.swim,    ra.bike,    ra.run,    ra.transition,
+            ra.overall_change, ra.swim_change, ra.bike_change, ra.run_change, ra.transition_change,
+            res.overall_s, res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
+            res.overall_s - l.overall_s AS overall_diff,
+            res.swim_s    - l.swim_s    AS swim_diff,
+            res.bike_s    - l.bike_s    AS bike_diff,
+            res.run_s     - l.run_s     AS run_diff,
+            res.t1_s      - l.t1_s      AS t1_diff,
+            res.t2_s      - l.t2_s      AS t2_diff,
+            rk.world_overall, rk.world_swim, rk.world_bike, rk.world_run, rk.world_transition,
+            res.status
         FROM ratings ra
-        JOIN races r ON ra.race_id = r.race_id
-        WHERE ra.athlete_id = ?
+        JOIN races r    ON ra.race_id  = r.race_id
+        LEFT JOIN results  res ON res.race_id = ra.race_id AND res.athlete_id = ra.athlete_id
+        LEFT JOIN leader   l   ON l.race_id   = ra.race_id
+        LEFT JOIN rankings rk  ON rk.race_id  = ra.race_id AND rk.athlete_id = ra.athlete_id
+                                AND rk.category = ra.category
+        WHERE ra.athlete_id = ? AND ra.category = 'elite'
         ORDER BY r.race_date ASC, ra.race_id ASC
     """, [athlete_id]).fetchall()
 
-    cols = ["race_id", "race_date", "race_title",
-            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating"]
+    cols = [
+        "race_id", "race_date", "race_title",
+        "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
+        "overall_change", "swim_change", "bike_change", "run_change", "transition_change",
+        "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
+        "overall_diff", "swim_diff", "bike_diff", "run_diff", "t1_diff", "t2_diff",
+        "world_overall", "world_swim", "world_bike", "world_run", "world_transition",
+        "status",
+    ]
     return [dict(zip(cols, r)) for r in rows]
 
 
@@ -836,6 +868,70 @@ def get_races_by_event(event_id):
     """, [event_id]).fetchall()
     cols = ["race_id", "race_title", "prog_name", "race_date", "gender"]
     return [dict(zip(cols, r)) for r in rows]
+
+
+def get_event_races_detail(event_id):
+    """All races for an event with podium (top 3 + time gaps) and overall race standard."""
+    conn = _get_conn()
+    race_rows = conn.execute("""
+        SELECT race_id, race_title, prog_name, race_date, gender
+        FROM races
+        WHERE event_id = ?
+        ORDER BY race_date ASC, race_id ASC
+    """, [event_id]).fetchall()
+    if not race_rows:
+        return []
+
+    races = [{"race_id": r[0], "race_title": r[1], "prog_name": r[2],
+              "race_date": r[3], "gender": r[4], "podium": [], "standard": None}
+             for r in race_rows]
+    race_ids = [r["race_id"] for r in races]
+    ph = ",".join("?" * len(race_ids))
+
+    podium_rows = conn.execute(f"""
+        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s
+        FROM results res
+        JOIN athletes a ON res.athlete_id = a.athlete_id
+        JOIN nationalities n ON a.country_full = n.country_full
+        WHERE res.race_id IN ({ph})
+          AND res.position IN (1, 2, 3)
+          AND res.status = 'Finished'
+        ORDER BY res.race_id, res.position
+    """, race_ids).fetchall()
+
+    podium_by_race = {}
+    for race_id, pos, athlete_id, name, emoji, overall_s in podium_rows:
+        podium_by_race.setdefault(race_id, []).append(
+            {"position": pos, "athlete_id": athlete_id, "name": name,
+             "emoji": emoji, "overall_s": overall_s}
+        )
+
+    std_rows = conn.execute(f"""
+        SELECT ra.race_id, AVG(ra.overall)
+        FROM ratings ra
+        JOIN results res ON ra.race_id = res.race_id AND ra.athlete_id = res.athlete_id
+        WHERE ra.race_id IN ({ph})
+          AND res.status = 'Finished'
+          AND res.position IS NOT NULL
+          AND res.position <= 10
+        GROUP BY ra.race_id
+    """, race_ids).fetchall()
+    std_by_race = {r[0]: r[1] for r in std_rows}
+
+    for race in races:
+        rid = race["race_id"]
+        raw = podium_by_race.get(rid, [])
+        winner_s = raw[0]["overall_s"] if raw else None
+        race["podium"] = [
+            {**p,
+             "time": _fmt_time(p["overall_s"]),
+             "gap": f"+{_fmt_time(p['overall_s'] - winner_s)}"
+                    if p["position"] != 1 and p["overall_s"] and winner_s else None}
+            for p in raw
+        ]
+        race["standard"] = f"{round(std_by_race[rid]):,}" if rid in std_by_race else None
+
+    return races
 
 
 # ---------------------------------------------------------------------------
@@ -871,7 +967,7 @@ def get_race_results(race_id):
             res.position,
             res.status,
             res.overall_s, res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
-            a.name, a.year_of_birth,
+            a.name, a.year_of_birth, a.profile_img,
             n.alpha3  AS country_alpha3,
             n.emoji   AS country_emoji,
             -- behind times
@@ -903,7 +999,7 @@ def get_race_results(race_id):
     cols = [
         "athlete_id", "position", "status",
         "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
-        "name", "year_of_birth", "country_alpha3", "country_emoji",
+        "name", "year_of_birth", "profile_img", "country_alpha3", "country_emoji",
         "overall_behind_s", "swim_behind_s", "bike_behind_s", "run_behind_s",
         "t1_behind_s", "t2_behind_s",
     ]
@@ -1083,19 +1179,43 @@ def get_athlete_rankings_data(athlete_id):
     """
     conn = _get_conn()
     rows = conn.execute("""
+        WITH leader AS (
+            SELECT race_id,
+                MIN(CASE WHEN overall_s > 0 THEN overall_s END) AS overall_s,
+                MIN(CASE WHEN swim_s    > 0 THEN swim_s    END) AS swim_s,
+                MIN(CASE WHEN bike_s    > 0 THEN bike_s    END) AS bike_s,
+                MIN(CASE WHEN run_s     > 0 THEN run_s     END) AS run_s,
+                MIN(CASE WHEN t1_s      > 0 THEN t1_s      END) AS t1_s,
+                MIN(CASE WHEN t2_s      > 0 THEN t2_s      END) AS t2_s
+            FROM results
+            GROUP BY race_id
+        )
         SELECT
             rk.race_id,
             r.race_date,
             r.race_title,
             rk.world_overall,    rk.world_swim,    rk.world_bike,    rk.world_run,    rk.world_transition,
-            rk.national_overall, rk.national_swim, rk.national_bike, rk.national_run, rk.national_transition
+            rk.national_overall, rk.national_swim, rk.national_bike, rk.national_run, rk.national_transition,
+            res.overall_s, res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
+            res.overall_s - l.overall_s AS overall_diff,
+            res.swim_s    - l.swim_s    AS swim_diff,
+            res.bike_s    - l.bike_s    AS bike_diff,
+            res.run_s     - l.run_s     AS run_diff,
+            res.t1_s      - l.t1_s      AS t1_diff,
+            res.t2_s      - l.t2_s      AS t2_diff,
+            res.status
         FROM rankings rk
         JOIN races r ON rk.race_id = r.race_id
+        LEFT JOIN results res ON rk.race_id = res.race_id AND rk.athlete_id = res.athlete_id
+        LEFT JOIN leader  l   ON rk.race_id = l.race_id
         WHERE rk.athlete_id = ?
         ORDER BY r.race_date ASC, rk.race_id ASC
     """, [athlete_id]).fetchall()
 
     cols = ["race_id", "race_date", "race_title",
             "world_overall",    "world_swim",    "world_bike",    "world_run",    "world_transition",
-            "national_overall", "national_swim", "national_bike", "national_run", "national_transition"]
+            "national_overall", "national_swim", "national_bike", "national_run", "national_transition",
+            "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
+            "overall_diff", "swim_diff", "bike_diff", "run_diff", "t1_diff", "t2_diff",
+            "status"]
     return [dict(zip(cols, r)) for r in rows]

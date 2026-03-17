@@ -22,6 +22,3 @@ DB_PATH = PROJECT_ROOT / "ptd_data" / "ptd.duckdb"
 # WorldTriathlon API
 WORLD_TRIATHLON_API_KEY = "aac0df989cb613114241670ca2f5ff75"
 
-# Constants
-ELITE_START_RATING = 1750
-AG_START_RATING = 0

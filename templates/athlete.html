@@ -279,161 +279,59 @@
     </table>
 </div>
 
-<div class="collapsible-card">
-    <h3 class="card-title">
-    Historical Performance Ratings
-    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="chart-container">
-            <canvas id="ratings-chart-canvas"></canvas>
+<div class="page-section-head" id="ratings-section-title">Rating History — Overall</div>
+<div class="collapsible-card ratings-history-section">
+    <div class="ratings-main-chart">
+        <canvas id="ratings-main-canvas"></canvas>
+    </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchRatingDisc('{{ disc }}')">
+            <canvas id="ratings-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 
-<div class="chart-section collapsible-card">
-    <h3 class="card-title">
-    Historical World Rankings
-    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="charts-grid">
-            <div class="mini-chart full-width">
-                <h4>Overall</h4>
-                <div class="chart-container-compact">
-                    <canvas id="overall-world-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-world-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-world-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Run</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-world-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Transition</h4>
-                <div class="chart-container-compact">
-                    <canvas id="transition-world-rankings-canvas"></canvas>
-                </div>
-            </div>
+<div class="page-section-head" id="world-rankings-section-title">World Rankings — Overall</div>
+<div class="collapsible-card ratings-history-section">
+    <div class="ratings-main-chart">
+        <canvas id="world-rankings-main-canvas"></canvas>
+    </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchRankingDisc('{{ disc }}', 'world')">
+            <canvas id="world-rankings-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 
-<div class="chart-section collapsible-card">
-    <h3 class="card-title">
-    Historical National Rankings
-    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="charts-grid">
-            <div class="mini-chart full-width">
-                <h4>Overall</h4>
-                <div class="chart-container-compact">
-                    <canvas id="overall-national-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-national-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-national-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Run</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-national-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Transition</h4>
-                <div class="chart-container-compact">
-                    <canvas id="transition-national-rankings-canvas"></canvas>
-                </div>
-            </div>
+<div class="page-section-head" id="national-rankings-section-title">National Rankings — Overall</div>
+<div class="collapsible-card ratings-history-section">
+    <div class="ratings-main-chart">
+        <canvas id="national-rankings-main-canvas"></canvas>
+    </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchRankingDisc('{{ disc }}', 'national')">
+            <canvas id="national-rankings-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 
-<div class="chart-section collapsible-card">
-    <h3 class="card-title">
-    Split Times
-    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="charts-grid">
-            <div class="mini-chart full-width">
-                <h4>Run Times</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-times-chart-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim Times</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-times-chart-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike Times</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-times-chart-canvas"></canvas>
-                </div>
-            </div>
-        </div>
+<div class="page-section-head" id="pct-behind-section-title">% Behind Leader — Overall</div>
+<div class="collapsible-card ratings-history-section">
+    <div class="ratings-main-chart">
+        <canvas id="pct-behind-main-canvas"></canvas>
     </div>
-</div>
-
-<div class="chart-section collapsible-card">
-    <h3 class="card-title">
-    % Behind Leader
-    <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="charts-grid">
-            <div class="mini-chart">
-                <h4>Overall % Behind Leader</h4>
-                <div class="chart-container-compact">
-                    <canvas id="overall-pct-behind-chart-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim % Behind Leader</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-pct-behind-chart-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike % Behind Leader</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-pct-behind-chart-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Run % Behind Leader</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-pct-behind-chart-canvas"></canvas>
-                </div>
-            </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchPctBehindDisc('{{ disc }}')">
+            <canvas id="pct-behind-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
@@ -444,54 +342,12 @@
     {{ ratings_chart | tojson }}
 </script>
 
-<!-- Overall % Behind Leader chart -->
-<script id="overall-pct-behind-chart-data" type="application/json">
-    {{ overall_pct_behind_chart | tojson }}
-</script>
+<!-- % Behind Leader chart -->
+<script id="pct-behind-chart-data" type="application/json">{{ pct_behind_chart | tojson }}</script>
 
-<!-- Swim % Behind Leader chart -->
-<script id="swim-pct-behind-chart-data" type="application/json">
-    {{ swim_pct_behind_chart | tojson }}
-</script>
-
-<!-- Bike % Behind Leader chart -->
-<script id="bike-pct-behind-chart-data" type="application/json">
-    {{ bike_pct_behind_chart | tojson }}
-</script>
-
-<!-- Run % Behind Leader chart -->
-<script id="run-pct-behind-chart-data" type="application/json">
-    {{ run_pct_behind_chart | tojson }}
-</script>
-
-<!-- Swim Times chart -->
-<script id="swim-times-chart-data" type="application/json">
-    {{ swim_times_chart | tojson }}
-</script>
-
-<!-- Bike Times chart -->
-<script id="bike-times-chart-data" type="application/json">
-    {{ bike_times_chart | tojson }}
-</script>
-
-<!-- Run Times chart -->
-<script id="run-times-chart-data" type="application/json">
-    {{ run_times_chart | tojson }}
-</script>
-
-<!-- World rankings charts -->
-<script id="overall-world-rankings-data" type="application/json">{{ overall_world_rankings_chart | tojson }}</script>
-<script id="swim-world-rankings-data" type="application/json">{{ swim_world_rankings_chart | tojson }}</script>
-<script id="bike-world-rankings-data" type="application/json">{{ bike_world_rankings_chart | tojson }}</script>
-<script id="run-world-rankings-data" type="application/json">{{ run_world_rankings_chart | tojson }}</script>
-<script id="transition-world-rankings-data" type="application/json">{{ transition_world_rankings_chart | tojson }}</script>
-
-<!-- National rankings charts -->
-<script id="overall-national-rankings-data" type="application/json">{{ overall_national_rankings_chart | tojson }}</script>
-<script id="swim-national-rankings-data" type="application/json">{{ swim_national_rankings_chart | tojson }}</script>
-<script id="bike-national-rankings-data" type="application/json">{{ bike_national_rankings_chart | tojson }}</script>
-<script id="run-national-rankings-data" type="application/json">{{ run_national_rankings_chart | tojson }}</script>
-<script id="transition-national-rankings-data" type="application/json">{{ transition_national_rankings_chart | tojson }}</script>
+<!-- Ranking charts -->
+<script id="world-rankings-chart-data" type="application/json">{{ world_rankings_chart | tojson }}</script>
+<script id="national-rankings-chart-data" type="application/json">{{ national_rankings_chart | tojson }}</script>
 
 <!-- Load JS -->
 <script src="{{ STATIC_BASE_URL }}js/utils.js"></script>

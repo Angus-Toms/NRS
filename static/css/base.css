@@ -844,6 +844,68 @@ table td a.link:hover   { color: var(--primary-color); }
     height: 400px;
 }
 
+/* Rating history section — card is .collapsible-card, this just controls internals */
+.ratings-history-section {
+    margin-bottom: 2.5rem;
+}
+
+.ratings-main-chart {
+    position: relative;
+    height: 320px;
+    margin-bottom: 1rem;
+}
+
+.ratings-mini-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.ratings-mini {
+    flex: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    /* Use outline so the ::before label can overlap it */
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    padding: 1.2rem 0.5rem 0.35rem;
+    position: relative;
+    transition: outline-color 0.15s;
+}
+
+/* Label sits in a gap in the top-left border, fieldset-legend style */
+.ratings-mini::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -0.6em;
+    left: 0.6rem;
+    background: var(--white);
+    padding: 0 0.3rem;
+    font-size: 0.72rem;
+    font-family: var(--font-family);
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+
+.ratings-mini:hover {
+    outline-color: rgba(232, 119, 34, 0.4);
+}
+
+.ratings-mini.active {
+    outline-color: #E87722;
+}
+
+.ratings-mini.active::before {
+    color: #E87722;
+}
+
+.ratings-mini canvas {
+    display: block;
+    width: 100% !important;
+    height: 60px !important;
+}
+
 .chart-container-compact {
     position: relative;
     width: 100%;

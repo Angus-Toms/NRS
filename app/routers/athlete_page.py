@@ -84,119 +84,90 @@ def _build_notable_results(notable_raw):
     return formatted[:10]
 
 
-def _build_ratings_chart(ratings_data, race_name_map):
-    """Build Chart.js ratings history dataset from query results."""
-    colors = {
-        "overall":    ("#357ABD", "rgba(53, 122, 189, 0.1)"),
-        "swim":       ("#4CAF50", "rgba(76, 175, 80, 0.1)"),
-        "bike":       ("#FF9800", "rgba(255, 152, 0, 0.1)"),
-        "run":        ("#E91E63", "rgba(233, 30, 99, 0.1)"),
-        "transition": ("#9C27B0", "rgba(156, 39, 176, 0.1)"),
-    }
-    datasets = []
-    for disc, (border, bg) in colors.items():
-        datasets.append({
-            "label": f"{disc.capitalize()} Rating",
-            "data": [
-                {"x": str(r["race_date"])[:10],
-                 "y": int(r[f"{disc}_rating"]),
-                 "race_name": r["race_title"]}
-                for r in ratings_data
-            ],
-            "borderColor": border, "backgroundColor": bg,
-            "pointBackgroundColor": border,
-            "borderWidth": 2, "pointRadius": 3,
-        })
-    return {"datasets": datasets}
+def _build_ratings_chart(ratings_data):
+    """Build per-discipline rating history data for the athlete ratings chart."""
+    disciplines = ["overall", "swim", "bike", "run", "transition"]
+    result = {}
+    for disc in disciplines:
+        prev_wr = None
+        points = []
+        for r in ratings_data:
+            wr = r.get(f"world_{disc}")
+            # World rank change: positive = moved up (lower number is better)
+            wr_chg = (prev_wr - wr) if (wr is not None and prev_wr is not None) else None
+            prev_wr = wr
+            points.append({
+                "x":          str(r["race_date"])[:10],
+                "y":          int(r[f"{disc}_rating"]),
+                "change":     round(r[f"{disc}_change"]) if r[f"{disc}_change"] is not None else None,
+                "race_name":  r["race_title"],
+                "race_id":    r["race_id"],
+                "status":     r.get("status"),
+                "time_s":     r.get(f"{disc}_s"),   # None for transition
+                "diff_s":     r.get(f"{disc}_diff"), # None for transition
+                "t1_s":       r.get("t1_s"),
+                "t2_s":       r.get("t2_s"),
+                "t1_diff":    r.get("t1_diff"),
+                "t2_diff":    r.get("t2_diff"),
+                "world_rank": wr,
+                "world_rank_chg": wr_chg,
+            })
+        result[disc] = points
+    return result
 
 
 def _build_pct_behind_chart(times_data):
-    """Build Chart.js % behind leader charts from times query results."""
-    disc_colors = {
-        "overall": ("#4CAF50", "rgba(76, 175, 80, 0.1)"),
-        "swim":    ("#357ABD", "rgba(53, 122, 189, 0.1)"),
-        "bike":    ("#FF9800", "rgba(255, 152, 0, 0.1)"),
-        "run":     ("#4CAF50", "rgba(76, 175, 80, 0.1)"),
-    }
-    charts = {}
-    for disc, (border, bg) in disc_colors.items():
-        charts[disc] = {
-            "datasets": [{
-                "label": f"{disc.capitalize()} % Behind Leader",
-                "data": [
-                    {"x": str(r["race_date"])[:10],
-                     "y": round(r[f"{disc}_pct_behind"] * 100, 1),
-                     "race_name": r["race_title"]}
-                    for r in times_data
-                    if r[f"{disc}_pct_behind"] is not None
-                ],
-                "borderColor": border, "backgroundColor": bg,
-                "pointBackgroundColor": border,
-                "borderWidth": 2, "pointRadius": 3,
-            }]
-        }
-    return charts
+    """Build flat per-discipline % behind leader data for the new ratings-style chart."""
+    result = {}
+    for disc in ["overall", "swim", "bike", "run"]:
+        result[disc] = [
+            {
+                "x":         str(r["race_date"])[:10],
+                "y":         round(r[f"{disc}_pct_behind"] * 100, 2),
+                "race_name": r["race_title"],
+                "race_id":   r["race_id"],
+            }
+            for r in times_data
+            if r[f"{disc}_pct_behind"] is not None
+        ]
+    return result
 
 
 def _build_rankings_charts(rankings_data):
-    """Build separate world and national Chart.js ranking charts per discipline."""
+    """Build per-discipline ranking history for world and national charts."""
     world    = {}
     national = {}
     for disc in ["overall", "swim", "bike", "run", "transition"]:
-        world[disc] = {"datasets": [{
-            "label": "World Ranking",
-            "data": [{"x": str(r["race_date"])[:10], "y": r[f"world_{disc}"], "race_name": r["race_title"]}
-                     for r in rankings_data if r[f"world_{disc}"]],
-            "borderColor": "#357ABD", "backgroundColor": "rgba(53,122,189,0.1)",
-            "pointBackgroundColor": "#357ABD", "borderWidth": 2, "pointRadius": 3,
-        }]}
-        national[disc] = {"datasets": [{
-            "label": "National Ranking",
-            "data": [{"x": str(r["race_date"])[:10], "y": r[f"national_{disc}"], "race_name": r["race_title"]}
-                     for r in rankings_data if r[f"national_{disc}"]],
-            "borderColor": "#FF9800", "backgroundColor": "rgba(255,152,0,0.1)",
-            "pointBackgroundColor": "#FF9800", "borderWidth": 2, "pointRadius": 3,
-        }]}
+        prev_world = prev_nat = None
+        world_pts  = []
+        nat_pts    = []
+        for r in rankings_data:
+            wr  = r.get(f"world_{disc}")
+            nat = r.get(f"national_{disc}")
+            wr_chg  = (prev_world - wr)  if (wr  is not None and prev_world is not None) else None
+            nat_chg = (prev_nat   - nat) if (nat is not None and prev_nat   is not None) else None
+            prev_world = wr
+            prev_nat   = nat
+            base = {
+                "x":        str(r["race_date"])[:10],
+                "race_name": r["race_title"],
+                "race_id":   r["race_id"],
+                "status":    r.get("status"),
+                "time_s":    r.get(f"{disc}_s"),   # None for transition
+                "diff_s":    r.get(f"{disc}_diff"), # None for transition
+                "t1_s":      r.get("t1_s"),
+                "t2_s":      r.get("t2_s"),
+                "t1_diff":   r.get("t1_diff"),
+                "t2_diff":   r.get("t2_diff"),
+            }
+            if wr  is not None:
+                world_pts.append({**base, "y": wr,  "rank_chg": wr_chg})
+            if nat is not None:
+                nat_pts.append(  {**base, "y": nat, "rank_chg": nat_chg})
+        world[disc]    = world_pts
+        national[disc] = nat_pts
     return world, national
 
-
-def _build_splits_chart(times_data):
-    """Build Chart.js split times charts from times query results."""
-    charts = {}
-    for disc, short_thresh, long_thresh, c_short, c_long in [
-        ("swim", 960,  960,  "#357ABD", "#E91E63"),
-        ("bike", 2700, 2700, "#357ABD", "#E91E63"),
-        ("run",  1560, 1560, "#357ABD", "#E91E63"),
-    ]:
-        charts[disc] = {
-            "datasets": [
-                {
-                    "label": f"Sprint {disc.capitalize()} Times",
-                    "data": [
-                        {"x": str(r["race_date"])[:10], "y": int(r[f"{disc}_s"]),
-                         "race_name": r["race_title"]}
-                        for r in times_data
-                        if r[f"{disc}_s"] and 0 < r[f"{disc}_s"] <= short_thresh
-                    ],
-                    "borderColor": c_short, "backgroundColor": c_short,
-                    "pointBackgroundColor": c_short,
-                    "borderWidth": 2, "pointRadius": 3,
-                },
-                {
-                    "label": f"Standard {disc.capitalize()} Times",
-                    "data": [
-                        {"x": str(r["race_date"])[:10], "y": int(r[f"{disc}_s"]),
-                         "race_name": r["race_title"]}
-                        for r in times_data
-                        if r[f"{disc}_s"] and r[f"{disc}_s"] > long_thresh
-                    ],
-                    "borderColor": c_long, "backgroundColor": c_long,
-                    "pointBackgroundColor": c_long,
-                    "borderWidth": 2, "pointRadius": 3,
-                },
-            ]
-        }
-    return charts
 
 
 @router.get("/athlete/{athlete_id}", response_class=HTMLResponse)
@@ -297,7 +268,7 @@ async def get_athlete(request: Request, athlete_id: int):
     best_split, best_diff, cumulative = 1, float("inf"), 0
     for i, h in enumerate(heights):
         cumulative += h
-        if abs(cumulative - total / 2) < best_diff:
+        if abs(cumulative - total / 2) <= best_diff:
             best_diff = abs(cumulative - total / 2)
             best_split = i + 1
     notable_col1 = notable_results[:best_split]
@@ -358,8 +329,7 @@ async def get_athlete(request: Request, athlete_id: int):
 
     # --- charts ---
     pct_behind      = _build_pct_behind_chart(times_data)
-    splits          = _build_splits_chart(times_data)
-    ratings_chart   = _build_ratings_chart(ratings_data, {})
+    ratings_chart   = _build_ratings_chart(ratings_data)
     world_rankings_charts, national_rankings_charts = _build_rankings_charts(rankings_data)
 
     return templates.TemplateResponse("athlete.html", {
@@ -375,22 +345,8 @@ async def get_athlete(request: Request, athlete_id: int):
         "best_performances":   best_performances,
         "race_history":        race_history,
         "rating_history":      rating_history,
-        "ratings_chart":       ratings_chart,
-        "overall_pct_behind_chart": pct_behind["overall"],
-        "swim_pct_behind_chart":    pct_behind["swim"],
-        "bike_pct_behind_chart":    pct_behind["bike"],
-        "run_pct_behind_chart":     pct_behind["run"],
-        "swim_times_chart":  splits["swim"],
-        "bike_times_chart":  splits["bike"],
-        "run_times_chart":   splits["run"],
-        "overall_world_rankings_chart":    world_rankings_charts["overall"],
-        "swim_world_rankings_chart":       world_rankings_charts["swim"],
-        "bike_world_rankings_chart":       world_rankings_charts["bike"],
-        "run_world_rankings_chart":        world_rankings_charts["run"],
-        "transition_world_rankings_chart": world_rankings_charts["transition"],
-        "overall_national_rankings_chart":    national_rankings_charts["overall"],
-        "swim_national_rankings_chart":       national_rankings_charts["swim"],
-        "bike_national_rankings_chart":       national_rankings_charts["bike"],
-        "run_national_rankings_chart":        national_rankings_charts["run"],
-        "transition_national_rankings_chart": national_rankings_charts["transition"],
+        "ratings_chart":           ratings_chart,
+        "pct_behind_chart":        pct_behind,
+        "world_rankings_chart":    world_rankings_charts,
+        "national_rankings_chart": national_rankings_charts,
     })

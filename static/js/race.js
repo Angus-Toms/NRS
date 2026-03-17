@@ -1,641 +1,91 @@
-// Add click handlers to sortable headers
-document.addEventListener('DOMContentLoaded', () => {
-    const tables = document.querySelectorAll('table.sortable-table');
-    if (!tables.length) return;
+// Chart.js global defaults — match site typography and colour palette
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280'; // --text-light
 
-    tables.forEach(table => {
+Chart.defaults.plugins.tooltip.backgroundColor = '#1a1a2e'; // --navy
+Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+Chart.defaults.plugins.tooltip.bodyColor = 'rgba(255,255,255,0.7)';
+Chart.defaults.plugins.tooltip.padding = { x: 10, y: 8 };
+Chart.defaults.plugins.tooltip.cornerRadius = 6;
+Chart.defaults.plugins.tooltip.displayColors = false;
+Chart.defaults.plugins.tooltip.titleFont = { family: "'Plus Jakarta Sans', sans-serif", weight: '600', size: 12 };
+Chart.defaults.plugins.tooltip.bodyFont = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
+
+// Sort table click listeners — safe to call multiple times after partial swaps
+function initSortableListeners() {
+    document.querySelectorAll('table.sortable-table').forEach(table => {
         const headers = table.querySelectorAll('th.sortable');
-
         headers.forEach((header, index) => {
             header.addEventListener('click', () => {
-                // Toggle sort direction
                 const isAsc = header.classList.contains('asc');
-                
-                // Remove all sorting classes
                 headers.forEach(h => h.classList.remove('asc', 'desc'));
-                
-                // Add appropriate class
-                if (isAsc) {
-                    header.classList.add('desc');
-                    sortTable(table, index, false);
-                } else {
-                    header.classList.add('asc');
-                    sortTable(table, index, true);
-                }
+                header.classList.add(isAsc ? 'desc' : 'asc');
+                sortTable(table, index, !isAsc);
             });
         });
     });
-});
+}
 
-// Overall time histogram ------------------------------------------------------
-const overallTimesCtx = document.getElementById('overall-times-canvas');
-const overallTimesData = getJSON('overall-time-hist-data');
+// Chart initialisation — destroys existing instances before recreating
+function initRaceCharts() {
+    const charts = [
+        // Time histograms
+        { id: 'overall-times-canvas', data: 'overall-time-hist-data', label: 'Overall Time', fmt: 'time' },
+        { id: 'swim-times-canvas',    data: 'swim-time-hist-data',    label: 'Swim Time',    fmt: 'time' },
+        { id: 'bike-times-canvas',    data: 'bike-time-hist-data',    label: 'Bike Time',    fmt: 'time' },
+        { id: 'run-times-canvas',     data: 'run-time-hist-data',     label: 'Run Time',     fmt: 'time' },
+        { id: 't1-times-canvas',      data: 't1-time-hist-data',      label: 'T1 Time',      fmt: 'time' },
+        { id: 't2-times-canvas',      data: 't2-time-hist-data',      label: 'T2 Time',      fmt: 'time' },
+        // Rating histograms
+        { id: 'overall-ratings-canvas',    data: 'overall-ratings-hist-data',    label: 'Overall Rating',    fmt: 'rating' },
+        { id: 'swim-ratings-canvas',       data: 'swim-ratings-hist-data',       label: 'Swim Rating',       fmt: 'rating' },
+        { id: 'bike-ratings-canvas',       data: 'bike-ratings-hist-data',       label: 'Bike Rating',       fmt: 'rating' },
+        { id: 'run-ratings-canvas',        data: 'run-ratings-hist-data',        label: 'Run Rating',        fmt: 'rating' },
+        { id: 'transition-ratings-canvas', data: 'transition-ratings-hist-data', label: 'Transition Rating', fmt: 'rating' },
+    ];
 
-new Chart(overallTimesCtx, {
-    type: 'bar',
-    data: overallTimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        parsing: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
+    charts.forEach(({ id, data: dataId, label, fmt }) => {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+        const data = getJSON(dataId);
+        if (!data || !data.datasets) return;
+
+        new Chart(canvas, {
+            type: 'bar',
+            data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                parsing: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        callbacks: {
+                            title: ctx => ctx[0].raw.label,
+                            label: ctx => `Athletes: ${ctx.raw.y}`,
+                        }
                     }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Overall Time'
                 },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// Swim time histogram ---------------------------------------------------------
-const swimTimesCtx = document.getElementById('swim-times-canvas');
-const swimTimesData = getJSON('swim-time-hist-data');
-
-new Chart(swimTimesCtx, {
-    type: 'bar',
-    data: swimTimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
+                scales: {
+                    x: {
+                        beginAtZero: false,
+                        type: 'linear',
+                        title: { display: true, text: label },
+                        ticks: fmt === 'time'
+                            ? { callback: v => isNaN(+v) ? v : formatTime(+v) }
+                            : { stepSize: 100, callback: v => Math.round(v) }
                     },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
+                    y: {
+                        beginAtZero: true,
+                        type: 'linear',
+                        title: { display: true, text: 'Number of Athletes' }
                     }
                 }
             }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Swim Time'
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// Bike time histogram ---------------------------------------------------------
-const bikeTimesCtx = document.getElementById('bike-times-canvas');
-const bikeTimesData = getJSON('bike-time-hist-data');
-
-new Chart(bikeTimesCtx, {
-    type: 'bar',
-    data: bikeTimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Bike Time'
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// Run time histogram ----------------------------------------------------------
-const runTimesCtx = document.getElementById('run-times-canvas');
-const runTimesData = getJSON('run-time-hist-data');
-
-new Chart(runTimesCtx, {
-    type: 'bar',
-    data: runTimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Run Time'
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// T1 time histogram ----------------------------------------------------------- 
-const t1TimesCtx = document.getElementById('t1-times-canvas');
-const t1TimesData = getJSON('t1-time-hist-data');
-
-new Chart(t1TimesCtx, {
-    type: 'bar',
-    data: t1TimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'T1 Time'
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// T2 time histogram ----------------------------------------------------------- 
-const t2TimesCtx = document.getElementById('t2-times-canvas');
-const t2TimesData = getJSON('t2-time-hist-data');
-
-new Chart(t2TimesCtx, {
-    type: 'bar',
-    data: t2TimesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: false,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'T1 Time'
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        const num = Number(value);
-                        return isNaN(num) ? value : formatTime(num);
-                    }
-                }
-            }, 
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-
-            }
-        }
-    }
-});
-
-// Overall ratings histogram ------------------------------------------------------
-const overallRatingsCtx = document.getElementById('overall-ratings-canvas');
-const overallRatingsData = getJSON('overall-ratings-hist-data');
-
-new Chart(overallRatingsCtx, {
-    type: 'bar',
-    data: overallRatingsData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        parsing: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Overall Rating'
-                },
-                ticks: {
-                    stepSize: 100,
-                    callback: function(value) {
-                        return Math.round(value);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-            }
-        }
-    }
-});
-
-// Swim ratings histogram ---------------------------------------------------------
-const swimRatingsCtx = document.getElementById('swim-ratings-canvas');
-const swimRatingsData = getJSON('swim-ratings-hist-data');
-
-new Chart(swimRatingsCtx, {
-    type: 'bar',
-    data: swimRatingsData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Overall Rating'
-                },
-                ticks: {
-                    stepSize: 100,
-                    callback: function(value) {
-                        return Math.round(value);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-            }
-        }
-    }
-});
-
-// Bike ratings histogram ---------------------------------------------------------
-const bikeRatingsCtx = document.getElementById('bike-ratings-canvas');
-const bikeRatingsData = getJSON('bike-ratings-hist-data');
-
-new Chart(bikeRatingsCtx, {
-    type: 'bar',
-    data: bikeRatingsData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Overall Rating'
-                },
-                ticks: {
-                    stepSize: 100,
-                    callback: function(value) {
-                        return Math.round(value);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-            }
-        }
-    }
-});
-
-// Run ratings histogram ---------------------------------------------------------
-const runRatingsCtx = document.getElementById('run-ratings-canvas');
-const runRatingsData = getJSON('run-ratings-hist-data');
-
-new Chart(runRatingsCtx, {
-    type: 'bar',
-    data: runRatingsData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Overall Rating'
-                },
-                ticks: {
-                    stepSize: 100,
-                    callback: function(value) {
-                        return Math.round(value);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-            }
-        }
-    }
-});
-
-// Transition ratings histogram ---------------------------------------------------------
-const transitionRatingsCtx = document.getElementById('transition-ratings-canvas');
-const transitionRatingsData = getJSON('transition-ratings-hist-data');
-
-new Chart(transitionRatingsCtx, {
-    type: 'bar',
-    data: transitionRatingsData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'index',
-                callbacks: {
-                    title: function(context) {
-                        const dataPoint = context[0].raw;
-                        return dataPoint.label;
-                    },
-                    label: function(context) {
-                        const athletes = context.raw.y;
-                        return `Athletes: ${athletes}`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Overall Rating'
-                },
-                ticks: {
-                    stepSize: 100,
-                    callback: function(value) {
-                        return Math.round(value);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                type: 'linear',
-                title: {
-                    display: true,
-                    text: 'Number of Athletes'
-                }
-            }
-        }
-    }
-});
+        });
+    });
+}

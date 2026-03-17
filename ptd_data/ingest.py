@@ -36,14 +36,25 @@ VALID_SPEC_IDS = {376, 377}
 _MALE_KEYWORDS = {'men', 'male'}
 _FEMALE_KEYWORDS = {'women', 'female'}
 
-# Programs whose first word matches one of these are competition rounds, not standalone races.
-# Everything else that also passes gender detection is accepted (Elite, AG, Para, Youth, etc.).
-_ROUND_PROG_PREFIXES = frozenset({'semifinal', 'final', 'qualifier', 'repechage', 'time'})
+_ELITE_PROG_PREFIXES = frozenset({'elite', 'u23', 'junior', 'youth'})
+
+
+def race_category(prog_name):
+    """Return 'elite', 'ag', or None (skip entirely, e.g. para/relay/mixed-team)."""
+    first = prog_name.lower().split()[0] if prog_name else ''
+    if first in _ELITE_PROG_PREFIXES:
+        return 'elite'
+    # Skip para, relay, and other non-individual formats
+    if first in ('para', 'ptvi', 'pts5', 'pts4', 'pts3', 'pts2', 'ptwc', 'awad',
+                 'relay', 'mixed', 'team', 'overall', 'open'):
+        return None
+    # Everything else (age-group brackets, masters, etc.) is AG
+    return 'ag'
 
 
 def is_valid_program(prog_name):
-    first = prog_name.lower().split()[0] if prog_name else ''
-    return first not in _ROUND_PROG_PREFIXES
+    """Legacy shim — True if this program should be processed at all."""
+    return race_category(prog_name) is not None
 
 
 def detect_gender(prog_name):
@@ -257,7 +268,8 @@ class Ingester:
 
             for prog in programs:
                 prog_name = prog.get('prog_name', '')
-                if not is_valid_program(prog_name):
+                category = race_category(prog_name)
+                if category is None:
                     continue
                 gender = detect_gender(prog_name)
                 if gender is None:
@@ -270,7 +282,7 @@ class Ingester:
                 if not results:
                     continue
 
-                if self._insert_program(event, prog, results, gender):
+                if self._insert_program(event, prog, results, gender, category):
                     new_count += 1
                     print(f"  Ingested: {prog_name} - {event.get('event_title', '')}")
 
@@ -291,7 +303,7 @@ class Ingester:
         results = response.json().get('data', {}).get('results', [])
         return results if results else []
 
-    def _insert_program(self, event, prog, results, gender):
+    def _insert_program(self, event, prog, results, gender, category):
         """Insert a race + its athletes + results into the DB.
 
         Returns False if no valid individual results (e.g. team events).
@@ -375,6 +387,7 @@ class Ingester:
             prog_name=str(prog.get('prog_name', '')),
             race_date=race_date,
             gender=gender,
+            category=category,
             cat_ids=str(get_category_ids(event)),
             race_handle=generate_race_handle(prog_id, race_title, location, race_date),
             event_spec_ids=str(get_spec_ids(event)),

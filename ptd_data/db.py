@@ -18,6 +18,7 @@ def get_conn(read_only=False):
 
 def create_schema(conn):
     conn.execute("CREATE TYPE IF NOT EXISTS gender_enum AS ENUM ('male', 'female')")
+    conn.execute("CREATE TYPE IF NOT EXISTS category_enum AS ENUM ('elite', 'ag')")
     conn.execute(
         "CREATE TYPE IF NOT EXISTS result_status_enum AS ENUM "
         "('Finished', 'DNF', 'DNS', 'DQ', 'LAP', 'NC')"
@@ -87,6 +88,7 @@ def create_schema(conn):
             prog_name       VARCHAR NOT NULL,
             race_date       DATE NOT NULL,
             gender          gender_enum NOT NULL,
+            category        category_enum NOT NULL DEFAULT 'elite',
             cat_ids         VARCHAR NOT NULL DEFAULT '[]',
             race_handle     VARCHAR NOT NULL DEFAULT '',
             event_spec_ids  VARCHAR NOT NULL DEFAULT '[]'
@@ -135,6 +137,7 @@ def create_schema(conn):
         CREATE TABLE IF NOT EXISTS ratings (
             race_id             INTEGER NOT NULL REFERENCES races(race_id),
             athlete_id          INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            category            category_enum NOT NULL,
             overall             DOUBLE NOT NULL DEFAULT 0,
             swim                DOUBLE NOT NULL DEFAULT 0,
             bike                DOUBLE NOT NULL DEFAULT 0,
@@ -145,7 +148,7 @@ def create_schema(conn):
             bike_change         DOUBLE NOT NULL DEFAULT 0,
             run_change          DOUBLE NOT NULL DEFAULT 0,
             transition_change   DOUBLE NOT NULL DEFAULT 0,
-            PRIMARY KEY (race_id, athlete_id)
+            PRIMARY KEY (race_id, athlete_id, category)
         )
     """)
 
@@ -153,6 +156,7 @@ def create_schema(conn):
         CREATE TABLE IF NOT EXISTS rankings (
             race_id                 INTEGER NOT NULL REFERENCES races(race_id),
             athlete_id              INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            category                category_enum NOT NULL,
             world_overall           INTEGER NOT NULL,
             world_swim              INTEGER NOT NULL,
             world_bike              INTEGER NOT NULL,
@@ -163,7 +167,7 @@ def create_schema(conn):
             national_bike           INTEGER NOT NULL,
             national_run            INTEGER NOT NULL,
             national_transition     INTEGER NOT NULL,
-            PRIMARY KEY (race_id, athlete_id)
+            PRIMARY KEY (race_id, athlete_id, category)
         )
     """)
 
@@ -244,16 +248,16 @@ def upsert_athlete(conn, athlete_id, name, country_full, year_of_birth, profile_
     )
 
 
-def insert_race(conn, race_id, event_id, race_title, prog_name, race_date, gender, cat_ids, race_handle='', event_spec_ids='[]'):
+def insert_race(conn, race_id, event_id, race_title, prog_name, race_date, gender, category, cat_ids, race_handle='', event_spec_ids='[]'):
     """Insert a race, skip if it already exists."""
     conn.execute(
         """
         INSERT OR IGNORE INTO races
-            (race_id, event_id, race_title, prog_name, race_date, gender,
+            (race_id, event_id, race_title, prog_name, race_date, gender, category,
              cat_ids, race_handle, event_spec_ids)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        [race_id, event_id, race_title, prog_name, race_date, gender,
+        [race_id, event_id, race_title, prog_name, race_date, gender, category,
          cat_ids, race_handle, event_spec_ids],
     )
 

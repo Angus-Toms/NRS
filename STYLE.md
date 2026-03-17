@@ -418,6 +418,35 @@ Use Feather-style inline SVGs (`stroke="currentColor"`, `fill="none"`) so icons 
 <span>📍</span>
 ```
 
+### Chevron navigation
+
+Use inline SVG chevrons (`polyline points`) for all inter-page navigation links. Left-pointing for "back" links, right-pointing for "forward" / detail links. Always pair the chevron with a text label — never use the chevron alone.
+
+| Direction | Use case | Points value |
+|-----------|----------|--------------|
+| Left `‹` | Back to parent (e.g. "Back to event") | `"15 18 9 12 15 6"` |
+| Right `›` | Forward to detail (e.g. "Full Results", "View race") | `"9 18 15 12 9 6"` |
+
+Standard size: `width="10" height="10" stroke-width="2.5"` for inline text links, `width="12" height="12"` for card footer links.
+
+```html
+<!-- back link -->
+<a href="/event/{{ event_id }}" class="back-link">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Back to event
+</a>
+
+<!-- forward link -->
+<a href="/race/{{ race.race_id }}" class="results-link">
+    Full Results
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+</a>
+```
+
 ---
 
 ## Profile Photos

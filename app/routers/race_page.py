@@ -94,7 +94,7 @@ def _build_rating_histograms(rating_values, bins=20):
 
 
 @router.get("/race/{race_id}", response_class=HTMLResponse)
-async def get_race(request: Request, race_id: int):
+async def get_race(request: Request, race_id: int, partial: bool = False):
     race = queries.get_race_info(race_id)
     if not race:
         raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
@@ -163,6 +163,9 @@ async def get_race(request: Request, race_id: int):
     time_hists   = _build_time_histograms(queries.get_race_time_values(race_id))
     rating_hists = _build_rating_histograms(queries.get_race_rating_values(race_id))
 
+    event_id = race.get("event_id")
+    event_races = queries.get_races_by_event(event_id) if event_id else []
+
     _venue = race["location"]
     race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
     race_country  = str(race["country"]).replace('"', '').replace("'", "")
@@ -173,13 +176,15 @@ async def get_race(request: Request, race_id: int):
     for disc in ["overall", "swim", "bike", "run", "transition"]:
         race[f"{disc}_increase_athlete_id"] = best_perf[f"{disc}_athlete_id"] or 0
 
-    return templates.TemplateResponse("race.html", {
+    template = "race_partial.html" if partial else "race.html"
+    return templates.TemplateResponse(template, {
         "request":        request,
         "active_page":    "races",
         "race":           race,
         "race_location":  race_location,
         "race_country":   race_country,
-        "event_id":       race.get("event_id"),
+        "event_id":       event_id,
+        "event_races":    event_races,
         "finish_count":   finish_count,
         "dnf_count":      dnf_count,
         "race_standards": race_standards,
