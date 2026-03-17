@@ -1,0 +1,61 @@
+<div class="race-hero" data-race-id="{{ race.race_id }}">
+    <div class="race-hero-inner">
+        <!-- Left: back nav + title + metadata + race switcher -->
+        <div class="race-hero-left">
+            {% if event_id %}
+            <a href="/event/{{ event_id }}" class="back-link">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back to event
+            </a>
+            {% endif %}
+            <h1 class="race-hero-title">{{ race.race_title }}</h1>
+            <div class="race-hero-meta">
+                <span>{{ race.date.strftime('%B %d, %Y') }}</span>
+                <span class="race-meta-dot">·</span>
+                <span>{% if race_location %}{{ race_location }}, {% endif %}{{ race_country }}</span>
+            </div>
+            <div class="race-hero-finishers">
+                {{ race.athlete_count }} athletes · {{ finish_count }} finishers · {{ dnf_count }} DNFs
+            </div>
+            {% if event_races|length > 1 %}
+            <div class="race-switcher">
+                {% set max_pills = 5 %}
+                {% for r in event_races[:max_pills] %}
+                <button class="race-pill{{ ' active' if r.race_id == race.race_id else '' }}"
+                        onclick="switchRace({{ r.race_id }})">{{ r.prog_name }}</button>
+                {% endfor %}
+                {% if event_races|length > max_pills %}
+                <a href="/event/{{ event_id }}" class="race-pill race-pill-more">+{{ event_races|length - max_pills }} more</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: podium -->
+        {% if splits_data %}
+        <div class="race-hero-podium">
+            <div class="podium-label">Podium</div>
+            {% for athlete in splits_data[:3] %}
+                {% if athlete.position in [1, 2, 3] %}
+                <div class="podium-row">
+                    <div class="podium-row-left">
+                        <span class="pos-circle {{ 'gold' if athlete.position == 1 else 'silver' if athlete.position == 2 else 'bronze' }}">{{ athlete.position }}</span>
+                        <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}" alt="" class="podium-row-img">
+                        <a href="/athlete/{{ athlete.athlete_id }}" class="podium-row-name">{{ athlete.name }} {{ athlete.country_emoji }}</a>
+                    </div>
+                    <div class="podium-row-right">
+                        {% if athlete.overall_behind_s %}
+                            <span class="podium-gap">{{ athlete.overall_behind_s }}</span>
+                        {% else %}
+                            <span class="podium-time">{{ athlete.overall_s }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
