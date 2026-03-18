@@ -33,9 +33,8 @@ def format_time_behind(seconds_behind: int) -> str:
     time_fmt = format_time(seconds_behind)
     return f"+{time_fmt}"
     
-def format_rating(rating: float) -> float:
-    # Float required as Jinja logic needs to do comparisons to determine class
-    return round(rating, 1)
+def format_rating(rating: float) -> int:
+    return int(round(rating))
 
 def format_rating_change(change: float) -> dict:
     """
@@ -59,12 +58,12 @@ def format_rating_change(change: float) -> dict:
     
     if change > 0:
         return {
-            "formatted_str": f"{_SVG_UP}{change:.1f}",
+            "formatted_str": f"{_SVG_UP}{int(round(change))}",
             "css_class": "rating-increase"
         }
 
     return {
-        "formatted_str": f"{_SVG_DOWN}{-change:.1f}",
+        "formatted_str": f"{_SVG_DOWN}{int(round(-change))}",
         "css_class": "rating-decrease"
     }
 

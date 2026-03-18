@@ -159,6 +159,30 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         best_performances[f"{disc}_change"]       = format_rating_change(best_perf[f"{disc}_change"])
         best_performances[f"{disc}_athlete_name"] = best_perf[f"{disc}_athlete_name"]
 
+    # Prediction model data: rating→time pairs with race-count weights for WLS
+    # Store full rating record so discipline models can be fitted in JS
+    ratings_by_id  = {r["athlete_id"]: r for r in ratings}
+    finisher_ids   = [r["athlete_id"] for r in results
+                      if r["status"] not in DNF_STATUSES and (r["overall_s"] or 0) > 0]
+    race_count_map = queries.get_athlete_race_counts(finisher_ids)
+    prediction_data = [
+        {
+            "rating":      rat["overall_rating"],
+            "time":        r["overall_s"],
+            "swim_rating": rat["swim_rating"],
+            "swim_time":   r["swim_s"] if (r["swim_s"] or 0) > 0 else None,
+            "bike_rating": rat["bike_rating"],
+            "bike_time":   r["bike_s"] if (r["bike_s"] or 0) > 0 else None,
+            "run_rating":  rat["run_rating"],
+            "run_time":    r["run_s"] if (r["run_s"] or 0) > 0 else None,
+            "w":           max(1, race_count_map.get(r["athlete_id"], 1)),
+        }
+        for r in results
+        if r["status"] not in DNF_STATUSES
+        and (r["overall_s"] or 0) > 0
+        and (rat := ratings_by_id.get(r["athlete_id"])) is not None
+    ]
+
     # Histograms
     time_hists   = _build_time_histograms(queries.get_race_time_values(race_id))
     rating_hists = _build_rating_histograms(queries.get_race_rating_values(race_id))
@@ -202,4 +226,5 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "bike_rating_hist":        rating_hists.get("bike", {}),
         "run_rating_hist":         rating_hists.get("run", {}),
         "transition_rating_hist":  rating_hists.get("transition", {}),
+        "prediction_data":         prediction_data,
     })

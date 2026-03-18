@@ -1,81 +1,130 @@
-// Search functionality
-let searchTimeout;
-const searchInput = document.getElementById('athleteSearch');
-const searchResults = document.getElementById('searchResults');
+// Athletes landing page — live search + filters
+const baseUrl    = window.STATIC_BASE_URL || '';
+const defaultImg = `${baseUrl}imgs/default_user.jpg`;
 
-if (searchInput && searchResults) {
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        
-        // Clear previous timeout
-        clearTimeout(searchTimeout);
-        
-        // Hide results if query is too short
-        if (query.length < 3) {
-            searchResults.style.display = 'none';
-            return;
-        }
-        
-        // Show loading state
-        searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
-        searchResults.style.display = 'block';
-        
-        // Debounce search
-        searchTimeout = setTimeout(() => {
-            performSearch(query);
-        }, 300);
-    });
-}
+const input      = document.getElementById('as-input');
+const results    = document.getElementById('as-results');
+const filterBtn  = document.getElementById('as-filter-toggle');
+const filterPane = document.getElementById('as-filters');
+const countryEl  = document.getElementById('as-country');
+const yobStart   = document.getElementById('as-yob-start');
+const yobEnd     = document.getElementById('as-yob-end');
+const activeOnly = document.getElementById('as-active-only');
+const activeText = document.getElementById('as-active-text');
 
-async function performSearch(query) {
-    try {
-        const response = await fetch(`/athletes/search?q=${encodeURIComponent(query)}`);
-        const results = await response.json();
-        
-        displayResults(results);
-    } catch (error) {
-        console.error('Search error:', error);
-        searchResults.innerHTML = '<div class="no-results">Error performing search</div>';
-    }
-}
+let searchTimer = null;
 
-function displayResults(results) {
-    if (results.length === 0) {
-        searchResults.innerHTML = '<div class="no-results">No athletes found</div>';
-        return;
-    }
+function getDisc()  { return document.querySelector('[name="as-disc"]:checked')?.value  || 'overall'; }
+function getOrder() { return document.querySelector('[name="as-order"]:checked')?.value || 'top'; }
 
-    const baseUrl = window.STATIC_BASE_URL || '';
-    const defaultImg = `${baseUrl}imgs/default_user.jpg`;
-
-    const html = results.map(athlete => {
-        const imgSrc = `${baseUrl}athlete_imgs/128/${athlete.athlete_id}.webp`;
-        return `
-        <a href="/athlete/${athlete.athlete_id}" class="search-result-item">
-            <img class="result-avatar" src="${imgSrc}" onerror="this.src='${defaultImg}'" alt="${escapeHtml(athlete.name)}">
-            <div class="result-info">
-                <div class="result-name">${escapeHtml(athlete.name)}</div>
-                <div class="result-meta">${athlete.country} ${escapeHtml(athlete.country_full)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</div>
-            </div>
-        </a>`;
-    }).join('');
-
-    searchResults.innerHTML = html;
-}
-
-// Close search results when clicking outside
-document.addEventListener('click', function(event) {
-    if (!searchResults || !searchInput) return;
-    if (!event.target.closest('.search-container')) {
-        searchResults.style.display = 'none';
+// ── Filter toggle ──
+filterBtn.addEventListener('click', () => {
+    const open = filterPane.hasAttribute('hidden');
+    if (open) {
+        filterPane.removeAttribute('hidden');
+        filterBtn.setAttribute('aria-expanded', 'true');
+    } else {
+        filterPane.setAttribute('hidden', '');
+        filterBtn.setAttribute('aria-expanded', 'false');
     }
 });
 
-// Reopen results when focusing on input with existing query
-if (searchInput && searchResults) {
-    searchInput.addEventListener('focus', function() {
-        if (this.value.trim().length >= 3 && searchResults.innerHTML.trim() !== '') {
-            searchResults.style.display = 'block';
+// ── Radio + select + YOB + active toggle all re-run search ──
+document.querySelectorAll('[name="as-disc"], [name="as-order"]').forEach(r => {
+    r.addEventListener('change', triggerSearch);
+});
+countryEl.addEventListener('change', triggerSearch);
+yobStart.addEventListener('input', triggerSearch);
+yobEnd.addEventListener('input', triggerSearch);
+activeOnly.addEventListener('change', () => {
+    activeText.textContent = activeOnly.checked ? 'On' : 'Off';
+    triggerSearch();
+});
+
+// ── YOB presets (data-preset attr distinguishes from leaderboard's data-age) ──
+document.querySelectorAll('.btn-age-preset[data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        if (preset === 'junior') {
+            yobStart.value = 2007;
+            yobEnd.value   = '';
+        } else if (preset === 'u23') {
+            yobStart.value = 2004;
+            yobEnd.value   = 2006;
+        } else {
+            yobStart.value = '';
+            yobEnd.value   = '';
         }
+        triggerSearch();
     });
+});
+
+// ── Search input ──
+input.addEventListener('input', triggerSearch);
+
+function triggerSearch() {
+    clearTimeout(searchTimer);
+    const q = input.value.trim();
+    if (q.length < 2) {
+        results.innerHTML = '';
+        return;
+    }
+    searchTimer = setTimeout(() => runSearch(q), 200);
+}
+
+async function runSearch(q) {
+    results.innerHTML = '<div class="as-loading">Searching…</div>';
+
+    const params = new URLSearchParams({ q, disc: getDisc(), order: getOrder() });
+    if (countryEl.value)    params.set('country', countryEl.value);
+    if (yobStart.value)     params.set('yob_start', yobStart.value);
+    if (yobEnd.value)       params.set('yob_end', yobEnd.value);
+    if (activeOnly.checked) params.set('active_only', 'true');
+
+    const res  = await fetch(`/athletes/search?${params}`);
+    const data = await res.json();
+    renderResults(data, getDisc(), getOrder());
+}
+
+function renderResults(athletes, disc, order) {
+    if (!athletes.length) {
+        results.innerHTML = '<div class="as-no-results">No athletes found</div>';
+        return;
+    }
+
+    const LABELS = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run' };
+    const hotCls = order === 'hot' ? ' athlete-ratings-hot' : '';
+
+    results.innerHTML = athletes.map(a => {
+        const img = a.has_img ? `${baseUrl}athlete_imgs/128/${a.athlete_id}.webp` : defaultImg;
+
+        // Ratings block — 4 disciplines, active one highlighted
+        const ratingsHtml = ['overall', 'swim', 'bike', 'run'].map(d => `
+            <div class="rating-item">
+                <span class="rating-label">${LABELS[d]}</span>
+                <span class="rating-value${d === disc ? ' rating-highlight' : ''}">${a[d + '_rating']}</span>
+            </div>`).join('');
+
+        // Meta row — flag · country · YOB · races · wins
+        const yobItem  = a.year_of_birth ? `<span class="meta-item">b. ${a.year_of_birth}</span>` : '';
+        const metaHtml = `
+            <span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>
+            ${yobItem}
+            <span class="meta-item"><span class="meta-val">${a.race_starts}</span> races</span>
+            <span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>`;
+
+        return `
+        <a href="/athlete/${a.athlete_id}" class="as-result-item">
+            <img class="as-result-avatar" src="${img}" alt="${escapeHtml(a.name)}" onerror="this.src='${defaultImg}'">
+            <div class="as-result-info">
+                <div class="as-result-name">${escapeHtml(a.name)}</div>
+                <div class="athlete-meta">${metaHtml}</div>
+            </div>
+            <div class="athlete-ratings${hotCls}">${ratingsHtml}</div>
+        </a>`;
+    }).join('');
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }

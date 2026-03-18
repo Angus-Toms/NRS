@@ -78,6 +78,90 @@ def search_athletes(query, gender=None):
     return [dict(zip(cols, r)) for r in rows]
 
 
+def search_athletes_full(query, disc="overall", order="top", country=None,
+                         yob_start=None, yob_end=None, active_only=False, limit=10):
+    """
+    Name search with filter/sort options for the athletes landing page.
+    Returns leaderboard-style dicts with ratings and 1yr disc change.
+    """
+    assert disc in _VALID_DISCS and order in _VALID_ORDERS
+    conn = _get_conn()
+
+    filters = ["a.name ILIKE ?"]
+    params  = [f"%{query}%"]
+    if country:
+        filters.append("a.country_full = ?")
+        params.append(country)
+    if yob_start:
+        filters.append("a.year_of_birth >= ?")
+        params.append(int(yob_start))
+    if yob_end:
+        filters.append("a.year_of_birth <= ?")
+        params.append(int(yob_end))
+    if active_only:
+        filters.append("c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR")
+
+    where = " AND ".join(filters)
+    order_clause = (
+        f"c.{disc} DESC" if order == "top"
+        else f"COALESCE(c.{disc} - ya.{disc}, 0) DESC"
+    )
+
+    rows = conn.execute(f"""
+        WITH current AS (
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id,
+                   ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                   r.race_date AS last_race_date
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+        ),
+        year_ago AS (
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id,
+                   ra.overall, ra.swim, ra.bike, ra.run, ra.transition
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE r.race_date <= CURRENT_DATE - INTERVAL 1 YEAR
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+        ),
+        athlete_stats AS (
+            SELECT athlete_id,
+                   COUNT(*) AS race_starts,
+                   COUNT(CASE WHEN position = 1 THEN 1 END) AS wins
+            FROM results
+            GROUP BY athlete_id
+        )
+        SELECT
+            a.athlete_id,
+            a.name,
+            a.year_of_birth,
+            a.gender,
+            n.alpha3    AS country_alpha3,
+            n.emoji     AS country_emoji,
+            a.country_full,
+            a.profile_img,
+            c.overall, c.swim, c.bike, c.run, c.transition,
+            COALESCE(s.race_starts, 0) AS race_starts,
+            COALESCE(s.wins, 0)        AS wins
+        FROM athletes a
+        JOIN nationalities n ON a.country_full = n.country_full
+        JOIN current c       ON a.athlete_id = c.athlete_id
+        LEFT JOIN year_ago ya ON a.athlete_id = ya.athlete_id
+        LEFT JOIN athlete_stats s ON a.athlete_id = s.athlete_id
+        WHERE {where}
+        ORDER BY {order_clause}
+        LIMIT ?
+    """, params + [limit]).fetchall()
+
+    cols = ["athlete_id", "name", "year_of_birth", "gender", "country_alpha3",
+            "country_emoji", "country_full", "profile_img",
+            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
+            "race_starts", "wins"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
 def get_podium(gender):
     """
     Top 3 athletes by current overall rating for a given gender.
@@ -188,8 +272,16 @@ def get_recent_events(offset, limit):
         for race_id, position, athlete_id, name, emoji, overall_s in podium_rows:
             podium_by_race.setdefault(race_id, []).append(
                 {"position": position, "athlete_id": athlete_id, "name": name,
-                 "emoji": emoji, "time": _fmt_time(overall_s)}
+                 "emoji": emoji, "overall_s": overall_s}
             )
+        # Compute gap (time diff from winner) for 2nd and 3rd
+        for entries in podium_by_race.values():
+            winner_s = next((e["overall_s"] for e in entries if e["position"] == 1), None)
+            for e in entries:
+                e["time"] = _fmt_time(e["overall_s"])
+                e["gap"] = (f"+{_fmt_time(e['overall_s'] - winner_s)}"
+                            if e["position"] != 1 and winner_s and e["overall_s"] else None)
+                del e["overall_s"]
         for event in event_map.values():
             for race in event["races"][:2]:
                 race["podium"] = podium_by_race.get(race["race_id"], [])
@@ -1114,6 +1206,18 @@ def get_race_time_values(race_id):
         if r[4] > 0: result["t1"].append(r[4])
         if r[5] > 0: result["t2"].append(r[5])
     return result
+
+
+def get_athlete_race_counts(athlete_ids):
+    """Returns {athlete_id: total_race_count} for weighting the prediction regression."""
+    if not athlete_ids:
+        return {}
+    pl = ','.join('?' * len(athlete_ids))
+    rows = _get_conn().execute(
+        f"SELECT athlete_id, COUNT(*) FROM results WHERE athlete_id IN ({pl}) GROUP BY athlete_id",
+        athlete_ids,
+    ).fetchall()
+    return {row[0]: row[1] for row in rows}
 
 
 def get_race_rating_values(race_id):

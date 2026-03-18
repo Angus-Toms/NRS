@@ -1,478 +1,524 @@
 /* ============================================
-   ATHLETES SEARCH PAGE
+   ATHLETES PAGE
+   Shared components (radio-chips, athlete-ratings,
+   athlete-meta, btn-age-preset, btn-search) live in base.css.
    ============================================ */
 
-.athlete-page {
+/* ── Hero stats (right side of page-hero) ── */
+.as-hero-stats {
     display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xl);
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
 }
 
-.athlete-hero {
+.as-hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.as-hero-stat-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.as-hero-stat-lbl {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+}
+
+.as-hero-stat-sep {
+    width: 1px;
+    height: 2.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+/* ── Search box ── */
+.as-search-box {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    padding: var(--spacing-xl);
-    box-shadow: var(--box-shadow);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--spacing-xl);
-    align-items: center;
-    position: relative;
-    overflow: visible;
+    overflow: hidden;
+    margin-bottom: 2rem;
 }
 
-.athlete-hero > * {
-    position: relative;
-    z-index: 1;
-}
-
-.hero-copy h1 {
-    font-size: 2.25rem;
-    margin: 0 0 var(--spacing-sm) 0;
-    color: var(--text-color);
-}
-
-.hero-lede {
-    margin: 0 0 var(--spacing-md) 0;
-    color: var(--text-light);
-    max-width: 520px;
-}
-
-.hero-stats {
+.as-search-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-md);
+    align-items: stretch;
 }
 
-.stat-pill {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-md) var(--spacing-lg);
-    min-width: 160px;
-    box-shadow: var(--box-shadow);
-}
-
-.stat-label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-lighter);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: var(--spacing-xs);
-}
-
-.stat-value {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--text-color);
-}
-
-.search-card {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    padding: var(--spacing-lg);
-    border-left: 4px solid var(--primary-color);
+.as-input-wrapper {
     position: relative;
-    z-index: 5;
+    flex: 1;
 }
 
-.search-card-header {
-    margin-bottom: var(--spacing-md);
-}
-
-.search-label {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    color: var(--text-lighter);
-    margin: 0 0 var(--spacing-xs) 0;
-}
-
-.search-card-header h3 {
-    margin: 0 0 var(--spacing-xs) 0;
-    color: var(--text-color);
-}
-
-.search-container {
-    position: relative;
-    width: 100%;
-}
-
-.search-input-wrapper {
-    position: relative;
-}
-
-.search-input {
-    width: 100%;
-    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 3rem;
-    font-size: var(--font-size-base);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
-    box-sizing: border-box;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(53, 122, 189, 0.15);
-    background: var(--white);
-}
-
-.search-icon {
+.as-search-icon {
     position: absolute;
-    left: var(--spacing-md);
+    left: 1rem;
     top: 50%;
     transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     color: var(--text-lighter);
     pointer-events: none;
 }
 
-/* Search Results */
-.search-results {
-    position: absolute;
-    top: calc(100% + var(--spacing-sm));
-    left: 0;
-    right: 0;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow-lg);
-    max-height: 400px;
-    overflow-y: auto;
-    z-index: 1000;
-}
-
-.athlete-hero .search-results {
-    max-height: 300px;
-    z-index: 20;
-}
-
-.search-result-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background-color var(--transition-fast);
-    text-decoration: none;
+.as-input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    font-size: 0.975rem;
+    font-family: inherit;
+    border: none;
+    border-right: 1px solid var(--border-color);
+    background: transparent;
+    box-sizing: border-box;
+    outline: none;
     color: var(--text-color);
 }
 
-.search-result-item:last-child {
+.as-input:focus {
+    background: var(--white);
+    border-right-color: var(--primary-color);
+    outline: none;
+}
+
+.as-search-box:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.1);
+}
+
+.as-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0 1.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--text-light);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), background var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.as-filter-toggle:hover,
+.as-filter-toggle[aria-expanded="true"] {
+    color: var(--primary-color);
+    background: rgba(231, 100, 30, 0.05);
+}
+
+/* ── Filter panel ── */
+.as-filters {
+    border-top: 1px solid var(--border-color);
+    background: var(--white);
+}
+
+/* Primary row: radio chip groups + active toggle, separated by .filter-v-divider */
+.as-filter-primary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    padding: 0.875rem 1.25rem;
+}
+
+/* Secondary row: country + YOB */
+.as-filter-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: flex-end;
+    padding: 0 1.25rem 0.875rem;
+}
+
+/* ── Search results ── */
+.as-results {
+    border-top: 1px solid var(--border-color);
+}
+
+.as-results:empty {
+    display: none;
+}
+
+.as-result-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.65rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--transition-fast);
+}
+
+.as-result-item:last-child {
     border-bottom: none;
 }
 
-.search-result-item:hover {
-    background-color: var(--bg-color);
+.as-result-item:hover {
+    background: var(--bg-color);
 }
 
-.result-info {
+.as-result-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid var(--navy);
+}
+
+.as-result-info {
     flex: 1;
+    min-width: 0;
 }
 
-.result-name {
+.as-result-name {
+    font-size: 0.95rem;
     font-weight: 600;
-    margin-bottom: var(--spacing-xs);
     color: var(--text-color);
-}
-
-.result-meta {
-    font-size: var(--font-size-sm);
-    color: var(--text-light);
-    line-height: 1.4;
-}
-
-.no-results {
-    padding: var(--spacing-lg);
-    text-align: center;
-    color: var(--text-light);
-}
-
-.search-loading {
-    padding: var(--spacing-lg);
-    text-align: center;
-    color: var(--text-light);
-}
-
-.leaderboards-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-.comparison-callout {
-    display: flex;
-    flex-direction: column;
-}
-
-.comparison-callout-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-lg);
-    background: linear-gradient(120deg, rgba(53, 122, 189, 0.08), rgba(53, 122, 189, 0.02));
-    border: 1px solid rgba(53, 122, 189, 0.18);
-    border-radius: var(--border-radius-lg);
-    padding: var(--spacing-lg) var(--spacing-xl);
-    box-shadow: var(--box-shadow);
-}
-
-.comparison-callout-copy {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.comparison-eyebrow {
-    margin: 0;
-    color: var(--text-lighter);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.75rem;
-}
-
-.comparison-title {
-    margin: 0;
-    color: var(--text-color);
-    font-size: 1.4rem;
-}
-
-.comparison-text {
-    margin: 0;
-    color: var(--text-light);
-    max-width: 520px;
-}
-
-.comparison-link {
-    text-decoration: none;
-    color: var(--white);
-    background: var(--primary-color);
-    padding: 0.65rem 1.4rem;
-    border-radius: var(--border-radius);
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: background-color var(--transition-fast), transform var(--transition-fast);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--transition-fast);
 }
 
-.comparison-link:hover {
-    background: var(--primary-hover);
+/* Orange name on row hover */
+.as-result-item:hover .as-result-name {
+    color: var(--primary-color);
+}
+
+.as-no-results,
+.as-loading {
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    color: var(--text-lighter);
+    text-align: center;
+}
+
+/* ── Currently Trending (champ-cards) ── */
+.as-champs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.as-champ-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.as-champ-card:hover {
+    border-color: var(--primary-color);
     box-shadow: var(--box-shadow-hover);
 }
 
-
-.leaderboard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--spacing-lg);
+.as-champ-header {
+    background: var(--navy);
+    padding: 0.55rem 1.25rem;
 }
 
-.leaderboard-card {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    padding: var(--spacing-lg);
-    box-shadow: var(--box-shadow);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
-.leaderboard-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-}
-
-.leaderboard-eyebrow {
+.as-champ-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    color: var(--text-lighter);
-    margin: 0 0 var(--spacing-xs) 0;
+    letter-spacing: 0.1em;
+    color: #fff;
+    transition: color var(--transition-fast);
 }
 
-.leaderboard-card h3 {
-    margin: 0;
-    color: var(--text-color);
+.as-champ-card:hover .as-champ-badge {
+    color: var(--primary-color);
 }
 
-.leaderboard-link {
-    text-decoration: none;
-    color: var(--white);
-    background: var(--primary-color);
-    padding: 0.5rem 1.2rem;
-    border-radius: var(--border-radius);
-    font-size: 0.9rem;
-    transition: background-color var(--transition-fast), transform var(--transition-fast);
-}
-
-.leaderboard-link:hover {
-    background: var(--primary-hover);
-}
-
-.podium-steps {
+.as-champ-body {
     display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    gap: var(--spacing-sm);
-    padding: 32px var(--spacing-md) var(--spacing-md);
-    position: relative;
-    min-height: 250px;
-}
-
-.podium-step {
-    position: relative;
-    text-decoration: none;
-    color: var(--text-color);
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
-    padding: var(--spacing-md);
-    padding-top: 48px;
-    text-align: center;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    gap: var(--spacing-xs);
-    box-sizing: border-box;
-    /* border: 1px solid; */
-    border-bottom: none;
+    gap: 1.25rem;
+    padding: 1.25rem 1.5rem;
     flex: 1;
-    max-width: 200px;
 }
 
-.podium-step:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-.podium-avatar-wrap {
-    position: absolute;
-    top: -36px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2;
-}
-
-.podium-avatar {
+.as-champ-img {
     width: 72px;
     height: 72px;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid var(--white);
-    background: var(--bg-color);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    border: 2px solid var(--navy);
 }
 
-.podium-name {
+.as-champ-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.as-champ-namerow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    min-width: 0;
+}
+
+.as-champ-flag {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.as-champ-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.as-champ-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.as-champ-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.as-champ-stat-num {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.as-champ-stat-num.positive {
+    color: var(--success-color);
+}
+
+.as-champ-stat-lbl {
+    font-size: 0.67rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-lighter);
     font-weight: 600;
-    margin: 0;
-    font-size: 0.95rem;
 }
 
-.podium-meta {
-    font-size: var(--font-size-sm);
+.as-champ-stat-div {
+    width: 1px;
+    height: 1.8rem;
+    background: var(--border-color);
+    flex-shrink: 0;
+}
+
+/* ── Head-to-Head widget ── */
+.as-compare-widget {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+}
+
+.as-compare-copy {
+    min-width: 0;
+}
+
+.as-compare-lead {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.35rem;
+}
+
+.as-compare-desc {
+    font-size: 0.875rem;
     color: var(--text-light);
     margin: 0;
+    max-width: 520px;
+    line-height: 1.6;
 }
 
-.podium-rating {
+.as-compare-btn {
+    display: inline-block;
+    padding: 0.6rem 1.4rem;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.875rem;
     font-weight: 700;
+    text-decoration: none;
     border-radius: var(--border-radius);
-    padding: 0.35rem 0.85rem;
-    display: inline-flex;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.as-compare-btn:hover {
+    background: var(--primary-hover);
+}
+
+/* ── All-time Leaderboards ── */
+.as-lb-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.as-lb-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.as-lb-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
+}
+
+.as-lb-card-header {
+    background: var(--navy);
+    padding: 0.55rem 1.25rem;
+}
+
+.as-lb-card-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #fff;
+    transition: color var(--transition-fast);
+}
+
+.as-lb-card:hover .as-lb-card-title {
+    color: var(--primary-color);
+}
+
+.as-lb-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.as-lb-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.as-lb-item:last-child {
+    border-bottom: none;
+}
+
+.as-lb-pos {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    margin-top: var(--spacing-sm);
-    min-width: 72px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    background: var(--border-color);
+    color: var(--text-light);
 }
 
-/* Position 1 - Gold */
-.podium-step.position-1 {
-    height: 250px;
-    background: rgba(255, 215, 0, 0.15);
-    order: 2;
+.as-lb-pos--1 { background: var(--gold);   color: var(--gold-text); }
+.as-lb-pos--2 { background: var(--silver); color: var(--silver-text); }
+.as-lb-pos--3 { background: var(--bronze); color: var(--bronze-text); }
+
+.as-lb-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
-.podium-step.position-1 .podium-avatar {
-    border-color: #ffd700;
-    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.5);
+.as-lb-rating {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
 }
 
-.podium-step.position-1 .podium-rating {
-    background: rgba(255, 215, 0, 0.35);
-    color: #5a4812;
-}
-
-/* Position 2 - Silver */
-.podium-step.position-2 {
-    height: 200px;
-    background: rgba(192, 192, 192, 0.15);
-    order: 1;
-}
-
-.podium-step.position-2 .podium-avatar {
-    border-color: #c0c0c0;
-    box-shadow: 0 4px 16px rgba(192, 192, 192, 0.5);
-}
-
-.podium-step.position-2 .podium-rating {
-    background: rgba(192, 192, 192, 0.35);
-    color: #3a3a3a;
-}
-
-/* Position 3 - Bronze */
-.podium-step.position-3 {
-    height: 150px;
-    background: rgba(205, 127, 50, 0.15);
-    order: 3;
-}
-
-.podium-step.position-3 .podium-avatar {
-    border-color: #cd7f32;
-    box-shadow: 0 4px 16px rgba(205, 127, 50, 0.5);
-}
-
-.podium-step.position-3 .podium-rating {
-    background: rgba(205, 127, 50, 0.3);
-    color: #4a2a11;
-}
-
-@media (max-width: 1100px) {
-    .leaderboard-grid {
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .as-champs-grid,
+    .as-lb-grid {
         grid-template-columns: 1fr;
     }
+
+    .as-compare-widget {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .as-filter-primary,
+    .as-filter-secondary {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .filter-v-divider {
+        display: none;
+    }
+
+    .as-hero-stats {
+        display: none;
+    }
 }
 
-@media (max-width: 900px) {
-    .hero-copy h1 {
-        font-size: 1.8rem;
+@media (max-width: 600px) {
+    .as-result-item .athlete-ratings {
+        display: none;
     }
 
-    /* .leaderboard-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-    } */
-
-    .comparison-callout-card {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .comparison-link {
-        align-self: flex-start;
+    .as-champ-img {
+        width: 52px;
+        height: 52px;
     }
 }

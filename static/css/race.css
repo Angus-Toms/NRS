@@ -237,6 +237,229 @@
 }
 
 /* ============================================
+   PREDICTION — section head row + search bar + predicted row
+   ============================================ */
+
+/* Flex wrapper so the section title and button sit on one line */
+.results-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.results-section-head .page-section-head {
+    margin-bottom: 0;   /* parent owns the margin */
+}
+
+.btn-add-prediction {
+    flex-shrink: 0;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-add-prediction:hover {
+    background: var(--primary-hover);
+}
+
+/* Full-screen modal overlay */
+.prediction-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.prediction-modal.hidden { display: none; }
+
+.prediction-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.prediction-modal-content {
+    position: relative;
+    background: var(--white);
+    border-radius: var(--border-radius-lg);
+    padding: 1.75rem;
+    width: min(540px, 90vw);
+    box-shadow: var(--box-shadow-lg);
+}
+
+.prediction-modal-hint {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    margin: 0 0 1rem 0;
+    line-height: 1.5;
+}
+
+/* Discipline selector chips inside the modal */
+.pred-disc-chips {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-color);
+    padding: 3px;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+.pred-disc-chip {
+    flex: 1;
+    text-align: center;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: calc(var(--border-radius) - 2px);
+    color: var(--text-light);
+    transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+    user-select: none;
+}
+
+.pred-disc-chip input[type="radio"] { display: none; }
+
+.pred-disc-chip:has(input:checked) {
+    background: var(--white);
+    color: var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.prediction-search-input-wrapper { position: relative; }
+
+.prediction-search-input {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.925rem;
+    font-family: inherit;
+    background: var(--white);
+    box-sizing: border-box;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.prediction-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(231, 100, 30, 0.12);
+}
+
+/* Dropdown results */
+.prediction-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--box-shadow-lg);
+    z-index: 200;
+    display: none;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.prediction-search-results.active { display: block; }
+
+.pred-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background var(--transition-fast);
+}
+
+.pred-result-item:last-child { border-bottom: none; }
+.pred-result-item:hover { background: var(--bg-color); }
+.pred-result-item.pred-no-results { cursor: default; color: var(--text-lighter); font-size: 0.875rem; }
+
+.pred-result-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.pred-result-name { font-weight: 600; font-size: 0.875rem; }
+.pred-result-meta { font-size: 0.75rem; color: var(--text-lighter); }
+
+/* Predicted rows — persistent orange tint on all cells */
+.predicted-row td { background: rgba(231, 100, 30, 0.13); }
+.predicted-row:hover td { background: rgba(231, 100, 30, 0.20); }
+
+
+@keyframes pred-flash {
+    0%   { background: rgba(231, 100, 30, 0.45); }
+    100% { background: rgba(231, 100, 30, 0.13); }
+}
+
+.predicted-row-flash td {
+    animation: pred-flash 1.2s ease-out forwards;
+}
+
+/* Predicted athlete name — same weight/size as real names but orange */
+.pred-name {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.pred-label {
+    color: var(--primary-color);
+    font-size: 0.78rem;
+    font-weight: 400;
+}
+
+/* Size matches .pos-circle (22px) with a little extra hit area; left-aligned to match badges */
+.pred-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-lighter);
+    padding: 0;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.pred-delete-btn:hover {
+    color: var(--error-color);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+/* Time gap labels in the overall column */
+.pred-time-gap {
+    display: block;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+}
+
+.pred-behind { color: var(--error-color); }
+.pred-ahead  { color: var(--success-color); }
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {

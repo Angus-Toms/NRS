@@ -12,6 +12,11 @@ Chart.defaults.plugins.tooltip.displayColors = false;
 Chart.defaults.plugins.tooltip.titleFont = { family: "'Plus Jakarta Sans', sans-serif", weight: '600', size: 12 };
 Chart.defaults.plugins.tooltip.bodyFont = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
 
+function _debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 // Sort table click listeners — safe to call multiple times after partial swaps
 function initSortableListeners() {
     document.querySelectorAll('table.sortable-table').forEach(table => {
@@ -88,4 +93,239 @@ function initRaceCharts() {
             }
         });
     });
+}
+
+// ============================================================
+//  ATHLETE PREDICTION
+// ============================================================
+
+// Column index (0-based) for each discipline in the results table
+const _DISC_COL = { overall: 8, swim: 3, bike: 5, run: 7 };
+
+function _fitWLS(xs, ys, ws) {
+    const W   = ws.reduce((a, b) => a + b, 0);
+    const sX  = ws.reduce((s, w, i) => s + w * xs[i], 0);
+    const sY  = ws.reduce((s, w, i) => s + w * ys[i], 0);
+    const sXY = ws.reduce((s, w, i) => s + w * xs[i] * ys[i], 0);
+    const sXX = ws.reduce((s, w, i) => s + w * xs[i] * xs[i], 0);
+    const d   = W * sXX - sX * sX;
+    if (!d) return null;
+    const slope = (W * sXY - sX * sY) / d;
+    return { slope, intercept: (sY - slope * sX) / W };
+}
+
+function initPrediction() {
+    const predData = getJSON('prediction-data');
+    if (!predData || predData.length < 3) return;
+
+    // Fit a WLS model for each discipline from the race's existing data
+    const RATING_KEY = { overall: 'rating',      swim: 'swim_rating', bike: 'bike_rating', run: 'run_rating' };
+    const TIME_KEY   = { overall: 'time',         swim: 'swim_time',   bike: 'bike_time',   run: 'run_time'  };
+    const models = {};
+    for (const disc of ['overall', 'swim', 'bike', 'run']) {
+        const rk = RATING_KEY[disc], tk = TIME_KEY[disc];
+        const pts = predData.filter(d => d[rk] != null && d[tk] != null && d[tk] > 0);
+        if (pts.length >= 3)
+            models[disc] = _fitWLS(pts.map(d => d[rk]), pts.map(d => d[tk]), pts.map(d => d.w || 1));
+    }
+
+    const existingIds   = new Set(getJSON('race-athlete-ids') || []);
+    const raceYear      = getJSON('race-year');
+    const gender        = document.getElementById('add-prediction-btn').dataset.gender;
+    const tbody         = document.querySelector('table.results-table tbody');
+    const addBtn        = document.getElementById('add-prediction-btn');
+    const modal         = document.getElementById('prediction-modal');
+    const backdrop      = modal.querySelector('.prediction-modal-backdrop');
+    const searchInput   = document.getElementById('prediction-search-input');
+    const searchResults = document.getElementById('prediction-search-results');
+
+    const getDisc    = () => modal.querySelector('input[name="pred-disc"]:checked')?.value || 'overall';
+    const openModal  = () => { modal.classList.remove('hidden'); searchInput.focus(); };
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+        searchResults.classList.remove('active');
+    };
+
+    addBtn.addEventListener('click', openModal);
+    backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    searchInput.addEventListener('input', _debounce(async (e) => {
+        const q = e.target.value.trim();
+        if (q.length < 2) { searchResults.classList.remove('active'); searchResults.innerHTML = ''; return; }
+        try {
+            const res      = await fetch(`/compare/search?q=${encodeURIComponent(q)}&gender=${encodeURIComponent(gender)}`);
+            const data     = await res.json();
+            const filtered = data.filter(a => !existingIds.has(a.athlete_id));
+            _renderPredictionResults(filtered, searchResults);
+            searchResults.querySelectorAll('.pred-result-item[data-id]').forEach(item => {
+                item.addEventListener('click', async () => {
+                    const disc = getDisc();
+                    closeModal();
+                    await _addPredictionRow(
+                        { id: parseInt(item.dataset.id), name: item.dataset.name,
+                          emoji: item.dataset.emoji, yob: item.dataset.yob },
+                        models, disc, existingIds, tbody, raceYear
+                    );
+                });
+            });
+        } catch (err) { console.error('Prediction search failed:', err); }
+    }, 300));
+}
+
+function _renderPredictionResults(athletes, container) {
+    if (!athletes.length) {
+        container.innerHTML = '<div class="pred-result-item pred-no-results">No matching athletes</div>';
+        container.classList.add('active');
+        return;
+    }
+    const base = window.STATIC_BASE_URL || '';
+    container.innerHTML = athletes.slice(0, 8).map(a => `
+        <div class="pred-result-item" data-id="${a.athlete_id}"
+             data-name="${escapeHtml(a.name)}" data-emoji="${a.country_emoji}"
+             data-yob="${a.year_of_birth || ''}">
+            <img class="pred-result-avatar"
+                 src="${base}athlete_imgs/128/${a.athlete_id}.webp"
+                 onerror="this.src='${base}imgs/default_user.jpg'" alt="">
+            <div>
+                <div class="pred-result-name">${escapeHtml(a.name)}</div>
+                <div class="pred-result-meta">${a.country_emoji} ${escapeHtml(a.country_name)}</div>
+            </div>
+        </div>`).join('');
+    container.classList.add('active');
+}
+
+function _getDiscWinnerTime(tbody, disc) {
+    const col = _DISC_COL[disc];
+    let min = Infinity;
+    for (const row of tbody.querySelectorAll('tr:not(.predicted-row)')) {
+        const t = parseTime(row.cells[col]?.getAttribute('data-value') || '');
+        if (isFinite(t) && t > 0 && t < min) min = t;
+    }
+    return isFinite(min) ? min : null;
+}
+
+function _sortTableByDisc(table, disc) {
+    const col = _DISC_COL[disc];
+    const headers = table.querySelectorAll('th.sortable');
+    headers.forEach(h => h.classList.remove('asc', 'desc'));
+    headers[col].classList.add('asc');
+    sortTable(table, col, true);
+}
+
+async function _addPredictionRow(athlete, models, disc, existingIds, tbody, raceYear) {
+    existingIds.add(athlete.id);
+
+    const ATHLETE_RATING_KEY = { overall: 'overall_rating', swim: 'swim_rating', bike: 'bike_rating', run: 'run_rating' };
+    let athleteRating = null;
+    try {
+        const data   = await fetch(`/compare/athlete/${athlete.id}`).then(r => r.json());
+        athleteRating = data[ATHLETE_RATING_KEY[disc]];
+    } catch (_) {}
+
+    const model        = models[disc];
+    const predTimeSecs = (model && athleteRating != null)
+        ? Math.round(model.slope * athleteRating + model.intercept)
+        : null;
+
+    const winnerTime = _getDiscWinnerTime(tbody, disc);
+    let gapHtml = '';
+    if (predTimeSecs != null && winnerTime != null) {
+        const diff = predTimeSecs - winnerTime;
+        if (diff > 0)
+            gapHtml = `<span class="pred-time-gap pred-behind">+${formatTime(diff)}</span>`;
+        else if (diff < 0)
+            gapHtml = `<span class="pred-time-gap pred-ahead">\u2212${formatTime(-diff)}</span>`;
+    }
+
+    const label      = disc === 'overall' ? '(predicted)' : `(predicted ${disc})`;
+    const yobDisplay = athlete.yob
+        ? `${athlete.yob}${raceYear ? ` (${raceYear - parseInt(athlete.yob)})` : ''}` : '';
+    const timeStr    = predTimeSecs != null ? formatTime(predTimeSecs) : '—';
+    const timeDataVal = predTimeSecs != null ? formatTime(predTimeSecs) : '';
+
+    // Build the 9 split cells; only the predicted discipline column is populated
+    const col = _DISC_COL[disc];
+    const splitCells = [3, 4, 5, 6, 7, 8].map(i => {
+        if (i === col)
+            return `<td class="time-col${i === 8 ? ' overall-col' : ''}" data-value="${timeDataVal}">` +
+                   `<span class="overall-time">${timeStr}</span>${gapHtml}</td>`;
+        return `<td class="time-col${i === 8 ? ' overall-col' : ''}" data-value=""></td>`;
+    }).join('');
+
+    const deleteSvg = `<svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13" aria-hidden="true">
+        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+    </svg>`;
+
+    const row = document.createElement('tr');
+    row.className = 'predicted-row';
+    row.dataset.athleteId = athlete.id;
+    row.dataset.predDisc  = disc;
+    if (predTimeSecs != null) row.dataset.predSecs = predTimeSecs;
+    row.innerHTML = `
+        <td class="position-col pred-pos-col" data-value="9999">
+            <button class="pred-delete-btn" title="Remove prediction" aria-label="Remove prediction">${deleteSvg}</button>
+        </td>
+        <td class="athlete-col" data-value="${escapeHtml(athlete.name)}">
+            <span class="pred-name">${escapeHtml(athlete.name)}</span> <span class="pred-label">${label}</span> ${athlete.emoji}
+        </td>
+        <td class="yob-col" data-value="${athlete.yob || 0}">${yobDisplay}</td>
+        ${splitCells}`;
+
+    // For discipline predictions, sort the table by that split first
+    if (disc !== 'overall') _sortTableByDisc(tbody.closest('table'), disc);
+
+    // Insert before the first real finisher slower in this discipline
+    let inserted = false;
+    if (predTimeSecs != null) {
+        for (const existing of tbody.querySelectorAll('tr:not(.predicted-row)')) {
+            const posVal = parseInt(existing.cells[0]?.getAttribute('data-value'), 10);
+            if (!isNaN(posVal) && posVal < 9000) {
+                const t = parseTime(existing.cells[col]?.getAttribute('data-value') || '');
+                if (isFinite(t) && t > 0 && predTimeSecs < t) {
+                    tbody.insertBefore(row, existing); inserted = true; break;
+                }
+            }
+        }
+    }
+    if (!inserted) tbody.appendChild(row);
+
+    _renumberPredictions(tbody);
+
+    row.querySelector('.pred-delete-btn').addEventListener('click', () => {
+        existingIds.delete(athlete.id);
+        row.remove();
+        _renumberPredictions(tbody);
+    });
+
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('predicted-row-flash');
+    setTimeout(() => row.classList.remove('predicted-row-flash'), 1200);
+}
+
+function _renumberPredictions(tbody) {
+    for (const predRow of tbody.querySelectorAll('tr.predicted-row')) {
+        const disc     = predRow.dataset.predDisc || 'overall';
+        const col      = _DISC_COL[disc];
+        const predSecs = parseInt(predRow.dataset.predSecs, 10);
+        if (isNaN(predSecs)) continue;
+
+        let pos = 1;
+        // Real finishers faster in this discipline
+        for (const row of tbody.querySelectorAll('tr:not(.predicted-row)')) {
+            const t = parseTime(row.cells[col]?.getAttribute('data-value') || '');
+            if (isFinite(t) && t > 0 && t < predSecs) pos++;
+        }
+        // Other predictions in the same discipline that are faster
+        for (const other of tbody.querySelectorAll('tr.predicted-row')) {
+            if (other === predRow) continue;
+            if ((other.dataset.predDisc || 'overall') !== disc) continue;
+            const o = parseInt(other.dataset.predSecs, 10);
+            if (!isNaN(o) && o < predSecs) pos++;
+        }
+        predRow.cells[0].setAttribute('data-value', pos);
+    }
 }

@@ -73,14 +73,22 @@ async def get_athlete_for_compare(athlete_id: int):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         return JSONResponse({"error": "Not found"}, status_code=404)
+    ratings = queries.get_athlete_current_ratings(athlete_id)
+    stats   = queries.get_athlete_stats(athlete_id)
     return JSONResponse({
-        "athlete_id":   info["athlete_id"],
-        "name":         info["name"],
-        "gender":       info["gender"],
-        "country_emoji": info["country_emoji"],
-        "country_name": info["country_full"],
+        "athlete_id":     info["athlete_id"],
+        "name":           info["name"],
+        "gender":         info["gender"],
+        "country_emoji":  info["country_emoji"],
+        "country_name":   info["country_full"],
         "country_alpha3": info["country_alpha3"],
-        "year_of_birth": info["year_of_birth"] or "",
+        "year_of_birth":  info["year_of_birth"] or "",
+        "overall_rating": format_rating(ratings["overall_rating"]) if ratings else None,
+        "swim_rating":    int(round(ratings["swim_rating"])) if ratings and ratings.get("swim_rating") else None,
+        "bike_rating":    int(round(ratings["bike_rating"])) if ratings and ratings.get("bike_rating") else None,
+        "run_rating":     int(round(ratings["run_rating"]))  if ratings and ratings.get("run_rating")  else None,
+        "world_rank":     ratings["world_overall"] if ratings else None,
+        "wins":           stats["wins"] if stats else None,
     })
 
 

@@ -395,8 +395,16 @@
 .event-race-entry {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.6rem;
     color: var(--text-color);
+}
+
+.event-race-entry-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .event-entry-name {
@@ -424,6 +432,17 @@
     flex-shrink: 0;
 }
 
+.event-entry-time--winner {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.event-entry-time--diff {
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
 .event-podium-pos {
     width: 1.1rem;
     height: 1.1rem;
@@ -438,9 +457,9 @@
     color: var(--text-light);
 }
 
-.event-podium-pos--1 { background: var(--gold);   color: #fff; }
-.event-podium-pos--2 { background: var(--silver); color: #fff; }
-.event-podium-pos--3 { background: var(--bronze); color: #fff; }
+.event-podium-pos--1 { background: var(--gold);   color: var(--gold-text); }
+.event-podium-pos--2 { background: var(--silver); color: var(--silver-text); }
+.event-podium-pos--3 { background: var(--bronze); color: var(--bronze-text); }
 
 .event-race-pending {
     font-size: 0.78rem;
@@ -524,9 +543,9 @@
     color: var(--text-light);
 }
 
-.lb-pos--1 { background: var(--gold);   color: #fff; }
-.lb-pos--2 { background: var(--silver); color: #fff; }
-.lb-pos--3 { background: var(--bronze); color: #fff; }
+.lb-pos--1 { background: var(--gold);   color: var(--gold-text); }
+.lb-pos--2 { background: var(--silver); color: var(--silver-text); }
+.lb-pos--3 { background: var(--bronze); color: var(--bronze-text); }
 
 .lb-name {
     flex: 1;

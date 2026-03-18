@@ -7,15 +7,28 @@
 
 .search-box {
     background: var(--white);
-    padding: 1.5rem;
     border-radius: var(--border-radius-lg);
     box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+    /* overflow must stay visible so dropdown can escape the card */
 }
 
-.search-box h3 {
-    margin: 0 0 1rem 0;
-    color: var(--text-color);
-    font-size: 1.125rem;
+/* Navy header band — matches champ-card-header */
+.search-box-header {
+    background: var(--navy);
+    padding: 0.55rem 1.25rem;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.search-box-header span {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.search-box-body {
+    padding: 1rem 1.25rem;
+    position: relative;
 }
 
 .search-input-wrapper {
@@ -40,7 +53,7 @@
 .search-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(53, 122, 189, 0.15);
+    box-shadow: 0 0 0 3px rgba(231, 100, 30, 0.15);
     background: var(--white);
 }
 
@@ -107,70 +120,104 @@
 /* ============================================
    ATHLETE SELECTED WIDGET
    ============================================ */
-.selected-athlete {
-    border: 1px solid var(--border-color);
-    padding: 0.75rem;
-    border-radius: 8px;
-    position: relative;
-    background-color: var(--bg-color);
+
+/* Hidden when no athlete selected; shown via JS adding .active */
+#selected1,
+#selected2 {
     display: none;
+    margin-top: 0.75rem;
+    position: relative;
 }
 
-.selected-athlete.active {
+#selected1.active,
+#selected2.active {
     display: block;
 }
 
-.selected-athlete .hidden {
-    display: none;
-}
-
-.selected-athlete-container {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.selected-athlete-img {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    flex-shrink: 0;
-}
-
-.selected-athlete-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.selected-athlete-remove {
+/* Remove btn: top-right of the body padding area */
+.sel-remove-btn {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 0.6rem;
+    right: 0.75rem;
     background: transparent;
     border: none;
-    color: var(--text-light);
+    color: var(--text-lighter);
     font-size: 1.25rem;
-    cursor: pointer;
     line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+    z-index: 1;
 }
 
-.selected-athlete-remove:hover {
+.sel-remove-btn:hover {
     color: var(--error-color);
 }
 
-.selected-athlete-name {
-    font-weight: 600;
-    color: var(--text-color);
-    font-size: 1.125rem;
+/* Profile pic left, name + stats right — mirrors champ-card-body */
+.sel-athlete-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
 }
 
-.selected-athlete-info {
-    color: var(--text-light);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
+.sel-athlete-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--navy);
+    flex-shrink: 0;
+}
+
+.sel-athlete-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.sel-athlete-name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.85rem;
+}
+
+/* Stats row: Rating | World rank | Career wins */
+.sel-athlete-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sel-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.sel-stat-num {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.sel-stat-lbl {
+    font-size: 0.67rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-lighter);
+}
+
+.sel-stat-divider {
+    width: 1px;
+    height: 2rem;
+    background: var(--border-color);
+    flex-shrink: 0;
 }
 
 /* ============================================
@@ -178,24 +225,25 @@
    ============================================ */
 .compare-button-container {
     text-align: center;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
 }
 
 .compare-button {
-    padding: 1rem 3rem;
+    display: inline-block;
+    padding: 0.55rem 2rem;
     background-color: var(--primary-color);
     color: var(--white);
     border: none;
     border-radius: var(--border-radius);
-    font-size: 1.125rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: var(--font-family);
     cursor: pointer;
-    transition: all var(--transition-base);
-    box-shadow: var(--box-shadow);
+    transition: background var(--transition-fast);
 }
 
 .compare-button:hover:not(:disabled) {
     background-color: var(--primary-hover);
-    box-shadow: var(--box-shadow-hover);
 }
 
 .compare-button:disabled {
@@ -204,35 +252,139 @@
 }
 
 /* ============================================
-   H2H RATINGS
+   STANDALONE TABLE WRAPPER (rounded, shadowed)
    ============================================ */
-.h2h-row {
-    display: grid;
-    grid-template-columns: 1fr 100px 1fr;
+.table-wrap {
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1.25rem;
+}
+
+/* ============================================
+    CURRENT RATINGS TABLE
+.h2h-ratings-table th,
+.h2h-table th {
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: default;
+    font-size: 0.8rem;
+}
+
+.h2h-ratings-table td,
+.h2h-table td {
+    font-variant-numeric: tabular-nums;
+}
+
+.h2h-winner {
+    color: var(--success-color);
+    font-weight: 700;
+}
+
+.rating-change {
+    display: inline-flex;
     align-items: center;
-    padding: 1rem;
-    gap: 1.5rem;
+    gap: 3px;
+    font-size: 0.78rem;
+    font-weight: 400;
+    margin-left: 0.5em;
+}
+
+.rating-change.positive { color: var(--success-color); }
+.rating-change.negative { color: var(--error-color); }
+.rating-change.neutral  { color: var(--text-light); }
+
+/* ============================================
+   CAREER STATISTICS
+   ============================================ */
+.career-stats {
+    display: grid;
+    grid-template-columns: 1fr 140px 1fr;
+    align-items: center;
+    row-gap: 0;
+}
+
+.career-stat-val {
+    padding: 0.8rem 1.25rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
     border-bottom: 1px solid var(--border-color);
 }
 
-.h2h-discipline {
-    text-align: center;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--text-light);
-    font-size: 0.9rem;
-    white-space: nowrap;
+.career-stat-val:nth-last-child(-n+3) {
+    border-bottom: none;
 }
 
-.rating-block {
+.career-stat-right {
+    text-align: right;
+}
+
+.career-stat-label {
+    padding: 0.8rem 0;
     text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.career-stat-label:nth-last-child(-n+3) {
+    border-bottom: none;
+}
+
+.career-winner {
+    color: var(--success-color);
+}
+
+/* ============================================
+   H2H WIN SUMMARY
+   ============================================ */
+.h2h-wins-summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.h2h-wins-block {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 0.2rem;
 }
 
-.rating-block.winner .rating-number {
+.h2h-wins-total .h2h-wins-num {
+    color: var(--text-lighter);
+}
+
+.h2h-wins-num {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.h2h-wins-leader {
     color: var(--success-color);
+}
+
+.h2h-wins-lbl {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+    text-align: center;
+}
+
+/* ============================================
+   H2H TABLE
+   ============================================ */
+.h2h-ath-header {
+    text-align: center !important;
 }
 
 .rating-number {
@@ -241,23 +393,6 @@
     display: flex;
     align-items: center;
     gap: 0.25em;
-}
-
-.rating-change {
-    font-size: 0.8rem;
-    font-weight: 400;
-}
-
-.rating-change.positive {
-    color: var(--success-color);
-}
-
-.rating-change.negative {
-    color: var(--error-color);
-}
-
-.rating-change.neutral {
-    color: var(--text-light);
 }
 
 /* ============================================
@@ -288,119 +423,6 @@
     font-size: 0.85rem;
     color: var(--text-light);
     text-align: center;
-}
-
-/* 
-MOBILE LAYOUT 
-Centers discipline/stat name above the two ratings
-*/
-@media (max-width: 480px) {
-    .h2h-row {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-            "discipline discipline"
-            "left-rating right-rating";
-        gap: 0.75rem 1rem;
-    }
-
-    .h2h-discipline {
-        grid-area: discipline;
-        text-align: center;
-        margin-bottom: 0.25rem;
-    }
-
-    .rating-block {
-        grid-area: left-rating;
-    }
-
-    .rating-block.right {
-        grid-area: right-rating;
-    }
-}
-
-/* ============================================
-   HEAD TO HEAD WIN COUNTS
-   ============================================ */
-.h2h-wins {
-    width: 100%;
-    border-collapse: collapse;
-    border-spacing: 1.5rem 0.35rem;
-    table-layout: fixed;
-    padding: 1rem;
-    margin: 0 auto;
-}
-
-.h2h-wins tr:hover,
-.h2h-wins td:hover,
-.h2h-wins th:hover {
-    background: none !important;
-}
-
-.h2h-wins td, th {
-    text-align: center;
-    padding: 0;
-    border: none;
-}
-
-.h2h-wins col.h2h-wins-center {
-    width: 100px;
-}
-
-.h2h-win-count {
-    text-align: center;
-    font-size: var(--font-size-xl);
-    font-weight: bold;
-    color: var(--text-color)
-}
-
-.h2h-win-label {
-    text-align: center;
-    font-size: var(--font-size-sm);
-    color: var(--text-light);
-    margin-top: 0.25rem;
-}
-
-/* ============================================
-   HEAD TO HEAD RESULTS TABLE
-   ============================================ */
-.h2h-table {
-    width: 100%;
-    margin-top: 1rem;
-}
-
-.h2h-table th {
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 0.75rem;
-    text-align: left;
-}
-
-.h2h-table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.h2h-winner {
-    font-weight: 600;
-    color: var(--success-color);
-}
-
-.h2h-summary {
-    display: flex;
-    justify-content: center;
-    gap: 3rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    /* background-color: var(--bg-color); */
-    border-radius: var(--border-radius);
-}
-
-.athlete-name-th {
-    text-align: center !important;
-}
-
-.time-behind-header {
-    font-size: 0.8em;
 }
 
 .time-cell {

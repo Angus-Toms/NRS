@@ -119,8 +119,16 @@
 .event-podium-left {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     min-width: 0;
+}
+
+.event-podium-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .event-podium-name {
@@ -146,13 +154,19 @@
 
 .event-podium-time {
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-color);
     font-variant-numeric: tabular-nums;
 }
 
+.event-podium-time--winner {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
 .event-podium-gap {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
+    font-weight: 400;
     color: var(--text-lighter);
     font-variant-numeric: tabular-nums;
 }

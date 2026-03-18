@@ -1,46 +1,58 @@
 {% extends "base.html" %}
 
-{% block title %}Athletes - Search & Leaderboards{% endblock %}
+{% block title %}Compare Athletes - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css">
 {% endblock %}
 
-{% block content %}
-<div class="page-container">
-    <h1 style="text-align: center; color: var(--text-color); margin-bottom: 2rem;">
-        Compare Athletes
-    </h1>
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Compare Athletes</h1>
+        <span class="page-hero-subtitle">Head-to-head ratings &amp; race history</span>
+    </div>
+</div>
+{% endblock %}
 
+{% block content %}
     <div class="search-container">
         <div class="search-box">
-            <h3>Athlete 1</h3>
-            <div class="search-input-wrapper">
-                <input 
-                    type="text" 
-                    id="search1" 
-                    class="search-input" 
-                    placeholder="Search athlete name..."
-                    autocomplete="off"
-                >
-                <div id="results1" class="search-results"></div>
+            <div class="search-box-header">
+                <span>Athlete 1</span>
             </div>
-            <div id="selected1" class="selected-athlete"></div>
+            <div class="search-box-body">
+                <div class="search-input-wrapper">
+                    <input
+                        type="text"
+                        id="search1"
+                        class="search-input"
+                        placeholder="Search athlete name..."
+                        autocomplete="off"
+                    >
+                    <div id="results1" class="search-results"></div>
+                </div>
+                <div id="selected1"></div>
+            </div>
         </div>
 
         <div class="search-box">
-            <h3>Athlete 2</h3>
-            <div class="search-input-wrapper">
-                <input 
-                    type="text" 
-                    id="search2" 
-                    class="search-input" 
-                    placeholder="Search athlete name..."
-                    autocomplete="off"
-                >
-                <div id="results2" class="search-results"></div>
+            <div class="search-box-header">
+                <span>Athlete 2</span>
             </div>
-            <div id="selected2" class="selected-athlete"></div>
+            <div class="search-box-body">
+                <div class="search-input-wrapper">
+                    <input
+                        type="text"
+                        id="search2"
+                        class="search-input"
+                        placeholder="Search athlete name..."
+                        autocomplete="off"
+                    >
+                    <div id="results2" class="search-results"></div>
+                </div>
+                <div id="selected2"></div>
+            </div>
         </div>
     </div>
 
@@ -54,15 +66,14 @@
     <div id="loading" class="loading">Loading comparison data...</div>
 
     <div id="comparisonResults" class="comparison-results">
-        <!-- Results will be loaded here via HTMX/fetch -->
+        <!-- Results will be loaded here via fetch -->
     </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
 <script src="{{ STATIC_BASE_URL }}js/comparison.js"></script>
-{% endblock %}    
+{% endblock %}
 
 {% block comparison_specific_js %}
 <!-- JS for the comparison charts etc. is added here -->

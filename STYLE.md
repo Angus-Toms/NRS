@@ -67,9 +67,9 @@ All numbers use `font-variant-numeric: tabular-nums` so columns stay aligned. La
   --rule:      #d1d5db;   /* horizontal rules between sections */
   --positive:  #059669;   /* rating increases, positive changes */
   --negative:  #dc2626;   /* rating decreases, negative changes */
-  --gold:      #d97706;   /* 1st place */
-  --silver:    #6b7280;   /* 2nd place */
-  --bronze:    #92400e;   /* 3rd place */
+  --gold:      #f5c842;   /* 1st place */
+  --silver:    #c8d8e0;   /* 2nd place */
+  --bronze:    #d4a870;   /* 3rd place */
   --highlight: #fef3e8;   /* table row hover, soft orange tint */
 }
 ```
@@ -251,7 +251,7 @@ The Overall column uses slightly bolder weight (`font-weight: 700`) and `display
 
 ### Position indicators
 
-In race results, positions 1–3 use filled colour circles (gold/silver/bronze) with white numbers. Position 4+ uses plain muted text with no circle.
+In race results, positions 1–3 use filled colour circles (gold/silver/bronze) with dark text. Position 4+ uses plain muted text with no circle.
 
 In race history tables, positions use coloured text only — no circles:
 
@@ -327,6 +327,71 @@ Breakpoints are minimal. The layout is designed mobile-first where practical.
 | `< 500px` | Hero stats hide or collapse; rating grid may scroll horizontally |
 
 Tables do not reflow on mobile — they scroll horizontally inside their container. This is preferable to collapsing columns, as column alignment is essential to reading split data.
+
+---
+
+## Shared Components (base.css)
+
+The following patterns are defined once in `base.css` and used across leaderboard, athlete search, and any future filter UIs. Do not redefine them in page-specific CSS files.
+
+### Segmented radio control (`.radio-chips`)
+
+The standard filter control for mutually-exclusive options (discipline, sort order, gender). Uses real `<input type="radio">` elements visually hidden, with `<label>` as the hit target.
+
+```html
+<div class="filter-chip-group">
+    <span class="filter-chip-label">Sort by</span>
+    <div class="radio-chips">
+        <input type="radio" id="disc-overall" name="disc" value="overall" checked>
+        <label for="disc-overall">Overall</label>
+        <input type="radio" id="disc-swim" name="disc" value="swim">
+        <label for="disc-swim">Swim</label>
+    </div>
+</div>
+```
+
+Active state: white background, orange text, subtle shadow. Inactive: grey bg, muted text. This is the only approved style for segmented filter controls — never use button-based chips.
+
+### Action buttons
+
+| Class | Use | Style |
+|-------|-----|-------|
+| `.btn-search` | Primary form action (submit, apply) | Orange fill, white text |
+| `.btn-reset` | Secondary / cancel / clear | Text-only, muted, orange on hover |
+| `.btn-age-preset` | Small preset shortcuts (Junior, U23) | Bordered, muted, orange on hover/active |
+
+### Athlete ratings block (`.athlete-ratings`)
+
+Used in leaderboard cards and search results. Discipline labels sit above their values in a grey pill. The active sort discipline uses `.rating-highlight` (orange for top order, green for hot/trending order via `.athlete-ratings-hot`).
+
+```html
+<div class="athlete-ratings">         <!-- add .athlete-ratings-hot for trending view -->
+    <div class="rating-item">
+        <span class="rating-label">Overall</span>
+        <span class="rating-value rating-highlight">1284</span>
+    </div>
+    <div class="rating-item">
+        <span class="rating-label">Swim</span>
+        <span class="rating-value">1150</span>
+    </div>
+    <!-- Bike, Run -->
+</div>
+```
+
+### Athlete metadata row (`.athlete-meta`)
+
+Dot-separated metadata below athlete names. Use `.meta-val` for numeric values (races, wins) that should be slightly larger/darker than the surrounding label text.
+
+```html
+<div class="athlete-meta">
+    <span class="meta-item">🇦🇺 Australia</span>
+    <span class="meta-item">b. 1990</span>
+    <span class="meta-item"><span class="meta-val">42</span> races</span>
+    <span class="meta-item"><span class="meta-val">5</span> wins</span>
+</div>
+```
+
+Dots are injected via `::before` CSS — do not add them manually in markup.
 
 ---
 

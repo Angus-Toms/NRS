@@ -98,53 +98,79 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
     });
 }
 
-function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selectedDiv, searchWrapper) {
-    /* Store the selected athlete and build the athlete display card under the search box */
+async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selectedDiv, searchWrapper) {
     selectedAthletes[athleteKey] = athlete;
-    
+
     searchInput.value = '';
     resultsDiv.classList.remove('active');
-    if (searchWrapper) {
-        searchWrapper.classList.add('hidden');
-    }
-    
+    if (searchWrapper) searchWrapper.classList.add('hidden');
+
+    // Show placeholder while fetching full data
+    selectedDiv.classList.add('active');
+    selectedDiv.innerHTML = '<div style="padding:0.5rem 0;color:var(--text-lighter);font-size:0.82rem;">Loading…</div>';
+
     const baseUrl = window.STATIC_BASE_URL || '';
-    const imgSrc = `${baseUrl}athlete_imgs/128/${athlete.id}.webp`;
-    const defaultImgSrc = `${baseUrl}imgs/default_user.jpg`;
+    const imgSrc       = `${baseUrl}athlete_imgs/128/${athlete.id}.webp`;
+    const defaultImg   = `${baseUrl}imgs/default_user.jpg`;
+
+    // Fetch full data (rating, world rank, wins)
+    let full = athlete;
+    try {
+        const res = await fetch(`/compare/athlete/${athlete.id}`);
+        full = await res.json();
+        full.id = athlete.id;
+        selectedAthletes[athleteKey] = { ...athlete, ...full };
+    } catch (_) { /* fall back to basic info */ }
+
+    const name         = escapeHtml(full.name         || athlete.name         || '');
+    const countryEmoji = full.country_emoji            || athlete.country_emoji || '';
+    const countryName  = escapeHtml(full.country_name || athlete.country_name  || '');
+    const yob          = full.year_of_birth            || athlete.year_of_birth || '';
+
+    const statsHtml = (full.overall_rating != null) ? `
+        <div class="sel-athlete-stats">
+            <div class="sel-stat">
+                <span class="sel-stat-num">${full.overall_rating}</span>
+                <span class="sel-stat-lbl">Rating</span>
+            </div>
+            <div class="sel-stat-divider"></div>
+            <div class="sel-stat">
+                <span class="sel-stat-num">${full.world_rank != null ? '#' + full.world_rank : '—'}</span>
+                <span class="sel-stat-lbl">World rank</span>
+            </div>
+            <div class="sel-stat-divider"></div>
+            <div class="sel-stat">
+                <span class="sel-stat-num">${full.wins ?? '—'}</span>
+                <span class="sel-stat-lbl">Career wins</span>
+            </div>
+        </div>` : '';
+
     selectedDiv.innerHTML = `
-        <button class="selected-athlete-remove" aria-label="Clear selection">&times;</button>
-        <div class="selected-athlete-container">
-            <img
-                class="selected-athlete-img"
+        <button class="sel-remove-btn" aria-label="Clear selection">&times;</button>
+        <div class="sel-athlete-card">
+            <img class="sel-athlete-img"
                 src="${imgSrc}"
-                onerror="this.src='${defaultImgSrc}'"
-                alt="${athlete.name}"
-            >
-            <div class="selected-athlete-text">
-                <div class="selected-athlete-name">${escapeHtml(athlete.name)}</div>
-                <div class="result-meta">${athlete.country_emoji} ${escapeHtml(athlete.country_name)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</div>
+                onerror="this.src='${defaultImg}'"
+                alt="${name}">
+            <div class="sel-athlete-details">
+                <div class="sel-athlete-name">${countryEmoji} ${name}</div>
+                ${statsHtml}
             </div>
         </div>
     `;
 
-    selectedDiv.classList.add('selected-athlete');
-    selectedDiv.classList.add('active');
-    const removeButton = selectedDiv.querySelector('.selected-athlete-remove');
-    removeButton.addEventListener('click', () => {
+    selectedDiv.querySelector('.sel-remove-btn').addEventListener('click', () => {
         clearSelectedAthlete(athleteKey, searchInput, selectedDiv, searchWrapper);
     });
 
     updateCompareButton();
 }
 
-/* --- --- */
 function clearSelectedAthlete(athleteKey, searchInput, selectedDiv, searchWrapper) {
     selectedAthletes[athleteKey] = null;
     selectedDiv.classList.remove('active');
     selectedDiv.innerHTML = '';
-    if (searchWrapper) {
-        searchWrapper.classList.remove('hidden');
-    }
+    if (searchWrapper) searchWrapper.classList.remove('hidden');
     searchInput.value = '';
     searchInput.focus();
     updateCompareButton();

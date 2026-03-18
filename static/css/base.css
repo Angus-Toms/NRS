@@ -18,12 +18,12 @@
     --highlight: #fef3e8;
 
     /* Podium colors */
-    --gold:         #d97706;
-    --gold-accent:  #d97706;
-    --silver:       #6b7280;
-    --silver-accent:#6b7280;
-    --bronze:       #92400e;
-    --bronze-accent:#92400e;
+    --gold:         #f5c842;
+    --gold-text:    #5a4000;
+    --silver:       #c8d8e0;
+    --silver-text:  #3a4a50;
+    --bronze:       #d4a870;
+    --bronze-text:  #5a3000;
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -97,6 +97,42 @@ html, body {
     flex: 1;
     background: linear-gradient(90deg, rgba(53, 122, 189, 0.35), rgba(53, 122, 189, 0.05));
     border-radius: 999px;
+}
+
+/* ============================================
+   PAGE HERO HEADER (shared full-bleed hero)
+   ============================================ */
+.page-hero {
+    background: var(--navy);
+    border-bottom: 3px solid var(--primary-color);
+    width: 100%;
+}
+
+.page-hero-inner {
+    width: 90%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.page-hero h1 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.page-hero-subtitle {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-align: right;
 }
 
 /* ============================================
@@ -545,16 +581,21 @@ table td a.link:hover   { color: var(--primary-color); }
     justify-content: center;
     font-size: 0.65rem;
     font-weight: 800;
-    color: #fff;
     flex-shrink: 0;
 }
 
-.pos-circle.gold   { background: var(--gold); }
-.pos-circle.silver { background: var(--silver); }
-.pos-circle.bronze { background: var(--bronze); }
+.pos-circle.gold   { background: var(--gold); color: var(--gold-text); }
+.pos-circle.silver { background: var(--silver); color: var(--silver-text); }
+.pos-circle.bronze { background: var(--bronze); color: var(--bronze-text); }
 
 .pos-other {
-    font-size: 0.875rem;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--text-lighter);
 }
@@ -1135,6 +1176,333 @@ table td a.link:hover   { color: var(--primary-color); }
 
 .small-link:active {
     color: var(--primary-hover);
+}
+
+/* ============================================
+   SHARED FILTER COMPONENTS
+   Used on: leaderboard, athlete search, and any
+   page with a segmented filter row.
+   ============================================ */
+
+/* Label above a chip group */
+.filter-chip-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.filter-chip-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-lighter);
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Segmented radio control */
+.radio-chips {
+    display: flex;
+    background: var(--bg-color);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 1px;
+}
+
+.radio-chips input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-chips label {
+    padding: 4px 11px;
+    border-radius: 5px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-light);
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1.4;
+    transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    user-select: none;
+}
+
+.radio-chips label:hover {
+    color: var(--text-color);
+}
+
+.radio-chips input[type="radio"]:checked + label {
+    background: var(--white);
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Primary action button (orange fill) */
+.btn-search {
+    display: inline-block;
+    padding: 5px 16px;
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: var(--font-family);
+    text-decoration: none;
+    align-self: flex-end;
+    margin-bottom: 3px;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-search:hover {
+    background-color: var(--primary-hover);
+}
+
+/* Secondary text-style reset/cancel link */
+.btn-reset {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    text-decoration: none;
+    padding: 5px 8px;
+    font-weight: 500;
+    align-self: flex-end;
+    margin-bottom: 3px;
+    transition: color var(--transition-fast);
+    white-space: nowrap;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family);
+}
+
+.btn-reset:hover {
+    color: var(--primary-color);
+}
+
+/* Vertical divider between chip groups in a filter row */
+.filter-v-divider {
+    width: 1px;
+    height: 34px;
+    background: var(--border-color);
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 2px;
+}
+
+/* Active-only toggle switch */
+.filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--bg-color);
+    border-radius: 6px;
+    padding: 3px 8px 3px 6px;
+}
+
+.filter-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-track {
+    width: 30px;
+    height: 17px;
+    background: var(--border-color);
+    border-radius: 9px;
+    position: relative;
+    flex-shrink: 0;
+    transition: background var(--transition-base);
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 13px;
+    height: 13px;
+    background: var(--white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform var(--transition-base);
+}
+
+.filter-toggle input:checked + .toggle-track {
+    background: var(--primary-color);
+}
+
+.filter-toggle input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(13px);
+}
+
+.toggle-text {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-light);
+    min-width: 1.6rem;
+}
+
+.filter-toggle input:checked ~ .toggle-text {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Vertical label + input group (country, year-range) */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-lighter);
+    font-weight: 600;
+}
+
+.filter-group select,
+.filter-group input[type="number"] {
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    background-color: var(--white);
+    font-family: var(--font-family);
+    color: var(--text-color);
+    min-width: 140px;
+}
+
+.filter-group select:focus,
+.filter-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.year-range {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.year-range input[type="number"] {
+    width: 80px;
+    min-width: unset;
+}
+
+.range-sep {
+    color: var(--text-lighter);
+    font-size: 0.9rem;
+}
+
+/* Small bordered age/category preset buttons */
+.btn-age-preset {
+    padding: 4px 9px;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font-family);
+    color: var(--text-light);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-age-preset:hover,
+.btn-age-preset.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: var(--highlight);
+}
+
+/* ============================================
+   SHARED ATHLETE DATA COMPONENTS
+   Used on: leaderboard, athlete search results.
+   ============================================ */
+
+/* Ratings block: labels on top, values below, grey bg pill */
+.athlete-ratings {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.35rem 0.625rem;
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.rating-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    width: 4.75rem;
+    flex-shrink: 0;
+}
+
+.rating-label {
+    font-size: 0.65rem;
+    color: var(--text-lighter);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.rating-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    width: 100%;
+    text-align: center;
+    border-radius: var(--border-radius-sm);
+    padding: 1px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* Active sort discipline: orange */
+.rating-value.rating-highlight {
+    color: var(--primary-color);
+    font-weight: 800;
+}
+
+/* Trending order: green for the sort discipline, dark for rest */
+.athlete-ratings-hot .rating-value              { color: var(--text-color); }
+.athlete-ratings-hot .rating-value.rating-highlight { color: var(--success-color); font-weight: 800; }
+
+/* Athlete metadata row: dot-separated items */
+.athlete-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    color: var(--text-lighter);
+    font-size: 0.75rem;
+    margin-top: 0.2rem;
+    align-items: center;
+}
+
+.meta-item { display: inline; }
+
+.meta-item + .meta-item::before {
+    content: "·";
+    padding: 0 0.3rem;
+    color: var(--text-lighter);
+}
+
+/* Slightly larger/darker value within a meta item */
+.meta-val {
+    color: var(--text-color);
+    font-weight: 600;
 }
 
 /* ============================================

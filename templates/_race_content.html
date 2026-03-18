@@ -32,7 +32,33 @@
 </div>
 
 <!-- Results Table -->
-<div class="page-section-head">Race Results</div>
+<div class="results-section-head">
+    <div class="page-section-head">Race Results</div>
+    <button id="add-prediction-btn" class="btn-add-prediction" data-gender="{{ race.gender }}">
+        + Add Athlete Prediction
+    </button>
+</div>
+<div id="prediction-modal" class="prediction-modal hidden" role="dialog" aria-modal="true">
+    <div class="prediction-modal-backdrop"></div>
+    <div class="prediction-modal-content">
+        <p class="prediction-modal-hint">
+            A linear model is fit from this race's ratings to finish times. Select a discipline to predict
+            just that split and see where the athlete would rank in it, or leave Overall to predict
+            their full finishing position.
+        </p>
+        <div class="pred-disc-chips">
+            <label class="pred-disc-chip"><input type="radio" name="pred-disc" value="overall" checked> Overall</label>
+            <label class="pred-disc-chip"><input type="radio" name="pred-disc" value="swim"> Swim</label>
+            <label class="pred-disc-chip"><input type="radio" name="pred-disc" value="bike"> Bike</label>
+            <label class="pred-disc-chip"><input type="radio" name="pred-disc" value="run"> Run</label>
+        </div>
+        <div class="prediction-search-input-wrapper">
+            <input type="text" id="prediction-search-input" class="prediction-search-input"
+                   placeholder="Search athlete name…" autocomplete="off">
+            <div id="prediction-search-results" class="prediction-search-results"></div>
+        </div>
+    </div>
+</div>
 <div class="race-table-section">
     <div>
         <table class="sortable-table results-table">
@@ -235,6 +261,11 @@
         <div class="chart-container-compact"><canvas id="transition-ratings-canvas"></canvas></div>
     </div>
 </div>
+
+<!-- Prediction data (read by race.js initPrediction) -->
+<script id="prediction-data" type="application/json">{{ prediction_data | tojson }}</script>
+<script id="race-athlete-ids" type="application/json">{{ splits_data | map(attribute='athlete_id') | list | tojson }}</script>
+<script id="race-year" type="application/json">{{ race.date.year }}</script>
 
 <!-- Chart data (read by race.js initRaceCharts) -->
 <script id="overall-time-hist-data" type="application/json">{{ overall_time_hist | tojson }}</script>

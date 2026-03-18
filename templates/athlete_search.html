@@ -1,127 +1,195 @@
 {% extends "base.html" %}
 
-{% block title %}Athletes - Search & Leaderboards{% endblock %}
+{% block title %}Athletes - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete_search.css">
 {% endblock %}
 
-{% block content %}
-<div class="athlete-page">
-    <section class="athlete-hero">
-        <div class="hero-copy">
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <div>
             <h1>Athlete Database</h1>
-            <p class="hero-lede">
-                Search for an athlete and view their results from every World Triathlon race held.
-            </p>
-            <div class="hero-stats">
-                <div class="stat-pill">
-                    <span class="stat-label">Athletes tracked</span>
-                    <span class="stat-value">{{ total_athletes }}</span>
-                </div>
-                <div class="stat-pill">
-                    <span class="stat-label">Countries represented</span>
-                    <span class="stat-value">{{ total_countries }}</span>
-                </div>
+            <p class="page-hero-subtitle">Every World Triathlon elite athlete, rated and ranked</p>
+        </div>
+        <div class="as-hero-stats">
+            <div class="as-hero-stat">
+                <span class="as-hero-stat-num">{{ "{:,}".format(total_athletes) }}</span>
+                <span class="as-hero-stat-lbl">Athletes</span>
+            </div>
+            <div class="as-hero-stat-sep"></div>
+            <div class="as-hero-stat">
+                <span class="as-hero-stat-num">{{ total_countries }}</span>
+                <span class="as-hero-stat-lbl">Countries</span>
             </div>
         </div>
-
-        <div class="search-card">
-            <div class="search-card-header">
-                <p class="search-label">Search athletes</p>
-                <h3>Find an athlete</h3>
-            </div>
-            <div class="search-container">
-                <div class="search-input-wrapper">
-                    <input 
-                        type="text" 
-                        id="athleteSearch" 
-                        class="search-input" 
-                        placeholder="Search for an athlete..."
-                        autocomplete="off"
-                    >
-                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                </div>
-                
-                <div id="searchResults" class="search-results" style="display: none;">
-                    <!-- Results populated by JS -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="comparison-callout">
-        <div class="comparison-callout-card">
-            <div class="comparison-callout-copy">
-                <p class="comparison-eyebrow">Head-to-head</p>
-                <h2 class="comparison-title">Compare two athletes across their careers</h2>
-                <p class="comparison-text">
-                    Pick any two athletes to line up ratings, head-to-head results, and performance trends over time.
-                </p>
-            </div>
-            <a href="/compare" class="comparison-link">Open comparison</a>
-        </div>
-    </section>
-
-    <section class="leaderboards-section">
-        <h2 class="section-title">All-Time Leaderboards</h2>
-        <div class="leaderboard-grid">
-            <article class="leaderboard-card">
-                <div class="leaderboard-card-header">
-                    <div>
-                        <p class="leaderboard-eyebrow">Women</p>
-                    </div>
-                    <a href="/leaderboard" class="leaderboard-link">See All</a>
-                </div>
-                <div class="podium-steps">
-                    {% for athlete in female_podium %}
-                    <a href="/athlete/{{ athlete.athlete_id }}" class="podium-step position-{{ loop.index }}">
-                        <div class="podium-avatar-wrap">
-                            <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}"
-                                 alt="{{ athlete.name }}"
-                                 loading="lazy"
-                                 class="podium-avatar">
-                        </div>
-                        <div class="podium-rating">{{ athlete.overall_rating }}</div>
-                        <div class="podium-name">{{ athlete.name }}</div>
-                        <div class="podium-meta">{{ athlete.country_full }}</div>
-                    </a>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="leaderboard-card">
-                <div class="leaderboard-card-header">
-                    <div>
-                        <p class="leaderboard-eyebrow">Men</p>
-                    </div>
-                    <a href="/leaderboard?gender=male" class="leaderboard-link">See All</a>
-                </div>
-                <div class="podium-steps">
-                    {% for athlete in male_podium %}
-                    <a href="/athlete/{{ athlete.athlete_id }}" class="podium-step position-{{ loop.index }}">
-                        <div class="podium-avatar-wrap">
-                            <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists|default(false) else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}"
-                                 alt="{{ athlete.name }}"
-                                 loading="lazy"
-                                 class="podium-avatar">
-                        </div>
-                        <div class="podium-rating">{{ athlete.overall_rating }}</div>
-                        <div class="podium-name">{{ athlete.name }}</div>
-                        <div class="podium-meta">{{ athlete.country_full }}</div>
-                    </a>
-                    {% endfor %}
-                </div>
-            </article>
-        </div>
-    </section>
+    </div>
 </div>
 {% endblock %}
 
+{% block content %}
+
+<!-- ── Athlete Search ── -->
+<div class="page-section-head">Athlete Search</div>
+<div class="as-search-box">
+    <div class="as-search-row">
+        <div class="as-input-wrapper">
+            <svg class="as-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="as-input" class="as-input" placeholder="Search athlete name…" autocomplete="off">
+        </div>
+        <button class="as-filter-toggle" id="as-filter-toggle" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            Filters
+        </button>
+    </div>
+
+    <div class="as-filters" id="as-filters" hidden>
+
+        <!-- Row 1: radio chips + active toggle -->
+        <div class="as-filter-primary">
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Sort by</span>
+                <div class="radio-chips">
+                    <input type="radio" id="disc-overall" name="as-disc" value="overall" checked>
+                    <label for="disc-overall">Overall</label>
+                    <input type="radio" id="disc-swim" name="as-disc" value="swim">
+                    <label for="disc-swim">Swim</label>
+                    <input type="radio" id="disc-bike" name="as-disc" value="bike">
+                    <label for="disc-bike">Bike</label>
+                    <input type="radio" id="disc-run" name="as-disc" value="run">
+                    <label for="disc-run">Run</label>
+                </div>
+            </div>
+            <div class="filter-v-divider"></div>
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Order</span>
+                <div class="radio-chips">
+                    <input type="radio" id="order-top" name="as-order" value="top" checked>
+                    <label for="order-top">Top Rated</label>
+                    <input type="radio" id="order-hot" name="as-order" value="hot">
+                    <label for="order-hot">Trending</label>
+                </div>
+            </div>
+            <div class="filter-v-divider"></div>
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Active only</span>
+                <label class="filter-toggle">
+                    <input type="checkbox" id="as-active-only">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    <span class="toggle-text" id="as-active-text">Off</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Row 2: country + YOB -->
+        <div class="as-filter-secondary">
+            <div class="filter-group">
+                <label for="as-country">Country</label>
+                <select id="as-country">
+                    <option value="">All countries</option>
+                    {% for c in country_list %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Year of Birth</label>
+                <div class="year-range">
+                    <input type="number" id="as-yob-start" placeholder="From" min="1970" max="2012">
+                    <span class="range-sep">–</span>
+                    <input type="number" id="as-yob-end" placeholder="To" min="1970" max="2012">
+                    <button class="btn-age-preset" data-preset="u23">U23</button>
+                    <button class="btn-age-preset" data-preset="junior">Junior</button>
+                    <button class="btn-age-preset" data-preset="clear">Clear</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="as-results" class="as-results"></div>
+</div>
+
+<!-- ── Currently Trending ── -->
+<div class="page-section-head">Currently Trending</div>
+<div class="as-champs-grid">
+    {% for athlete, label in [(female_trending, 'Women · Most Improved'), (male_trending, 'Men · Most Improved')] %}
+    {% if athlete %}
+    <a href="/athlete/{{ athlete.athlete_id }}" class="as-champ-card">
+        <div class="as-champ-header">
+            <span class="as-champ-badge">{{ label }}</span>
+        </div>
+        <div class="as-champ-body">
+            <img class="as-champ-img"
+                 src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else 'imgs/default_user.jpg' }}"
+                 alt="{{ athlete.name }}"
+                 onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+            <div class="as-champ-info">
+                <div class="as-champ-namerow">
+                    <span class="as-champ-flag">{{ athlete.country_emoji }}</span>
+                    <span class="as-champ-name">{{ athlete.name }}</span>
+                </div>
+                <div class="as-champ-stats">
+                    <div class="as-champ-stat">
+                        <span class="as-champ-stat-num">{{ athlete.overall_rating }}</span>
+                        <span class="as-champ-stat-lbl">Overall</span>
+                    </div>
+                    <div class="as-champ-stat-div"></div>
+                    <div class="as-champ-stat">
+                        <span class="as-champ-stat-num positive">{{ athlete.overall_change_fmt }}</span>
+                        <span class="as-champ-stat-lbl">1yr Change</span>
+                    </div>
+                    <div class="as-champ-stat-div"></div>
+                    <div class="as-champ-stat">
+                        <span class="as-champ-stat-num">{{ athlete.wins }}</span>
+                        <span class="as-champ-stat-lbl">Wins</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- ── Head-to-Head ── -->
+<div class="page-section-head">Head-to-Head</div>
+<div class="as-compare-widget">
+    <div class="as-compare-copy">
+        <p class="as-compare-lead">Compare two athletes across their careers</p>
+        <p class="as-compare-desc">Pick any two athletes to line up ratings, head-to-head results, and performance trends over time.</p>
+    </div>
+    <a href="/compare" class="as-compare-btn">Open comparison</a>
+</div>
+
+<!-- ── All-time Leaderboards ── -->
+<div class="page-section-head">All-time Leaderboards</div>
+<div class="as-lb-grid">
+    {% for athletes, href, label in [(female_lb, '/leaderboard?gender=female', 'Women · Top Rated'), (male_lb, '/leaderboard?gender=male', 'Men · Top Rated')] %}
+    <a href="{{ href }}" class="as-lb-card">
+        <div class="as-lb-card-header">
+            <span class="as-lb-card-title">{{ label }}</span>
+        </div>
+        <ul class="as-lb-list">
+            {% for a in athletes %}
+            <li class="as-lb-item">
+                <span class="as-lb-pos{{ ' as-lb-pos--' ~ loop.index if loop.index <= 3 else '' }}">{{ loop.index }}</span>
+                <span class="as-lb-name">{{ a.name }} {{ a.country_emoji }}</span>
+                <span class="as-lb-rating">{{ a.overall_rating }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </a>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
 <script src="{{ STATIC_BASE_URL }}js/athlete_search.js"></script>
 {% endblock %}

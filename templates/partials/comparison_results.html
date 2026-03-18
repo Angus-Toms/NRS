@@ -1,167 +1,108 @@
-<!-- Ratings comparison -->
-<div class="collapsible-card">
-    <h3 class="card-title">
-        Current Ratings
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
+{% macro pos_span(pos, status) %}
+  {%- if pos == 1 -%}<span class="pos-circle gold">1</span>
+  {%- elif pos == 2 -%}<span class="pos-circle silver">2</span>
+  {%- elif pos == 3 -%}<span class="pos-circle bronze">3</span>
+  {%- elif pos -%}<span class="pos-other">{{ pos }}</span>
+  {%- elif status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] -%}<span class="pos-dnf">{{ status }}</span>
+  {%- else -%}—{%- endif -%}
+{% endmacro %}
 
-        {% for discipline in head_to_head_ratings %}
-        <div class="h2h-row">
-            <!-- Left rating -->
-            <div class="rating-block left {% if discipline.rating1 > discipline.rating2 %}winner{% endif %}">
-                <div class="rating-number">{{ discipline.rating1 }}</div>
-                <div class="rating-change {{ discipline.change1.css_class }}">
-                    {{ discipline.change1.formatted_str | safe }}
-                </div>
-            </div>
-            <!-- Discipline in middle -->
-            <div class="h2h-discipline">
-                {{ discipline.label }}
-            </div>
-            <!-- Right rating -->
-            <div class="rating-block right {% if discipline.rating2 > discipline.rating1 %}winner{% endif %}">
-                <div class="rating-number">{{ discipline.rating2 }}</div>
-                <div class="rating-change {{ discipline.change2.css_class }}">
-                    {{ discipline.change2.formatted_str | safe }}
-                </div>
-            </div>
-        </div>
+<!-- Current Ratings -->
+<div class="table-wrap">
+    <table class="h2h-ratings-table">
+        <thead>
+            <tr>
+                <th>Discipline</th>
+                <th>{{ athlete1.name }}</th>
+                <th>{{ athlete2.name }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in head_to_head_ratings %}
+            <tr>
+                <td>{{ d.label }}</td>
+                <td class="{{ 'h2h-winner' if d.rating1 > d.rating2 else '' }}">
+                    {{ d.rating1 }}
+                    <span class="rating-change {{ d.change1.css_class }}">{{ d.change1.formatted_str | safe }}</span>
+                </td>
+                <td class="{{ 'h2h-winner' if d.rating2 > d.rating1 else '' }}">
+                    {{ d.rating2 }}
+                    <span class="rating-change {{ d.change2.css_class }}">{{ d.change2.formatted_str | safe }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Career Statistics -->
+<div class="collapsible-card">
+    <div class="career-stats">
+        {% for stat in [
+            ('Total Races', athlete1.stats.total_races, athlete2.stats.total_races),
+            ('Wins', athlete1.stats.wins, athlete2.stats.wins),
+            ('Podiums', athlete1.stats.podiums, athlete2.stats.podiums)
+        ] %}
+        <div class="career-stat-val {{ 'career-winner' if stat[1] > stat[2] else '' }}">{{ stat[1] }}</div>
+        <div class="career-stat-label">{{ stat[0] }}</div>
+        <div class="career-stat-val career-stat-right {{ 'career-winner' if stat[2] > stat[1] else '' }}">{{ stat[2] }}</div>
         {% endfor %}
     </div>
 </div>
 
-<!-- Key race stats comparison -->
-<div class="collapsible-card">
-    <h3 class="card-title">
-        Career Statistics
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div>
-            {% for stat in [
-                ('Total Races', athlete1.stats.total_races, athlete2.stats.total_races),
-                ('Wins', athlete1.stats.wins, athlete2.stats.wins),
-                ('Podiums', athlete1.stats.podiums, athlete2.stats.podiums)
-            ] %}
-            <div class="h2h-row">
-                <div class="rating-block {{ 'winner' if stat[1] > stat[2] else '' }}">
-                    <div class="rating-number">{{ stat[1] }}</div>
-                </div>
-                <div class="h2h-discipline">{{ stat[0] }}</div>
-                <div class="rating-block rating-number {{ 'winner' if stat[2] > stat[1] else '' }} right">
-                    <div class="rating-number">{{ stat[2] }}</div>
-                </div>
-            </div>
-            {% endfor %}
+<!-- Head-to-Head -->
+{% if head_to_head %}
+
+    <!-- Win count summary -->
+    <div class="h2h-wins-summary">
+        <div class="h2h-wins-block">
+            <span class="h2h-wins-num {{ 'h2h-wins-leader' if athlete1.stats.h2h_wins > athlete2.stats.h2h_wins else '' }}">{{ athlete1.stats.h2h_wins }}</span>
+            <span class="h2h-wins-lbl">{{ athlete1.name }}</span>
+        </div>
+        <div class="h2h-wins-block h2h-wins-total">
+            <span class="h2h-wins-num">{{ head_to_head|length }}</span>
+            <span class="h2h-wins-lbl">races together</span>
+        </div>
+        <div class="h2h-wins-block">
+            <span class="h2h-wins-num {{ 'h2h-wins-leader' if athlete2.stats.h2h_wins > athlete1.stats.h2h_wins else '' }}">{{ athlete2.stats.h2h_wins }}</span>
+            <span class="h2h-wins-lbl">{{ athlete2.name }}</span>
         </div>
     </div>
-</div>
 
-<!-- Full race results comparison -->
-{% if head_to_head %}
-<div class="collapsible-card">
-    <h3 class="card-title">
-        Head-to-Head Record
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        
-        <!-- H2H race win counts -->
-        <table class="h2h-wins">
-            <colgroup>
-                <col>
-                <col class="h2h-wins-center">
-                <col>
-            </colgroup>
-            <tbody>
-                <tr>
-                    <td class="h2h-win-count">{{ athlete1.stats.h2h_wins }}</td>
-                    <td class="h2h-win-count">{{ head_to_head|length }}</td>
-                    <td class="h2h-win-count">{{ athlete2.stats.h2h_wins }}</td>
-                </tr>
-                <tr>
-                    <td class="h2h-win-label">{{ athlete1.name }} wins</td>
-                    <td class="h2h-win-label">Total Races</td>
-                    <td class="h2h-win-label">{{ athlete2.name }} wins</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Full H2h results -->
+    <!-- Race results table -->
+    <div class="table-wrap">
         <table class="h2h-table">
             <thead>
                 <tr>
-                    <th class="date-col" rowspan="2">Date</th>
-                    <th class="race-col" rowspan="2">Race</th>
-
-                    <!-- Athlete columns span both position and time -->
-                    <th class="athlete-name-th" colspan="2">{{ athlete1.name }}</th>
-                    <th class="athlete-name-th" colspan="2">{{ athlete2.name }}</th>
-                </tr>
-
-                <tr>
-                    <th class="position-col">Position</th>
-                    <th>
-                        <div>Time</div>
-                        <div class="time-behind-header">(Time Behind)</div>
-                    </th>
-
-                    <th class="position-col">Position</th>
-                    <th>
-                        <div>Time</div>
-                        <div class="time-behind-header">(Time Behind)</div>
-                    </th>
+                    <th class="date-col">Date</th>
+                    <th class="race-col">Race</th>
+                    <th colspan="2" class="h2h-ath-header">{{ athlete1.name }}</th>
+                    <th colspan="2" class="h2h-ath-header">{{ athlete2.name }}</th>
                 </tr>
             </thead>
-
             <tbody>
                 {% for race in head_to_head %}
                 <tr>
                     <td>{{ race.race_date.strftime('%-d %b %Y') }}</td>
-                    <td>
-                        <a href="/race/{{ race.race_id }}" class="link">
-                            {{ race.race_name }}
-                        </a>
-                    </td>
-
-                    <!-- Athlete 1 position, time, and time behind -->
-                    <td class="position-col position-cell {{ 'position-gold' if race.athlete1_position == 1 else 'position-silver' if race.athlete1_position == 2 else 'position-bronze' if race.athlete1_position == 3 else 'position-dnf' if race.athlete1_status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
-                        {{ race.athlete1_position if race.athlete1_position else race.athlete1_status }}
-                    </td>
-
+                    <td><a href="/race/{{ race.race_id }}" class="link">{{ race.race_name }}</a></td>
+                    <td class="position-col">{{ pos_span(race.athlete1_position, race.athlete1_status) }}</td>
                     <td class="{{ race.athlete1_time.css_class }}">
-                        <div class="time-cell">
-                            {{ race.athlete1_time.formatted_str }}
-                            <span class="time-behind">
-                                {{ race.athlete1_behind }}
-                            </span>
-                        </div>
+                        {{ race.athlete1_time.formatted_str }}
+                        <span class="time-behind">{{ race.athlete1_behind }}</span>
                     </td>
-
-                    <!-- Athlete 2 position, time, and time behind -->
-                    <td class="position-cell {{ 'position-gold' if race.athlete2_position == 1 else 'position-silver' if race.athlete2_position == 2 else 'position-bronze' if race.athlete2_position == 3 else 'position-dnf' if race.athlete2_status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] else '' }}">
-                        {{ race.athlete2_position if race.athlete2_position else race.athlete2_status }}
-                    </td>
+                    <td class="position-col">{{ pos_span(race.athlete2_position, race.athlete2_status) }}</td>
                     <td class="{{ race.athlete2_time.css_class }}">
-                        <div class="time-cell">
-                            {{ race.athlete2_time.formatted_str }}
-                            <span class="time-behind">
-                                {{ race.athlete2_behind }}
-                            </span>
-                        </div>
+                        {{ race.athlete2_time.formatted_str }}
+                        <span class="time-behind">{{ race.athlete2_behind }}</span>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
+
 {% else %}
-<!-- No common race results found -->
-<div>
-    <p style="text-align: center; color: var(--text-light);">No head-to-head races found</p>
-</div>
+<p style="text-align: center; color: var(--text-light);">No head-to-head races found</p>
 {% endif %}
 
 <!-- Historical Ratings Comparisons -->
