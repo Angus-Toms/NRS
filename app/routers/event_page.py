@@ -36,13 +36,13 @@ def _sort_races(races):
 
 def _classify(val, thresholds):
     if val is None:
-        return "entry"
+        return "beginner"
     t = thresholds["overall"]
     if val >= t["p95"]: return "expert"
-    if val >= t["p85"]: return "high"
-    if val >= t["p60"]: return "medium"
-    if val >= t["p30"]: return "low"
-    return "entry"
+    if val >= t["p85"]: return "advanced"
+    if val >= t["p60"]: return "intermediate"
+    if val >= t["p30"]: return "novice"
+    return "beginner"
 
 
 @router.get("/event/{event_id}", response_class=HTMLResponse)

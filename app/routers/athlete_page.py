@@ -284,13 +284,13 @@ async def get_athlete(request: Request, athlete_id: int):
 
     def _std_class(std, disc="overall"):
         if std is None:
-            return "expert"
+            return "beginner"
         t = _thresholds[disc]
         if std >= t["p95"]: return "expert"
         if std >= t["p85"]: return "advanced"
         if std >= t["p60"]: return "intermediate"
         if std >= t["p30"]: return "novice"
-        return "expert"
+        return "beginner"
 
     def _fmt_race(r):
         return {
@@ -329,6 +329,13 @@ async def get_athlete(request: Request, athlete_id: int):
             _sub_map.setdefault(r["parent_race_id"], []).append(_fmt_race(r))
         else:
             _main.append(r)
+
+    # Patch standard_class on sub-races: ignored races have no ratings rows so
+    # overall_std is NULL from the main query; fetch it via get_race_standards.
+    for subs in _sub_map.values():
+        for sub in subs:
+            standards = queries.get_race_standards(sub["race_id"])
+            sub["standard_class"] = _std_class(standards.get("overall"))
 
     race_history = []
     for r in _main:

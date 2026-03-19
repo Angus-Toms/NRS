@@ -1319,7 +1319,7 @@ _standard_thresholds_cache: dict = {}
 def get_race_standard_thresholds(gender):
     """Percentile thresholds (p30, p60, p85, p95) per discipline for a given gender.
 
-    Used to classify race standards as Easy/Low/Medium/High/Expert. Cached on
+    Used to classify race standards as Beginner/Novice/Intermediate/Advanced/Expert. Cached on
     first call per gender since the computation is expensive and the data rarely changes.
     """
     if gender in _standard_thresholds_cache:

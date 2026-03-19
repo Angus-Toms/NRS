@@ -157,10 +157,10 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     thresholds = queries.get_race_standard_thresholds(race["gender"])
     def _classify(val, t):
         if val >= t["p95"]: return "expert"
-        if val >= t["p85"]: return "high"
-        if val >= t["p60"]: return "medium"
-        if val >= t["p30"]: return "low"
-        return "entry"
+        if val >= t["p85"]: return "advanced"
+        if val >= t["p60"]: return "intermediate"
+        if val >= t["p30"]: return "novice"
+        return "beginner"
     race_standard_classes = {d: _classify(standards[d], thresholds[d]) for d in standards}
 
     # Format best performances
