@@ -4,7 +4,6 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import PlainTextResponse
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, comparison, about, robots
 from config import RUNTIME_DATA_DIR, STATIC_BASE_URL
@@ -15,9 +14,12 @@ ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
 app = FastAPI()
 # /static/athlete_imgs must be mounted before /static so it takes precedence in dev.
 # In prod the CDN serves athlete images; this mount is a no-op there.
-app.mount("/static/athlete_imgs", StaticFiles(directory = RUNTIME_DATA_DIR / "athlete_imgs"), name = "athlete_imgs")
-app.mount("/static", StaticFiles(directory = BASE_DIR / "static"), name = "static")
-app.mount("/data", StaticFiles(directory = RUNTIME_DATA_DIR), name = "data")
+athlete_imgs_dir = RUNTIME_DATA_DIR / "athlete_imgs"
+athlete_imgs_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/athlete_imgs", StaticFiles(directory=athlete_imgs_dir), name="athlete_imgs")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+RUNTIME_DATA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/data", StaticFiles(directory=RUNTIME_DATA_DIR), name="data")
 templates = Jinja2Templates(directory = BASE_DIR / "templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 
