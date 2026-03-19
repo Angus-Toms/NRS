@@ -148,7 +148,6 @@
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    border: 1px solid var(--border-color);
 }
 
 .athlete-details {

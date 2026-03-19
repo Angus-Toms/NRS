@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ race.race_title }} - {{ race.date.strftime('%B %d %Y') }}{% endblock %}
+{% block title %}{{ race.race_title }} - {{ race.date.strftime('%d %B%Y') }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race.css">

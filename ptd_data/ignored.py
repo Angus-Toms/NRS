@@ -23,7 +23,7 @@ def detect_all(conn):
     """Run all detection strategies and populate ignored_races table."""
     conn.execute("DELETE FROM ignored_races")
 
-    ignored = {}  # race_id -> reason
+    ignored = {}  # race_id -> (reason, parent_race_id)
 
     # --- Subset detection ---
     # Group races by (race_date, gender), then check for athlete subset relationships
@@ -67,12 +67,12 @@ def detect_all(conn):
                     continue
 
                 if athletes_a < athletes_b:
-                    # A is a strict subset of B — ignore A
-                    ignored[rid_a] = f"{prog_a} results are a subset of {title_b}"
+                    # A is a strict subset of B — ignore A, B is the parent
+                    ignored[rid_a] = (f"{prog_a} results are a subset of {title_b}", rid_b)
                     break
                 elif athletes_b < athletes_a:
-                    # B is a strict subset of A — ignore B
-                    ignored[rid_b] = f"{prog_b} results are a subset of {title_a}"
+                    # B is a strict subset of A — ignore B, A is the parent
+                    ignored[rid_b] = (f"{prog_b} results are a subset of {title_a}", rid_a)
 
     # --- Oversized race detection ---
     oversized = conn.execute(f"""
@@ -85,18 +85,18 @@ def detect_all(conn):
 
     for race_id, race_title, n in oversized:
         if race_id not in ignored:
-            ignored[race_id] = f"Race has {n} entries (likely combined AG/Elite), needs manual review"
+            ignored[race_id] = (f"Race has {n} entries (likely combined AG/Elite), needs manual review", None)
 
     # --- Insert into DB ---
     if ignored:
         conn.executemany(
-            "INSERT OR IGNORE INTO ignored_races (race_id, reason) VALUES (?, ?)",
-            list(ignored.items()),
+            "INSERT OR IGNORE INTO ignored_races (race_id, reason, parent_race_id) VALUES (?, ?, ?)",
+            [(race_id, reason, parent_id) for race_id, (reason, parent_id) in ignored.items()],
         )
 
     print(f"Detected {len(ignored)} ignored races")
-    for race_id, reason in sorted(ignored.items()):
-        print(f"  {race_id}: {reason}")
+    for race_id, (reason, parent_id) in sorted(ignored.items()):
+        print(f"  {race_id}: {reason}" + (f" (parent: {parent_id})" if parent_id else ""))
 
     # Always finish by re-applying manual overrides — detect_all cleared the table above.
     load_manual_ignored(conn)

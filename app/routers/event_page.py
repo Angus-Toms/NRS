@@ -11,43 +11,38 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 router = APIRouter()
 
+_DISCS = ["overall", "swim", "bike", "run", "transition"]
 
-def _pair_races(races):
-    """
-    Split races into female/male pairs sorted by normalized prog_name.
-    Female goes left, male goes right. Unmatched races get None on the other side.
-    """
-    def norm(name):
-        return re.sub(r'\b(female|male|women|men|woman|man)\b', '', name, flags=re.IGNORECASE).strip()
 
-    female = [r for r in races if r["gender"] == "female"]
-    male   = [r for r in races if r["gender"] == "male"]
-    other  = [r for r in races if r["gender"] not in ("female", "male")]
+def _category_rank(prog_name):
+    n = prog_name.lower()
+    if "elite" in n:  return 0
+    if "u23"   in n or "under 23" in n: return 1
+    if "junior" in n or "u18" in n:     return 2
+    if "para"  in n:  return 3
+    return 4
 
-    female.sort(key=lambda r: norm(r["prog_name"]))
-    male.sort(key=lambda r: norm(r["prog_name"]))
 
-    male_by_norm = {norm(r["prog_name"]): r for r in male}
-    seen_male = set()
-    pairs = []
+def _sort_races(races):
+    """Flat list ordered by (category, gender) — elite men, elite women, u23 men, u23 women…"""
+    gender_rank = {"male": 0, "female": 1}
+    return sorted(races, key=lambda r: (
+        _category_rank(r["prog_name"]),
+        gender_rank.get(r["gender"], 2),
+        r["race_date"],
+        r["race_id"],
+    ))
 
-    for f in female:
-        key = norm(f["prog_name"])
-        m = male_by_norm.get(key)
-        if m:
-            seen_male.add(id(m))
-            pairs.append((f, m))
-        else:
-            pairs.append((f, None))
 
-    for m in male:
-        if id(m) not in seen_male:
-            pairs.append((None, m))
-
-    for r in other:
-        pairs.append((r, None))
-
-    return pairs
+def _classify(val, thresholds):
+    if val is None:
+        return "entry"
+    t = thresholds["overall"]
+    if val >= t["p95"]: return "expert"
+    if val >= t["p85"]: return "high"
+    if val >= t["p60"]: return "medium"
+    if val >= t["p30"]: return "low"
+    return "entry"
 
 
 @router.get("/event/{event_id}", response_class=HTMLResponse)
@@ -58,9 +53,28 @@ async def get_event(request: Request, event_id: int):
 
     races = queries.get_event_races_detail(event_id)
 
+    # Fetch thresholds once per gender present (cached after first call).
+    thresholds_by_gender = {
+        g: queries.get_race_standard_thresholds(g)
+        for g in {r["gender"] for r in races if r.get("gender")}
+    }
+
+    for race in races:
+        t = thresholds_by_gender.get(race.get("gender"), {})
+        raw = race.pop("standards_raw", None)   # remove raw, attach formatted + classes
+        if raw:
+            race["standards"]        = {d: round(raw[d]) for d in _DISCS}
+            race["standard_classes"] = {
+                d: _classify(raw[d], queries.get_race_standard_thresholds(race["gender"]))
+                for d in _DISCS
+            }
+        else:
+            race["standards"]        = None
+            race["standard_classes"] = None
+
     return templates.TemplateResponse("event.html", {
-        "request": request,
+        "request":     request,
         "active_page": "races",
-        "event": event,
-        "race_pairs": _pair_races(races),
+        "event":       event,
+        "races":       _sort_races(races),
     })

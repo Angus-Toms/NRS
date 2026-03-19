@@ -267,6 +267,90 @@ sup.ordinal-suffix {
 .rating-change-1yr.negative { color: var(--error-color); }
 .rating-change-1yr.neutral  { color: var(--text-light); }
 
+/* Sub-race expand toggle — sits inline in the date cell */
+.sub-race-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.4em;
+    color: var(--text-lighter);
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    line-height: 1;
+    transition: color var(--transition-fast);
+}
+
+.sub-race-toggle:hover {
+    color: var(--primary-color);
+}
+
+.sub-race-chevron {
+    display: block;
+    transition: transform 0.15s ease;
+}
+
+.sub-race-toggle.expanded .sub-race-chevron {
+    transform: rotate(90deg);
+}
+
+/* Disable CSS nth-child striping for athlete tables — JS handles it via .stripe-even */
+.results-table tbody tr:nth-child(even) td,
+.rating-table tbody tr:nth-child(even) td {
+    background: unset;
+}
+
+.results-table tbody tr.stripe-even td,
+.rating-table tbody tr.stripe-even td {
+    background: #f2f4f6;
+}
+
+/* Hidden by default, shown when parent is expanded */
+tr.sub-race-row {
+    display: none;
+}
+
+tr.sub-race-row.visible {
+    display: table-row;
+}
+
+/* Sub-race rows always use the "even" shade so they look dimmed */
+tr.sub-race-row td {
+    background: #f2f4f6;
+    color: var(--text-lighter);
+}
+
+tr.sub-race-row:hover td {
+    background: #f2f4f6;
+}
+
+tr.sub-race-row .link {
+    color: var(--text-light);
+}
+
+tr.sub-race-row .link:hover {
+    color: var(--primary-color);
+}
+
+/* Hanging indent: arrow stays left, name+pill wrap together */
+.sub-race-name-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3em;
+}
+
+.sub-race-arrow {
+    color: var(--text-lighter);
+    font-size: 0.9em;
+    flex-shrink: 0;
+}
+
+.sub-race-name-text {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Muted date/program columns — same visual weight as YOB in race tables */
 .results-table td.date-col,
 .results-table td.program-col,

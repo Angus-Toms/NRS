@@ -275,8 +275,8 @@ async function _addPredictionRow(athlete, models, disc, existingIds, tbody, race
         <td class="yob-col" data-value="${athlete.yob || 0}">${yobDisplay}</td>
         ${splitCells}`;
 
-    // For discipline predictions, sort the table by that split first
-    if (disc !== 'overall') _sortTableByDisc(tbody.closest('table'), disc);
+    // Sort by the predicted discipline column before inserting
+    _sortTableByDisc(tbody.closest('table'), disc);
 
     // Insert before the first real finisher slower in this discipline
     let inserted = false;

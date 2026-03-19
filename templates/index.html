@@ -15,18 +15,20 @@
             <div class="home-hero-copy">
                 <h1>Triathlon performance,<br>made explorable.</h1>
             </div>
-            <div class="home-hero-stats">
-                <div class="home-stat">
-                    <span class="home-stat-num stat-counter" data-target="{{ total_athletes }}">0</span>
-                    <span class="home-stat-label">athletes tracked</span>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="hero-stat-num stat-counter" data-target="{{ total_athletes }}">0</span>
+                    <span class="hero-stat-lbl">athletes tracked</span>
                 </div>
-                <div class="home-stat">
-                    <span class="home-stat-num stat-counter" data-target="{{ total_races }}">0</span>
-                    <span class="home-stat-label">races recorded</span>
+                <div class="hero-stat-sep"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-num stat-counter" data-target="{{ total_races }}">0</span>
+                    <span class="hero-stat-lbl">races recorded</span>
                 </div>
-                <div class="home-stat">
-                    <span class="home-stat-num stat-counter" data-target="{{ total_results }}">0</span>
-                    <span class="home-stat-label">results analysed</span>
+                <div class="hero-stat-sep"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-num stat-counter" data-target="{{ total_results }}">0</span>
+                    <span class="hero-stat-lbl">results analysed</span>
                 </div>
             </div>
         </div>
@@ -55,8 +57,8 @@
                         class="champ-img">
                     <div class="champ-info">
                         <div class="champ-namerow">
-                            <span class="champ-flag">{{ champ.country_emoji }}</span>
                             <h3 class="champ-name">{{ champ.name }}</h3>
+                            <span class="champ-flag">{{ champ.country_emoji }}</span>
                         </div>
                         <div class="champ-stats-row">
                             <div class="champ-stat">

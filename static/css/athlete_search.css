@@ -1,156 +1,10 @@
 /* ============================================
    ATHLETES PAGE
-   Shared components (radio-chips, athlete-ratings,
-   athlete-meta, btn-age-preset, btn-search) live in base.css.
+   Shared components live in base.css:
+   - radio-chips, athlete-ratings, athlete-meta, btn-age-preset, btn-search
+   - .as-search-box, .as-input, .as-filter-toggle, .as-filters,
+     .as-filter-primary, .as-filter-secondary, .as-results
    ============================================ */
-
-/* ── Hero stats (right side of page-hero) ── */
-.as-hero-stats {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    flex-shrink: 0;
-}
-
-.as-hero-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.15rem;
-}
-
-.as-hero-stat-num {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #fff;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
-.as-hero-stat-lbl {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 600;
-}
-
-.as-hero-stat-sep {
-    width: 1px;
-    height: 2.5rem;
-    background: rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-}
-
-/* ── Search box ── */
-.as-search-box {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
-
-.as-search-row {
-    display: flex;
-    align-items: stretch;
-}
-
-.as-input-wrapper {
-    position: relative;
-    flex: 1;
-}
-
-.as-search-icon {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: var(--text-lighter);
-    pointer-events: none;
-}
-
-.as-input {
-    width: 100%;
-    padding: 0.85rem 1rem 0.85rem 2.75rem;
-    font-size: 0.975rem;
-    font-family: inherit;
-    border: none;
-    border-right: 1px solid var(--border-color);
-    background: transparent;
-    box-sizing: border-box;
-    outline: none;
-    color: var(--text-color);
-}
-
-.as-input:focus {
-    background: var(--white);
-    border-right-color: var(--primary-color);
-    outline: none;
-}
-
-.as-search-box:focus-within {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.1);
-}
-
-.as-filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0 1.25rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: var(--text-light);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color var(--transition-fast), background var(--transition-fast);
-    flex-shrink: 0;
-}
-
-.as-filter-toggle:hover,
-.as-filter-toggle[aria-expanded="true"] {
-    color: var(--primary-color);
-    background: rgba(231, 100, 30, 0.05);
-}
-
-/* ── Filter panel ── */
-.as-filters {
-    border-top: 1px solid var(--border-color);
-    background: var(--white);
-}
-
-/* Primary row: radio chip groups + active toggle, separated by .filter-v-divider */
-.as-filter-primary {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.625rem;
-    padding: 0.875rem 1.25rem;
-}
-
-/* Secondary row: country + YOB */
-.as-filter-secondary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    align-items: flex-end;
-    padding: 0 1.25rem 0.875rem;
-}
-
-/* ── Search results ── */
-.as-results {
-    border-top: 1px solid var(--border-color);
-}
-
-.as-results:empty {
-    display: none;
-}
 
 .as-result-item {
     display: flex;
@@ -177,7 +31,6 @@
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    border: 2px solid var(--navy);
 }
 
 .as-result-info {
@@ -247,7 +100,7 @@
     transition: color var(--transition-fast);
 }
 
-.as-champ-card:hover .as-champ-badge {
+.as-champ-card:hover .as-champ-name {
     color: var(--primary-color);
 }
 
@@ -265,7 +118,6 @@
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    border: 2px solid var(--navy);
 }
 
 .as-champ-info {
@@ -289,13 +141,12 @@
 
 .as-champ-name {
     font-size: 1.1rem;
-    font-weight: 800;
+    font-weight: 500;
     color: var(--text-color);
     letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1;
     min-width: 0;
 }
 
@@ -451,16 +302,21 @@
 
 .as-lb-pos {
     width: 1.6rem;
-    height: 1.6rem;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.72rem;
-    font-weight: 800;
+    font-weight: 600;
     flex-shrink: 0;
-    background: var(--border-color);
-    color: var(--text-light);
+    color: var(--text-lighter);
+}
+
+.as-lb-pos--1,
+.as-lb-pos--2,
+.as-lb-pos--3 {
+    height: 1.6rem;
+    border-radius: 50%;
+    font-weight: 800;
 }
 
 .as-lb-pos--1 { background: var(--gold);   color: var(--gold-text); }
@@ -507,7 +363,7 @@
         display: none;
     }
 
-    .as-hero-stats {
+    .hero-stats {
         display: none;
     }
 }

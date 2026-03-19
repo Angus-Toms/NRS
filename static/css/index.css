@@ -36,39 +36,6 @@
     line-height: 1.15;
 }
 
-.home-hero-stats {
-    display: flex;
-    gap: 1rem;
-    flex-shrink: 0;
-}
-
-.home-stat {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: var(--border-radius);
-    padding: 1rem 1.25rem;
-    text-align: center;
-    min-width: 108px;
-}
-
-.home-stat-num {
-    display: block;
-    font-weight: 800;
-    font-size: 1.8rem;
-    color: #fff;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
-.home-stat-label {
-    display: block;
-    font-size: 0.67rem;
-    color: rgba(255,255,255,0.4);
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    margin-top: 0.35rem;
-    white-space: nowrap;
-}
 
 /* ── SECTIONS ── */
 .home-section {
@@ -113,6 +80,20 @@
     text-decoration: none;
     white-space: nowrap;
     padding-top: 0.25rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.home-more-link::after {
+    content: '';
+    display: inline-block;
+    width: 0.45em;
+    height: 0.45em;
+    border-right: 2px solid currentColor;
+    border-top: 2px solid currentColor;
+    transform: rotate(45deg);
     flex-shrink: 0;
 }
 
@@ -177,7 +158,6 @@
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    border: 2px solid var(--navy);
 }
 
 .champ-info {
@@ -201,14 +181,13 @@
 
 .champ-name {
     font-size: 1.2rem;
-    font-weight: 800;
+    font-weight: 500;
     color: var(--text-color);
     margin: 0;
     letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1;
     min-width: 0;
 }
 
@@ -756,13 +735,8 @@
         gap: 2rem;
     }
 
-    .home-hero-stats {
+    .hero-stats {
         width: 100%;
-    }
-
-    .home-stat {
-        flex: 1;
-        min-width: 0;
     }
 
     .champs-grid {
@@ -784,22 +758,8 @@
         font-size: 1.9rem;
     }
 
-    .home-hero-stats {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .home-stat {
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        min-width: 0;
-        padding: 0.75rem 1rem;
-    }
-
-    .home-stat-num {
-        font-size: 1.5rem;
+    .hero-stats {
+        display: none;
     }
 
     .champ-img { width: 72px; height: 72px; }

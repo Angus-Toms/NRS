@@ -6,12 +6,14 @@
         <div class="race-stat-card">
             <div class="race-stat-disc">{{ label }}</div>
             <div class="race-stat-num">{{ race_standards[disc] }}</div>
+            <span class="std-pill std-pill--{{ race_standard_classes[disc] }}">{{ race_standard_classes[disc]|title }}</span>
         </div>
         {% endfor %}
     </div>
 </div>
 
-<!-- Best Performances -->
+<!-- Best Performances — hidden for ignored races (no rating changes computed) -->
+{% if not ignored_info %}
 <div class="page-section-head">Best Performances</div>
 <div class="race-stat-section">
     <div class="race-stat-cards">
@@ -30,6 +32,7 @@
         {% endfor %}
     </div>
 </div>
+{% endif %}
 
 <!-- Results Table -->
 <div class="results-section-head">
@@ -132,6 +135,14 @@
 
 <!-- Ratings Table -->
 <div class="page-section-head">Ratings &amp; Changes</div>
+{% if ignored_info %}
+<p class="ignored-race-notice">
+    To avoid duplication, no rating changes are calculated for this race as these results were taken from another race.
+    {% if ignored_info.parent_race_id %}
+    See the full race results <a href="/race/{{ ignored_info.parent_race_id }}" class="link">{{ ignored_info.parent_race_title }}</a> to view rating changes.
+    {% endif %}
+</p>
+{% else %}
 <div class="race-table-section">
     <div>
         <table class="sortable-table rating-table">
@@ -207,6 +218,7 @@
         </table>
     </div>
 </div>
+{% endif %}
 
 <!-- Time Distribution Histograms -->
 <div class="page-section-head">Time Distributions</div>

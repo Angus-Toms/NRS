@@ -113,8 +113,9 @@ def create_schema(conn):
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS ignored_races (
-            race_id     INTEGER PRIMARY KEY REFERENCES races(race_id),
-            reason      VARCHAR NOT NULL
+            race_id        INTEGER PRIMARY KEY REFERENCES races(race_id),
+            reason         VARCHAR NOT NULL,
+            parent_race_id INTEGER REFERENCES races(race_id)
         )
     """)
 
@@ -363,16 +364,18 @@ def load_manual_ignored(conn):
             except (ValueError, KeyError, TypeError):
                 continue  # skip blank/malformed lines
             reason = row.get('reason', '').strip()
-            rows.append((race_id, reason))
+            raw_parent = row.get('parent_race_id', '').strip()
+            parent_race_id = int(raw_parent) if raw_parent else None
+            rows.append((race_id, reason, parent_race_id))
     valid = []
-    for race_id, reason in rows:
+    for race_id, reason, parent_race_id in rows:
         if not conn.execute("SELECT 1 FROM races WHERE race_id = ?", [race_id]).fetchone():
             print(f"Warning: manual ignored race {race_id} not in DB, skipping")
             continue
-        valid.append((race_id, reason))
+        valid.append((race_id, reason, parent_race_id))
     if valid:
         conn.executemany(
-            "INSERT OR REPLACE INTO ignored_races (race_id, reason) VALUES (?, ?)",
+            "INSERT OR REPLACE INTO ignored_races (race_id, reason, parent_race_id) VALUES (?, ?, ?)",
             valid,
         )
     print(f"Loaded {len(valid)} manual ignored races")

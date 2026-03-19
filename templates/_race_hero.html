@@ -12,7 +12,7 @@
             {% endif %}
             <h1 class="race-hero-title">{{ race.race_title }}</h1>
             <div class="race-hero-meta">
-                <span>{{ race.date.strftime('%B %d, %Y') }}</span>
+                <span>{{ race.date.strftime('%d %B %Y') }}</span>
                 <span class="race-meta-dot">·</span>
                 <span>{% if race_location %}{{ race_location }}, {% endif %}{{ race_country }}</span>
             </div>

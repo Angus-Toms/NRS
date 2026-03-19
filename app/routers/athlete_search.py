@@ -1,3 +1,5 @@
+import random
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -35,14 +37,14 @@ async def athletes_landing(request: Request):
     counts       = queries.get_counts()
     country_list = queries.get_country_list()
 
-    # Trending: highest 1yr overall change, active athletes, 1 per gender
+    # Trending: random pick from top 25 most improved (1yr), active athletes, 1 per gender
     female_trending_rows = queries.get_leaderboard(
-        "female", "overall", "hot", None, None, None, True, 0, 1)
+        "female", "overall", "hot", None, None, None, True, 0, 25)
     male_trending_rows   = queries.get_leaderboard(
-        "male",   "overall", "hot", None, None, None, True, 0, 1)
+        "male",   "overall", "hot", None, None, None, True, 0, 25)
 
-    female_trending = _fmt_athlete(female_trending_rows[0]) if female_trending_rows else None
-    male_trending   = _fmt_athlete(male_trending_rows[0])   if male_trending_rows   else None
+    female_trending = _fmt_athlete(random.choice(female_trending_rows)) if female_trending_rows else None
+    male_trending   = _fmt_athlete(random.choice(male_trending_rows))   if male_trending_rows   else None
 
     # All-time leaderboard top 5 per gender
     female_lb = [_fmt_athlete(a) for a in

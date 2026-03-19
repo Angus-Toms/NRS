@@ -275,34 +275,66 @@ async def get_athlete(request: Request, athlete_id: int):
     notable_col2 = notable_results[best_split:]
 
     # --- race history table ---
-    race_history = [
-        {
-            "race_id":       r["race_id"],
-            "race_title":    r["race_title"],
-            "race_date":     r["race_date"],
-            "program":       r["program"],
-            "position":      r["position"],
-            "status":        r["status"],
-            "overall":       format_time(r["overall_s"]),
+    # Fetch percentile thresholds once for this athlete's gender (cached per process).
+    # Build a race_id→overall_std map here so the rating history table reuses the same
+    # values rather than re-querying with a different formula.
+    _gender = next((r["gender"] for r in race_hist if r.get("gender")), "male")
+    _thresholds = queries.get_race_standard_thresholds(_gender)
+    _std_map = {r["race_id"]: r.get("overall_std") for r in race_hist}
+
+    def _std_class(std, disc="overall"):
+        if std is None:
+            return "expert"
+        t = _thresholds[disc]
+        if std >= t["p95"]: return "expert"
+        if std >= t["p85"]: return "advanced"
+        if std >= t["p60"]: return "intermediate"
+        if std >= t["p30"]: return "novice"
+        return "expert"
+
+    def _fmt_race(r):
+        return {
+            "race_id":        r["race_id"],
+            "race_title":     r["race_title"],
+            "race_date":      r["race_date"],
+            "program":        r["program"],
+            "position":       r["position"],
+            "status":         r["status"],
+            "standard_class": _std_class(r.get("overall_std")),
+            "overall":        format_time(r["overall_s"]),
             "overall_behind": format_time_behind(r["overall_behind_s"]),
-            "swim":          format_time(r["swim_s"]),
-            "swim_behind":   format_time_behind(r["swim_behind_s"]),
-            "swim_fastest":  r["swim_behind_s"] == 0 and (r["swim_s"] or 0) > 0,
-            "t1":            format_time(r["t1_s"]),
-            "t1_behind":     format_time_behind(r["t1_behind_s"]),
-            "t1_fastest":    r["t1_behind_s"] == 0 and (r["t1_s"] or 0) > 0,
-            "bike":          format_time(r["bike_s"]),
-            "bike_behind":   format_time_behind(r["bike_behind_s"]),
-            "bike_fastest":  r["bike_behind_s"] == 0 and (r["bike_s"] or 0) > 0,
-            "t2":            format_time(r["t2_s"]),
-            "t2_behind":     format_time_behind(r["t2_behind_s"]),
-            "t2_fastest":    r["t2_behind_s"] == 0 and (r["t2_s"] or 0) > 0,
-            "run":           format_time(r["run_s"]),
-            "run_behind":    format_time_behind(r["run_behind_s"]),
-            "run_fastest":   r["run_behind_s"] == 0 and (r["run_s"] or 0) > 0,
+            "swim":           format_time(r["swim_s"]),
+            "swim_behind":    format_time_behind(r["swim_behind_s"]),
+            "swim_fastest":   r["swim_behind_s"] == 0 and (r["swim_s"] or 0) > 0,
+            "t1":             format_time(r["t1_s"]),
+            "t1_behind":      format_time_behind(r["t1_behind_s"]),
+            "t1_fastest":     r["t1_behind_s"] == 0 and (r["t1_s"] or 0) > 0,
+            "bike":           format_time(r["bike_s"]),
+            "bike_behind":    format_time_behind(r["bike_behind_s"]),
+            "bike_fastest":   r["bike_behind_s"] == 0 and (r["bike_s"] or 0) > 0,
+            "t2":             format_time(r["t2_s"]),
+            "t2_behind":      format_time_behind(r["t2_behind_s"]),
+            "t2_fastest":     r["t2_behind_s"] == 0 and (r["t2_s"] or 0) > 0,
+            "run":            format_time(r["run_s"]),
+            "run_behind":     format_time_behind(r["run_behind_s"]),
+            "run_fastest":    r["run_behind_s"] == 0 and (r["run_s"] or 0) > 0,
         }
-        for r in race_hist
-    ]
+
+    # Group ignored sub-races under their parent row.
+    # Build sub-race map keyed by parent_race_id, then stitch together.
+    _sub_map: dict = {}
+    _main: list = []
+    for r in race_hist:
+        if r.get("is_ignored") and r.get("parent_race_id"):
+            _sub_map.setdefault(r["parent_race_id"], []).append(_fmt_race(r))
+        else:
+            _main.append(r)
+
+    race_history = []
+    for r in _main:
+        entry = _fmt_race(r)
+        entry["sub_races"] = _sub_map.get(r["race_id"], [])
+        race_history.append(entry)
 
     # --- rating history table ---
     rating_history = [
@@ -313,6 +345,7 @@ async def get_athlete(request: Request, athlete_id: int):
             "race_program":      r["race_program"],
             "position":          r["position"],
             "status":            r["status"],
+            "standard_class":    _std_class(_std_map.get(r["race_id"])),
             "overall_rating":    round(r["overall_rating"]),
             "swim_rating":       round(r["swim_rating"]),
             "bike_rating":       round(r["bike_rating"]),

@@ -1,83 +1,151 @@
 {% extends "base.html" %}
 
-{% block title %}Races - Search{% endblock %}
+{% block title %}Races - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css">
 {% endblock %}
 
-{% block content %}
-<div class="race-page">
-    <section class="race-hero">
-        <div class="hero-copy">
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <div>
             <h1>Race Database</h1>
-            <p class="hero-lede">
-                View and analyse results from every World Triathlon race held. Check out the most recent events below.
-            </p>
-            <div class="hero-stats">
-                <div class="stat-pill">
-                    <span class="stat-label">Events tracked</span>
-                    <span class="stat-value">{{ total_events }}</span>
-                </div>
-                {% if events %}
-                <div class="stat-pill">
-                    <span class="stat-label">Most recent</span>
-                    <span class="stat-value">{{ events[0].start_date.strftime('%d %B %Y') }}</span>
-                </div>
-                {% endif %}
+            <p class="page-hero-subtitle">Results &amp; analysis for every World Triathlon event</p>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ "{:,}".format(total_events) }}</span>
+                <span class="hero-stat-lbl">Events</span>
             </div>
         </div>
-
-        <div class="search-card">
-            <div class="search-card-header">
-                <p class="search-label">Search races</p>
-                <h3>Find an event</h3>
-            </div>
-            <div class="search-container">
-                <div class="search-input-wrapper">
-                    <input
-                        type="text"
-                        id="raceSearch"
-                        class="search-input"
-                        placeholder="Search for a race..."
-                        autocomplete="off"
-                    >
-                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                </div>
-
-                <div id="searchResults" class="search-results" style="display: none;">
-                    <!-- Results populated by JS -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="race-listing">
-        <h2 class="section-title">Recent events</h2>
-
-        <div id="raceGrid" class="event-grid">
-            {% if events %}
-                {% include "partials/more_races.html" %}
-            {% else %}
-                <div class="empty-state">
-                    <p>No events available right now.</p>
-                </div>
-            {% endif %}
-        </div>
-
-        {% if has_more %}
-        <div class="load-more-container">
-            <button id="loadMoreRaces" class="btn" data-offset="{{ initial_offset }}">Load more events</button>
-        </div>
-        {% endif %}
-    </section>
+    </div>
 </div>
 {% endblock %}
 
+{% block content %}
+
+<!-- ── Race Search ── -->
+<div class="page-section-head">Race Search</div>
+<div class="as-search-box">
+    <div class="as-search-row">
+        <div class="as-input-wrapper">
+            <svg class="as-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="rs-input" class="as-input" placeholder="Search event name, venue, country…" autocomplete="off">
+        </div>
+        <button class="as-filter-toggle" id="rs-filter-toggle" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            Filters
+        </button>
+    </div>
+
+    <div class="as-filters" id="rs-filters" hidden>
+        <div class="as-filter-primary">
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Sort</span>
+                <div class="radio-chips">
+                    <input type="radio" id="sort-desc" name="rs-sort" value="desc" checked>
+                    <label for="sort-desc">Newest first</label>
+                    <input type="radio" id="sort-asc" name="rs-sort" value="asc">
+                    <label for="sort-asc">Oldest first</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="as-filter-secondary">
+            <div class="filter-group">
+                <label for="rs-country">Country</label>
+                <select id="rs-country">
+                    <option value="">All countries</option>
+                    {% for c in country_list %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Year</label>
+                <div class="year-range">
+                    <input type="number" id="rs-year-start" placeholder="From" min="1990" max="2030">
+                    <span class="range-sep">–</span>
+                    <input type="number" id="rs-year-end" placeholder="To" min="1990" max="2030">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rs-results" class="as-results"></div>
+</div>
+
+<!-- ── Recent Races ── -->
+<div class="page-section-head">
+    <div>
+        Recent Races
+        <p class="page-section-sub">Check out the most recent events below</p>
+    </div>
+</div>
+
+<div class="home-events-grid rs-events-grid">
+    {% for event in recent_events %}
+    <div class="event-card">
+        <a href="/event/{{ event.event_id }}" class="event-card-overlay" aria-label="{{ event.name }}"></a>
+
+        <div class="event-card-header">
+            <div class="event-card-title">{{ event.name }}</div>
+        </div>
+
+        <div class="event-card-body">
+            <div class="event-card-info">
+                <div class="event-meta-item">
+                    <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <span class="event-meta-text">{{ event.start_date.strftime('%-d %B %Y') }}</span>
+                </div>
+                <div class="event-meta-item">
+                    <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span class="event-meta-text">{% if event.venue %}{{ event.venue }}, {% endif %}{{ event.country }}</span>
+                </div>
+            </div>
+
+            <div class="event-races">
+                {% for race in event.races[:2] %}
+                <div class="event-race">
+                    <div class="event-race-header">
+                        <a href="/race/{{ race.race_id }}" class="event-race-title">{{ race.prog_name }}</a>
+                    </div>
+                    {% if race.podium %}
+                    <ol class="event-race-podium">
+                        {% for p in race.podium[:3] %}
+                        <li class="event-race-entry">
+                            <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
+                            <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-race-entry-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+                            <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                            {% if p.position == 1 and p.time %}
+                                <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
+                            {% elif p.position > 1 and p.gap %}
+                                <span class="event-entry-time event-entry-time--diff">{{ p.gap }}</span>
+                            {% elif p.time %}
+                                <span class="event-entry-time event-entry-time--diff">{{ p.time }}</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="event-race-pending">Results pending</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
 <script src="{{ STATIC_BASE_URL }}js/race_search.js"></script>
 {% endblock %}

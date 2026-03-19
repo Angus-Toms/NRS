@@ -187,6 +187,18 @@
    TABLE SECTIONS — card with rounded corners
    Generic .table-section is in base.css; .race-table-section is an alias.
    ============================================ */
+.ignored-race-notice {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--text-lighter);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
 .race-table-section {
     background: var(--white);
     border-radius: 8px;

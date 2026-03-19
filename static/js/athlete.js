@@ -273,6 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     header.classList.add('asc');
                     sortTable(table, index, true);
                 }
+                // Re-stripe after sort so alternating rows stay correct
+                const tbody = table.querySelector('tbody');
+                if (tbody) _restripeTable(tbody);
             });
         });
     });
@@ -665,6 +668,57 @@ function switchPctBehindDisc(disc) {
     ['overall', 'swim', 'bike', 'run'].forEach(buildMiniPctBehindChart);
 }
 
+// Align race pills: when the pill has wrapped to a new line, left-align it.
+// Uses rendered positions so it handles both single-line-link-overflow and multi-line links.
+function alignRacePills() {
+    document.querySelectorAll('.race-name-wrap').forEach(wrap => {
+        const link = wrap.querySelector('.link');
+        const pill = wrap.querySelector('.std-pill');
+        if (!link || !pill) return;
+
+        pill.classList.remove('pill-block');
+
+        const linkRects = link.getClientRects();
+        const lastLinkTop = linkRects[linkRects.length - 1].top;
+        const pillTop = pill.getBoundingClientRect().top;
+
+        // Multi-line link, or pill sits below the link's last baseline
+        if (linkRects.length > 1 || pillTop > lastLinkTop + 4) {
+            pill.classList.add('pill-block');
+        }
+    });
+}
+alignRacePills();
+let _pillResizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(_pillResizeTimer);
+    _pillResizeTimer = setTimeout(alignRacePills, 100);
+});
+
 // Init
 buildMainPctBehindChart('overall');
 ['overall', 'swim', 'bike', 'run'].forEach(buildMiniPctBehindChart);
+
+// Re-stripe visible (non-sub-race) rows so alternation is correct
+// regardless of how many hidden sub-race rows exist in the DOM.
+function _restripeTable(tbody) {
+    let stripe = 0;
+    for (const row of tbody.rows) {
+        if (row.classList.contains('sub-race-row')) continue;
+        row.classList.toggle('stripe-even', stripe % 2 === 1);
+        stripe++;
+    }
+}
+
+// Sub-race expand/collapse toggles
+document.querySelectorAll('.sub-race-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const parentId = btn.dataset.parent;
+        const expanded = btn.classList.toggle('expanded');
+        document.querySelectorAll(`.sub-race-row[data-parent="${parentId}"]`)
+                .forEach(row => row.classList.toggle('visible', expanded));
+    });
+});
+
+// Initial stripe pass — also called after sort (sortTable fires on th click)
+document.querySelectorAll('.results-table tbody, .rating-table tbody').forEach(_restripeTable);

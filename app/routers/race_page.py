@@ -99,6 +99,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     if not race:
         raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
 
+    ignored_info = queries.get_race_ignored_info(race_id)
     results   = queries.get_race_results(race_id)
     ratings   = queries.get_race_ratings(race_id)
     standards = queries.get_race_standards(race_id)
@@ -150,8 +151,17 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "transition_change": format_rating_change(r["transition_change"]),
     } for r in ratings]
 
-    # Format standards
+    # Format standards and classify by percentile vs all races of this gender
     race_standards = {d: format_rating(v) for d, v in standards.items()}
+
+    thresholds = queries.get_race_standard_thresholds(race["gender"])
+    def _classify(val, t):
+        if val >= t["p95"]: return "expert"
+        if val >= t["p85"]: return "high"
+        if val >= t["p60"]: return "medium"
+        if val >= t["p30"]: return "low"
+        return "entry"
+    race_standard_classes = {d: _classify(standards[d], thresholds[d]) for d in standards}
 
     # Format best performances
     best_performances = {}
@@ -211,7 +221,9 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "event_races":    event_races,
         "finish_count":   finish_count,
         "dnf_count":      dnf_count,
-        "race_standards": race_standards,
+        "ignored_info":          ignored_info,
+        "race_standards":        race_standards,
+        "race_standard_classes": race_standard_classes,
         "best_performances": best_performances,
         "splits_data":    splits_data,
         "ratings_data":   ratings_data,

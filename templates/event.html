@@ -18,9 +18,9 @@
             <span>{{ event.country }}</span>
             <span class="event-meta-dot">·</span>
             <span>
-                {{ event.start_date.strftime('%d %b %Y') }}
+                {{ event.start_date.strftime('%d %B %Y') }}
                 {% if event.end_date and event.end_date != event.start_date %}
-                – {{ event.end_date.strftime('%d %b %Y') }}
+                – {{ event.end_date.strftime('%d %B %Y') }}
                 {% endif %}
             </span>
         </div>
@@ -30,48 +30,58 @@
 
 {% macro race_card(race) %}
 <div class="event-race-card">
+    <a href="/race/{{ race.race_id }}" class="event-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
     <div class="event-race-card-header">
         <span class="event-race-prog">{{ race.prog_name }}</span>
-        <span class="event-race-date">{{ race.race_date.strftime('%d %b') }}</span>
+        <span class="event-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
     </div>
     <div class="event-race-card-body">
-        {% for p in race.podium %}
-        <div class="event-podium-row">
-            <div class="event-podium-left">
-                <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
-                <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
+        <!-- Podium — left panel -->
+        <div class="event-race-podium">
+            {% for p in race.podium %}
+            <div class="event-podium-row">
+                <div class="event-podium-left">
+                    <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
+                    <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+                    <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
+                </div>
+                <div class="event-podium-right">
+                    {% if p.position == 1 %}
+                        <span class="event-podium-time event-podium-time--winner">{{ p.time }}</span>
+                    {% elif p.gap %}
+                        <span class="event-podium-gap">{{ p.gap }}</span>
+                    {% else %}
+                        <span class="event-podium-time">{{ p.time }}</span>
+                    {% endif %}
+                </div>
             </div>
-            <div class="event-podium-right">
-                {% if p.position == 1 %}
-                    <span class="event-podium-time event-podium-time--winner">{{ p.time }}</span>
-                {% elif p.gap %}
-                    <span class="event-podium-gap">{{ p.gap }}</span>
+            {% endfor %}
+        </div>
+        <!-- Standards — right panel -->
+        {% if race.standards %}
+        <div class="event-race-standards">
+            {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
+            <div class="event-std-col">
+                <div class="event-std-disc">{{ label }}</div>
+                <div class="event-std-val">{{ race.standards[disc] if race.standards[disc] else '—' }}</div>
+                {% if race.standards[disc] %}
+                <span class="std-pill std-pill--{{ race.standard_classes[disc] }}">{{ race.standard_classes[disc]|title }}</span>
                 {% else %}
-                    <span class="event-podium-time">{{ p.time }}</span>
+                <span class="event-std-na">—</span>
                 {% endif %}
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
-    <div class="event-race-card-footer">
-        <a href="/race/{{ race.race_id }}" class="event-race-link">
-            Full Results
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-        </a>
-    </div>
-    <a href="/race/{{ race.race_id }}" class="event-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
 </div>
 {% endmacro %}
 
 {% block content %}
-{% if race_pairs %}
-<div class="event-races-grid">
-    {% for f_race, m_race in race_pairs %}
-        {% if f_race %}{{ race_card(f_race) }}{% else %}<div></div>{% endif %}
-        {% if m_race %}{{ race_card(m_race) }}{% else %}<div></div>{% endif %}
+{% if races %}
+<div class="event-races-list">
+    {% for race in races %}
+    {{ race_card(race) }}
     {% endfor %}
 </div>
 {% else %}

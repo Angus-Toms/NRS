@@ -1,121 +1,92 @@
-// Search functionality
-let searchTimeout;
-const searchInput = document.getElementById('raceSearch');
-const searchResults = document.getElementById('searchResults');
+const input       = document.getElementById('rs-input');
+const filterBtn   = document.getElementById('rs-filter-toggle');
+const filterPanel = document.getElementById('rs-filters');
+const results     = document.getElementById('rs-results');
 
-if (searchInput && searchResults) {
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        clearTimeout(searchTimeout);
-        if (query.length < 2) {
-            searchResults.style.display = 'none';
-            return;
-        }
-        searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
-        searchResults.style.display = 'block';
-        searchTimeout = setTimeout(() => performSearch(query), 300);
-    });
-}
+// ── Filter toggle ──
+filterBtn.addEventListener('click', () => {
+    const open = filterPanel.hidden;
+    filterPanel.hidden = !open;
+    filterBtn.setAttribute('aria-expanded', open);
+});
 
-async function performSearch(query) {
-    try {
-        const response = await fetch(`/races/search?q=${encodeURIComponent(query)}`);
-        const results = await response.json();
-        displayResults(results);
-    } catch (error) {
-        console.error('Search error:', error);
-        searchResults.innerHTML = '<div class="no-results">Error performing search</div>';
+// ── Live search ──
+let searchTimer;
+
+function getSort()    { return document.querySelector('input[name="rs-sort"]:checked')?.value || 'desc'; }
+function getCountry() { return document.getElementById('rs-country').value; }
+function getYearStart() { return document.getElementById('rs-year-start').value; }
+function getYearEnd()   { return document.getElementById('rs-year-end').value; }
+
+function runSearch() {
+    const q = input.value.trim();
+    if (q.length < 2) {
+        results.innerHTML = '';
+        return;
     }
+    const params = new URLSearchParams({ q, sort: getSort() });
+    const country = getCountry();
+    const ys = getYearStart(), ye = getYearEnd();
+    if (country)  params.set('country', country);
+    if (ys)       params.set('year_start', ys);
+    if (ye)       params.set('year_end', ye);
+
+    results.innerHTML = '<div class="rs-loading">Searching…</div>';
+
+    fetch(`/races/search?${params}`)
+        .then(r => r.json())
+        .then(renderResults);
 }
 
-function displayResults(results) {
-    if (results.length === 0) {
-        searchResults.innerHTML = '<div class="no-results">No events found</div>';
+input.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 200);
+});
+
+// Re-run on filter changes
+document.querySelectorAll('input[name="rs-sort"]').forEach(r => r.addEventListener('change', runSearch));
+document.getElementById('rs-country').addEventListener('change', runSearch);
+document.getElementById('rs-year-start').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 400);
+});
+document.getElementById('rs-year-end').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 400);
+});
+
+function esc(text) {
+    const d = document.createElement('div');
+    d.textContent = text || '';
+    return d.innerHTML;
+}
+
+function renderResults(events) {
+    if (!events.length) {
+        results.innerHTML = '<div class="rs-no-results">No events found</div>';
         return;
     }
 
-    const PILL_LIMIT = 4;
-    const html = results.map(event => {
-        const races = event.races || [];
-        const visibleRaces = races.slice(0, PILL_LIMIT);
-        const overflow = races.length - PILL_LIMIT;
+    const html = events.map(ev => {
+        const races = ev.races || [];
+        const meta = [
+            ev.venue ? esc(ev.venue) : null,
+            esc(ev.country),
+            esc(ev.event_date),
+        ].filter(Boolean).join(' · ');
 
-        const pillsHtml = visibleRaces.map(r =>
-            `<span class="race-pill">${escapeHtml(r.prog_name)}</span>`
+        const pillsHtml = races.map(r =>
+            `<a href="/race/${r.race_id}" class="race-pill">${esc(r.prog_name)}</a>`
         ).join('');
-        const overflowHtml = overflow > 0
-            ? `<span class="race-pill race-pill-more">+${overflow}</span>`
-            : '';
 
         return `
-            <a href="/event/${event.event_id}" class="search-result-item">
-                <div class="result-name">${escapeHtml(event.name)}</div>
-                <div class="result-meta">
-                    ${escapeHtml(event.country)}${event.venue ? ` · ${escapeHtml(event.venue)}` : ''} · ${event.event_date}
-                </div>
-                ${races.length > 0 ? `<div class="result-races">${pillsHtml}${overflowHtml}</div>` : ''}
-            </a>
+            <div class="rs-result-item">
+                <a href="/event/${ev.event_id}" class="rs-result-name">${esc(ev.name)}</a>
+                <div class="rs-result-meta">${meta}</div>
+                ${races.length ? `<div class="rs-result-races">${pillsHtml}</div>` : ''}
+            </div>
         `;
     }).join('');
 
-    searchResults.innerHTML = html;
+    results.innerHTML = html;
 }
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-document.addEventListener('click', function(event) {
-    if (!searchResults || !searchInput) return;
-    if (!event.target.closest('.search-container')) {
-        searchResults.style.display = 'none';
-    }
-});
-
-if (searchInput && searchResults) {
-    searchInput.addEventListener('focus', function() {
-        if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
-            searchResults.style.display = 'block';
-        }
-    });
-}
-
-// Load more events
-function initLoadMore() {
-    const loadMoreBtn = document.getElementById('loadMoreRaces');
-    const grid = document.getElementById('raceGrid');
-    const pageSize = 30;
-
-    if (!loadMoreBtn || !grid) return;
-
-    let offset = parseInt(loadMoreBtn.dataset.offset, 10) || 0;
-
-    loadMoreBtn.addEventListener('click', async () => {
-        loadMoreBtn.disabled = true;
-        const originalText = loadMoreBtn.textContent;
-        loadMoreBtn.textContent = 'Loading...';
-
-        try {
-            const res = await fetch(`/races/more?offset=${offset}`);
-            if (!res.ok) throw new Error('Failed to fetch');
-            const html = await res.text();
-            if (!html.trim()) {
-                loadMoreBtn.style.display = 'none';
-                return;
-            }
-            grid.insertAdjacentHTML('beforeend', html);
-            offset += pageSize;
-            loadMoreBtn.dataset.offset = offset;
-            loadMoreBtn.textContent = originalText;
-        } catch (err) {
-            console.error('Error loading more events', err);
-            loadMoreBtn.textContent = 'Try again';
-        } finally {
-            loadMoreBtn.disabled = false;
-        }
-    });
-}
-
-initLoadMore();

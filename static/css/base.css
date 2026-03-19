@@ -553,6 +553,53 @@ table td a.link:hover   { color: var(--primary-color); }
     letter-spacing: -0.02em;
 }
 
+.page-section-sub {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--text-lighter);
+    letter-spacing: 0;
+    margin: 0.1rem 0 0;
+}
+
+/* ============================================
+   HERO STATS — reusable right-side stat cluster for page heroes
+   ============================================ */
+.hero-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.hero-stat-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.hero-stat-lbl {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+}
+
+.hero-stat-sep {
+    width: 1px;
+    height: 2.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
 /* ============================================
    SHARED TABLE CARD WRAPPER
    ============================================ */
@@ -681,6 +728,25 @@ table td a.link:hover   { color: var(--primary-color); }
 .race-stat-num.rating-decrease { color: var(--error-color); }
 .race-stat-num.no-data         { color: var(--text-lighter); }
 
+/* ── Standard classification pill ── */
+.std-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+}
+
+.std-pill--entry  { background: rgba(34,  197, 94,  0.12); color: #15803d; }
+.std-pill--low    { background: rgba(14,  165, 233, 0.12); color: #0369a1; }
+.std-pill--medium { background: rgba(59,  130, 246, 0.13); color: #1d4ed8; }
+.std-pill--high   { background: rgba(239, 68,  68,  0.12); color: #dc2626; }
+.std-pill--expert { background: rgba(15,  23,  42,  0.08); color: #0f172a; }
+
+
 .race-stat-sub {
     margin-top: 0.4rem;
     font-size: 0.72rem;
@@ -798,9 +864,21 @@ table td a.link:hover   { color: var(--primary-color); }
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     flex-shrink: 0;
+}
+
+/* ── Profile image shadow — applied globally to all circular athlete photos ── */
+.result-avatar,
+.as-result-avatar,
+.as-champ-img,
+.champ-img,
+.event-race-entry-img,
+.athlete-profile-img,
+.event-podium-img,
+.sel-athlete-img,
+.podium-row-img,
+.pred-result-avatar {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .result-country {
@@ -996,6 +1074,15 @@ table td a.link:hover   { color: var(--primary-color); }
 
 .race-col {
     width: 250px;
+}
+
+/* Pill trails the race name as a plain inline element. The whitespace between
+   </a> and <span> in the template acts as the gap; when it wraps, HTML collapses
+   that trailing space so the pill starts flush at the left edge — no indent. */
+.race-col .std-pill {
+    font-size: 0.78em;
+    margin: 0;
+    vertical-align: middle;
 }
 
 .program-col {
@@ -1566,4 +1653,117 @@ table td a.link:hover   { color: var(--primary-color); }
         margin-left: 0;
         margin-top: 0;
     }
+}
+
+/* ============================================
+   SHARED SEARCH BOX — used on athletes + races pages
+   (.as-search-box, .as-input, .as-filter-toggle, .as-filters, etc.)
+   ============================================ */
+.as-search-box {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.as-search-row {
+    display: flex;
+    align-items: stretch;
+}
+
+.as-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.as-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--text-lighter);
+    pointer-events: none;
+}
+
+.as-input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    font-size: 0.975rem;
+    font-family: inherit;
+    border: none;
+    border-right: 1px solid var(--border-color);
+    background: transparent;
+    box-sizing: border-box;
+    outline: none;
+    color: var(--text-color);
+}
+
+.as-input:focus {
+    background: var(--white);
+    border-right-color: var(--primary-color);
+    outline: none;
+}
+
+.as-search-box:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.1);
+}
+
+.as-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0 1.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--text-light);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), background var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.as-filter-toggle:hover,
+.as-filter-toggle[aria-expanded="true"] {
+    color: var(--primary-color);
+    background: rgba(231, 100, 30, 0.05);
+}
+
+/* Filter panel */
+.as-filters {
+    border-top: 1px solid var(--border-color);
+    background: var(--white);
+}
+
+/* Primary row: radio chip groups + active toggle */
+.as-filter-primary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    padding: 0.875rem 1.25rem;
+}
+
+/* Secondary row: selects + year range */
+.as-filter-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: flex-end;
+    padding: 0 1.25rem 0.875rem;
+}
+
+/* Results container — hidden when empty */
+.as-results {
+    border-top: 1px solid var(--border-color);
+}
+
+.as-results:empty {
+    display: none;
 }

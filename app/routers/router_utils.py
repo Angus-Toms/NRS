@@ -71,6 +71,9 @@ def format_1yr_rating_change(change: float) -> dict:
     """
     Format 1 year rating change, different to standard formatting to catch zero changes
     """
+    if change is None:
+        return {"formatted_str": "", "css_class": ""}
+
     if change == 0:
         return {
             "formatted_str": "",
