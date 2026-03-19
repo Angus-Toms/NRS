@@ -17,7 +17,7 @@ STATIC_BASE_URL = (
 RUNTIME_ATHLETE_IMAGES_DIR = RUNTIME_DATA_DIR / "athlete_imgs"
 
 # DuckDB
-DB_PATH = PROJECT_ROOT / "ptd_data" / "ptd.duckdb"
+DB_PATH = RUNTIME_DATA_DIR / "ptd.duckdb"
 
 # WorldTriathlon API
 WORLD_TRIATHLON_API_KEY = "aac0df989cb613114241670ca2f5ff75"
