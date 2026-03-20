@@ -125,7 +125,7 @@
 #selected1,
 #selected2 {
     display: none;
-    margin-top: 0.75rem;
+    margin-top: 0;
     position: relative;
 }
 
@@ -175,7 +175,7 @@
 
 .sel-athlete-name {
     font-size: 1.2rem;
-    font-weight: 800;
+    font-weight: 500;
     color: var(--text-color);
     letter-spacing: -0.01em;
     white-space: nowrap;
@@ -259,10 +259,12 @@
     border: 1px solid var(--border-color);
     box-shadow: var(--box-shadow);
     margin-bottom: 1.25rem;
+    background: var(--white);
 }
 
 /* ============================================
     CURRENT RATINGS TABLE
+   ============================================ */
 .h2h-ratings-table th,
 .h2h-table th {
     text-transform: none;
@@ -276,65 +278,44 @@
     font-variant-numeric: tabular-nums;
 }
 
-.h2h-winner {
-    color: var(--success-color);
+/* Discipline label column */
+.h2h-ratings-table td:first-child {
+    font-size: 0.72rem;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-lighter);
+}
+
+/* Zebra rows */
+.h2h-ratings-table tbody tr:nth-child(even) td,
+.h2h-table tbody tr:nth-child(even) td {
+    background: #f2f4f6;
+}
+
+.h2h-winner {
+    font-weight: 700;
+    color: var(--success-color);
+    background: rgba(34, 197, 94, 0.08) !important;
 }
 
 .rating-change {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 0.78rem;
+    gap: 2px;
+    font-size: 0.7rem;
     font-weight: 400;
-    margin-left: 0.5em;
+    margin-left: 0.4em;
+    opacity: 0.85;
 }
 
 .rating-change.positive { color: var(--success-color); }
 .rating-change.negative { color: var(--error-color); }
 .rating-change.neutral  { color: var(--text-light); }
 
-/* ============================================
-   CAREER STATISTICS
-   ============================================ */
-.career-stats {
-    display: grid;
-    grid-template-columns: 1fr 140px 1fr;
-    align-items: center;
-    row-gap: 0;
-}
-
-.career-stat-val {
-    padding: 0.8rem 1.25rem;
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--text-color);
-    font-variant-numeric: tabular-nums;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.career-stat-val:nth-last-child(-n+3) {
-    border-bottom: none;
-}
-
-.career-stat-right {
-    text-align: right;
-}
-
-.career-stat-label {
-    padding: 0.8rem 0;
-    text-align: center;
-    font-size: 0.85rem;
-    color: var(--text-light);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.career-stat-label:nth-last-child(-n+3) {
-    border-bottom: none;
-}
-
-.career-winner {
-    color: var(--success-color);
+/* Career stats as table rows — separator before the first one */
+.h2h-stats-row--first td {
+    border-top: 2px solid var(--border-color);
 }
 
 /* ============================================
@@ -347,7 +328,6 @@
     gap: 3rem;
     margin-bottom: 1.5rem;
     padding: 0.5rem 0 1.25rem;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .h2h-wins-block {
@@ -401,27 +381,18 @@
 .align-starts-button {
     background-color: var(--primary-color);
     color: var(--white);
-    padding: 0.5rem 1.2rem;
+    padding: 0.3rem 0.9rem;
     border: 0;
     font-weight: 500;
+    font-size: 0.78rem;
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: color var(--transition-fast), background-color var(--transition-fast);
-    display: block;
-    width: fit-content;
-    margin: 0 auto;
+    flex-shrink: 0;
 }
 
 .align-starts-button:hover {
     background-color: var(--primary-hover);
-    box-shadow: var(--box-shadow-hover);
-}
-
-.align-button-hint {
-    margin: 0.5rem 0 1.5rem 0;
-    font-size: 0.85rem;
-    color: var(--text-light);
-    text-align: center;
 }
 
 .time-cell {
@@ -441,15 +412,6 @@
     font-weight: bold;
 }
 
-/* ============================================
-   HEAD 2 HEAD CHARTS
-   ============================================ */
-.charts-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    width: 100%;
-}
 
 /* ============================================
    LOADING AND ERROR MESSAGES

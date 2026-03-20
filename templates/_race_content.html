@@ -34,20 +34,50 @@
 </div>
 {% endif %}
 
+<!-- Course Conditions — only for races with predictions and not ignored/subset -->
+{% if course_conditions %}
+<div class="page-section-head">Course Conditions</div>
+<p class="page-section-sub" style="margin-bottom:1rem">Average difference between predicted and actual finish times. Negative (fast) times imply a fast course or conditions while positive (slow) times indicate a slow or long course and conditions.</p>
+<div class="race-stat-section">
+    <div class="race-stat-cards race-stat-cards--4">
+        {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run')] %}
+        {% set cond = course_conditions.get(disc) %}
+        {% if cond %}
+        <div class="race-stat-card">
+            <div class="race-stat-disc">{{ label }}</div>
+            <div class="race-stat-num">{{ cond.formatted }}</div>
+            <span class="cond-pill cond-pill--{{ cond.category }}">{{ cond.category.replace('_', ' ').title() }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Results Table -->
 <div class="results-section-head">
-    <div class="page-section-head">Race Results</div>
-    <button id="add-prediction-btn" class="btn-add-prediction" data-gender="{{ race.gender }}">
-        + Add Athlete Prediction
-    </button>
+    <div class="page-section-head" id="results-section-title">Race Results</div>
+    <div class="results-section-controls">
+        {% if has_predictions %}
+        <div class="race-view-toggle">
+            <button class="race-view-btn" data-view="predictions">Predictions</button>
+            <button class="race-view-btn active" data-view="results">Results</button>
+        </div>
+        {% endif %}
+        <button id="add-prediction-btn" class="btn-add-prediction" data-gender="{{ race.gender }}">
+            + Add Athlete Prediction
+        </button>
+    </div>
 </div>
 <div id="prediction-modal" class="prediction-modal hidden" role="dialog" aria-modal="true">
     <div class="prediction-modal-backdrop"></div>
     <div class="prediction-modal-content">
         <p class="prediction-modal-hint">
-            A linear model is fit from this race's ratings to finish times. Select a discipline to predict
-            just that split and see where the athlete would rank in it, or leave Overall to predict
-            their full finishing position.
+            Select a new athlete to predict where the athlete would have finished in this race based on their current rating.
+            <br><br>
+            This is modelled on this race's results so accounts for course and race-day conditions.
+            <br><br>
+            Choose a particular discipline or leave Overall to predict their full finishing time and position.
         </p>
         <div class="pred-disc-chips">
             <label class="pred-disc-chip"><input type="radio" name="pred-disc" value="overall" checked> Overall</label>
@@ -62,7 +92,7 @@
         </div>
     </div>
 </div>
-<div class="race-table-section">
+<div id="results-view" class="race-view race-table-section">
     <div>
         <table class="sortable-table results-table">
             <thead>
@@ -88,6 +118,11 @@
                             {% elif athlete.position == 3 %}<span class="pos-circle bronze">3</span>
                             {% elif athlete.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ athlete.status }}</span>
                             {% else %}<span class="pos-other">{{ athlete.position }}</span>{% endif %}
+                            {% if athlete.pos_diff is not none %}
+                                {% if athlete.pos_diff > 0 %}<span class="pos-diff pos-diff-up"><svg class="chg-arrow" viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,6.5 5,1.5 9,6.5"/></svg>{{ athlete.pos_diff }}</span>
+                                {% elif athlete.pos_diff < 0 %}<span class="pos-diff pos-diff-down"><svg class="chg-arrow" viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,1.5 5,6.5 9,1.5"/></svg>{{ athlete.pos_diff | abs }}</span>
+                                {% else %}<span class="pos-diff pos-diff-flat">—</span>{% endif %}
+                            {% endif %}
                         </td>
                         <td class="athlete-col" data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">
@@ -132,6 +167,63 @@
         </table>
     </div>
 </div>
+
+{% if has_predictions %}
+<p id="predictions-subtitle" class="page-section-sub hidden" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut — their ratings have not yet converged so predictions are less reliable.</p>
+<div id="predictions-view" class="race-view race-table-section hidden">
+    <div>
+        <table class="sortable-table results-table">
+            <thead>
+                <tr>
+                    <th class="sortable position-col" data-sort="position">Pos</th>
+                    <th class="sortable athlete-col" data-sort="string">Athlete</th>
+                    <th class="sortable yob-col" data-sort="number">YOB</th>
+                    <th class="sortable time-col" data-sort="time">Swim</th>
+                    <th class="sortable time-col" data-sort="time">Bike</th>
+                    <th class="sortable time-col" data-sort="time">Run</th>
+                    <th class="sortable time-col" data-sort="time">Overall</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in predictions %}
+                <tr class="{{ 'debut-row' if row.is_debut else '' }}">
+                    <td class="position-col" data-value="{{ row.predicted_position }}">
+                        {% if row.predicted_position == 1 %}<span class="pos-circle gold">1</span>
+                        {% elif row.predicted_position == 2 %}<span class="pos-circle silver">2</span>
+                        {% elif row.predicted_position == 3 %}<span class="pos-circle bronze">3</span>
+                        {% else %}<span class="pos-other">{{ row.predicted_position }}</span>{% endif %}
+                    </td>
+                    <td class="athlete-col" data-value="{{ row.name }}">
+                        <a href="/athlete/{{ row.athlete_id }}" class="link">
+                            {{ row.name }} {{ row.country_emoji }}
+                        </a>{% if row.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
+                    </td>
+                    <td class="yob-col" data-value="{{ row.year_of_birth if row.year_of_birth else 0 }}">
+                        {{"{} ({})".format(row.year_of_birth, row.age) if row.year_of_birth else "" }}
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.swim_fastest else '' }}" data-value="{{ row.swim_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.swim_fastest else '' }}">{{ row.swim_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.swim_fastest and row.swim_s else row.swim_behind_s }}</span>
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.bike_fastest else '' }}" data-value="{{ row.bike_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.bike_fastest else '' }}">{{ row.bike_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.bike_fastest and row.bike_s else row.bike_behind_s }}</span>
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.run_fastest else '' }}" data-value="{{ row.run_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.run_fastest else '' }}">{{ row.run_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.run_fastest and row.run_s else row.run_behind_s }}</span>
+                    </td>
+                    <td class="time-col overall-col" data-value="{{ row.overall_s }}">
+                        <span class="overall-time">{{ row.overall_s }}</span>
+                        {% if row.overall_behind_s %}<span class="time-cell-gap">{{ row.overall_behind_s }}</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <!-- Ratings Table -->
 <div class="page-section-head">Ratings &amp; Changes</div>

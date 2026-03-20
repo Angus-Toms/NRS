@@ -24,7 +24,7 @@
                     {{ athlete.name }} {{ athlete.country_emoji }}
                     <span class="athlete-status-chip {{ 'status-active' if athlete.active else 'status-retired' }}">{{ 'Active' if athlete.active else 'Retired' }}</span>
                 </h1>
-                <a href="/compare?athlete1={{ athlete.athlete_id }}" class="athlete-compare-link">⇆ Compare</a>
+                <a href="/compare?athlete1={{ athlete.athlete_id }}" class="athlete-compare-link"><svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em"><polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/></svg>Compare</a>
             </div>
             <div class="athlete-hero-meta">
                 {{ athlete.country_full }}

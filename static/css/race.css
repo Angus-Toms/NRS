@@ -179,9 +179,7 @@
    RACE META CARDS (Standards + Best Perf)
    Card grid + card styles are in base.css (.race-stat-cards etc.)
    ============================================ */
-.race-stat-section {
-    margin-bottom: 2rem;
-}
+.race-stat-section {}
 
 /* ============================================
    TABLE SECTIONS — card with rounded corners
@@ -252,13 +250,20 @@
    PREDICTION — section head row + search bar + predicted row
    ============================================ */
 
-/* Flex wrapper so the section title and button sit on one line */
+/* Flex wrapper so the title row and controls button sit on one line */
 .results-section-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1rem;
     gap: 1rem;
+}
+
+/* Title + toggle on the same baseline */
+.results-section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .results-section-head .page-section-head {
@@ -506,3 +511,62 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* Results / Predictions toggle */
+.results-section-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.race-view-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--border-color);  /* darker than page bg so the trough is visible */
+    padding: 3px;
+    border-radius: var(--border-radius);
+    align-items: center;
+}
+
+
+.race-view-btn {
+    padding: 0.3rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    border-radius: calc(var(--border-radius) - 2px);
+    background: transparent;
+    color: var(--text-light);
+    transition: background var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
+}
+
+.race-view-btn.active {
+    background: var(--white);
+    color: var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.race-view.hidden { display: none; }
+
+/* Position diff badges */
+.pos-diff {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: 3px;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.pos-diff-up   { color: var(--success-color); }
+.pos-diff-down { color: var(--error-color); }
+.pos-diff-flat { color: var(--text-lighter); }
+
+/* Debut row in predictions table — de-emphasised (no pre-race ratings so less reliable) */
+.debut-row td { color: var(--text-light); font-style: italic; }
+.debut-label { font-size: 0.75em; color: var(--text-lighter); font-style: italic; }

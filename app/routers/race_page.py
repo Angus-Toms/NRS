@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from fastapi import HTTPException, Request, APIRouter
@@ -6,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
 
 from ptd_data import queries
+from ptd_data.ratings import SCALE
 from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
 
 templates = Jinja2Templates(directory="templates")
@@ -13,6 +16,140 @@ templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
+START_RATING  = 1500
+
+
+def _compute_race_predictions(race_id, race, results, models):
+    """Compute full-field predicted times, position diffs, and course conditions.
+
+    Returns (pred_rows, pos_diffs, course_conditions).
+    pred_rows: sorted by predicted overall time.
+    pos_diffs: athlete_id -> (predicted_pos - actual_pos), positive = beat prediction.
+    course_conditions: disc -> {formatted, category} where formatted is ±mm:ss.
+    Returns (None, None, None) if predictions are unavailable for this race.
+    """
+    distance = queries.get_race_distance_type(race_id)
+    if not distance:
+        return None, None, None
+
+    pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
+    gender  = race['gender']
+    DISCS   = ['overall', 'swim', 'bike', 'run']  # transitions excluded — too course-specific
+
+    # For each discipline, pick the highest-rated athlete as predicted leader,
+    # then derive all other times via the ELO log-ratio formula.
+    preds = {}  # athlete_id -> {disc: predicted_time_s}
+    for disc in DISCS:
+        m = models.get((gender, distance, disc))
+        if not m:
+            continue
+        field_ratings = {}
+        for r in results:
+            aid = r['athlete_id']
+            pr  = pre_ratings.get(aid)
+            field_ratings[aid] = pr[disc] if pr and pr[disc] else START_RATING
+
+        leader_id     = max(field_ratings, key=field_ratings.get)
+        leader_rating = field_ratings[leader_id]
+        leader_time   = m['slope'] * leader_rating + m['intercept']
+
+        for aid, rating in field_ratings.items():
+            t = leader_time * (10 ** ((leader_rating - rating) / SCALE))
+            preds.setdefault(aid, {})[disc] = max(0, round(t))
+
+    if not preds:
+        return None, None, None
+
+    # Build rows sorted by predicted overall time
+    pred_rows = []
+    for r in results:
+        aid = r['athlete_id']
+        p   = preds.get(aid, {})
+        pred_rows.append({
+            'athlete_id':    aid,
+            'name':          r['name'],
+            'country_emoji': r.get('country_emoji', ''),
+            'year_of_birth': r.get('year_of_birth'),
+            'is_debut':      aid not in pre_ratings,
+            '_overall_raw':  p.get('overall', 9_999_999),
+            '_swim_raw':     p.get('swim', 0),
+            '_bike_raw':     p.get('bike', 0),
+            '_run_raw':      p.get('run', 0),
+        })
+    pred_rows.sort(key=lambda x: x['_overall_raw'])
+    for i, row in enumerate(pred_rows):
+        row['predicted_position'] = i + 1
+
+    # Fastest split times across the field
+    best = {}
+    for disc in DISCS:
+        vals = [r[f'_{disc}_raw'] for r in pred_rows if r.get(f'_{disc}_raw', 0) > 0]
+        best[disc] = min(vals) if vals else None
+
+    # Annotate each row with formatted times, fastest flags, and behind gaps
+    for row in pred_rows:
+        for disc in DISCS:
+            raw = row.pop(f'_{disc}_raw', 0)
+            key = 'overall_s' if disc == 'overall' else f'{disc}_s'
+            row[key] = format_time(raw)
+            b = best[disc]
+            if disc == 'overall':
+                row['overall_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
+            else:
+                row[f'{disc}_fastest']  = bool(raw and b and raw == b)
+                row[f'{disc}_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
+
+    pred_pos_map = {r['athlete_id']: r['predicted_position'] for r in pred_rows}
+    pos_diffs = {}
+    for r in results:
+        if r['status'] in DNF_STATUSES:
+            continue
+        aid     = r['athlete_id']
+        actual  = r['position']
+        predicted = pred_pos_map.get(aid)
+        if predicted is not None and actual is not None:
+            pos_diffs[aid] = predicted - actual  # positive = beat prediction
+
+    # Course conditions: avg(predicted - actual) per discipline for finishers.
+    # Expressed as % of avg predicted overall; positive = fast/short course.
+    # Thresholds: ±1% = normal, ±1-3% = fast/slow, >±3% = very fast/slow.
+    pred_overalls = [preds[r['athlete_id']]['overall'] for r in results
+                     if r['status'] not in DNF_STATUSES
+                     and r['athlete_id'] in preds
+                     and preds[r['athlete_id']].get('overall')]
+    avg_pred_overall = sum(pred_overalls) / len(pred_overalls) if pred_overalls else None
+
+    course_conditions = {}
+    if avg_pred_overall:
+        for disc in DISCS:
+            time_key = f'{disc}_s'
+            diffs = [
+                preds[r['athlete_id']][disc] - r[time_key]
+                for r in results
+                if r['status'] not in DNF_STATUSES
+                and r['athlete_id'] in preds
+                and preds[r['athlete_id']].get(disc)
+                and (r.get(time_key) or 0) > 0
+            ]
+            if len(diffs) < 3:
+                continue
+            avg_diff = sum(diffs) / len(diffs)
+            pct = avg_diff / avg_pred_overall
+            if   pct >  0.03: category = 'very_fast'
+            elif pct >  0.01: category = 'fast'
+            elif pct > -0.01: category = 'normal'
+            elif pct > -0.03: category = 'slow'
+            else:              category = 'very_slow'
+            # positive avg_diff = predicted > actual = course is fast = show -
+            sign  = '-' if avg_diff >= 0 else '+'
+            abs_s = abs(round(avg_diff))
+            mins, secs = divmod(abs_s, 60)
+            course_conditions[disc] = {
+                'formatted': f"{sign}{mins:02d}:{secs:02d}",
+                'category':  category,
+            }
+
+    return pred_rows, pos_diffs, course_conditions
 
 
 def _build_time_histograms(time_values, bins=20):
@@ -113,6 +250,15 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     for r in results + ratings:
         r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
 
+    # Compute full-field predictions using pre-trained global models
+    race_distance = queries.get_race_distance_type(race_id)  # 'sprint' | 'standard' | None
+    predictions, pos_diffs, course_conditions = _compute_race_predictions(
+        race_id, race, results, queries.get_prediction_models()
+    )
+    if predictions:
+        for r in predictions:
+            r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
+
     # Format splits data
     splits_data = [{
         **r,
@@ -134,6 +280,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "run_fastest":  r["run_behind_s"]  == 0 and (r["run_s"]  or 0) > 0,
         "t1_fastest":   r["t1_behind_s"]   == 0 and (r["t1_s"]   or 0) > 0,
         "t2_fastest":   r["t2_behind_s"]   == 0 and (r["t2_s"]   or 0) > 0,
+        "pos_diff":     pos_diffs.get(r["athlete_id"]) if pos_diffs else None,
     } for r in results]
 
     # Format ratings data
@@ -239,4 +386,8 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "run_rating_hist":         rating_hists.get("run", {}),
         "transition_rating_hist":  rating_hists.get("transition", {}),
         "prediction_data":         prediction_data,
+        "predictions":             predictions,
+        "has_predictions":         predictions is not None,
+        "race_distance":           race_distance,
+        "course_conditions":       course_conditions if not ignored_info else None,
     })

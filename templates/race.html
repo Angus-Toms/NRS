@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initRaceCharts();
     initSortableListeners();
     initPrediction();
+    initRaceViewToggle();
 });
 
 async function switchRace(raceId) {
@@ -36,6 +37,7 @@ async function switchRace(raceId) {
     initSortableListeners();
     initRaceCharts();
     initPrediction();
+    initRaceViewToggle();
     history.pushState({}, '', `/race/${raceId}`);
     window.scrollTo(0, 0);
 }

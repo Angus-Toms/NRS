@@ -43,7 +43,7 @@ async def leaderboard(
     country:     str           = Query("all"),
     yob_start:   Optional[int] = Query(1950, ge=1950, le=2010),
     yob_end:     Optional[int] = Query(2010, ge=1950, le=2010),
-    active_only: bool          = Query(False),
+    active_only: bool          = Query(True),
 ):
     athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset=0)
     return templates.TemplateResponse("leaderboard.html", {
@@ -70,7 +70,7 @@ async def leaderboard_more(
     country:     str           = Query("all"),
     yob_start:   int           = Query(1950),
     yob_end:     int           = Query(2010),
-    active_only: bool          = Query(False),
+    active_only: bool          = Query(True),
     offset:      int           = Query(0),
 ):
     athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset)

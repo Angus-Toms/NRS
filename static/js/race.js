@@ -329,3 +329,24 @@ function _renumberPredictions(tbody) {
         predRow.cells[0].setAttribute('data-value', pos);
     }
 }
+
+// Results/Predictions tab toggle
+function initRaceViewToggle() {
+    const buttons = document.querySelectorAll('.race-view-btn');
+    if (!buttons.length) return;
+    const titleEl    = document.getElementById('results-section-title');
+    const subtitleEl = document.getElementById('predictions-subtitle');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const view = btn.dataset.view;
+            const resultsEl     = document.getElementById('results-view');
+            const predictionsEl = document.getElementById('predictions-view');
+            if (resultsEl)     resultsEl.classList.toggle('hidden', view !== 'results');
+            if (predictionsEl) predictionsEl.classList.toggle('hidden', view !== 'predictions');
+            if (subtitleEl)    subtitleEl.classList.toggle('hidden', view !== 'predictions');
+            if (titleEl) titleEl.textContent = view === 'predictions' ? 'Predicted Results' : 'Race Results';
+        });
+    });
+}

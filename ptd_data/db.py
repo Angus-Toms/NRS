@@ -168,9 +168,33 @@ def create_schema(conn):
             national_bike           INTEGER NOT NULL,
             national_run            INTEGER NOT NULL,
             national_transition     INTEGER NOT NULL,
+            active_world_overall    INTEGER,
+            active_world_swim       INTEGER,
+            active_world_bike       INTEGER,
+            active_world_run        INTEGER,
+            active_world_transition INTEGER,
             PRIMARY KEY (race_id, athlete_id, category)
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS prediction_models (
+            gender      gender_enum NOT NULL,
+            distance    VARCHAR NOT NULL,   -- 'sprint' | 'standard'
+            discipline  VARCHAR NOT NULL,   -- 'overall' | 'swim' | 'bike' | 'run' | 'transition'
+            slope       DOUBLE NOT NULL,
+            intercept   DOUBLE NOT NULL,
+            n_samples   INTEGER NOT NULL,
+            PRIMARY KEY (gender, distance, discipline)
+        )
+    """)
+
+    # Column migrations — ADD COLUMN IF NOT EXISTS is idempotent so safe to
+    # run on every write connection. Add new columns here rather than relying
+    # on a separate ALTER TABLE, so any DB (local or Render) self-migrates.
+    for col in ("active_world_overall", "active_world_swim", "active_world_bike",
+                "active_world_run", "active_world_transition"):
+        conn.execute(f"ALTER TABLE rankings ADD COLUMN IF NOT EXISTS {col} INTEGER")
 
     # ART indexes on non-PK columns used in WHERE/JOIN clauses
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_recurring_event_id ON events(recurring_event_id)")

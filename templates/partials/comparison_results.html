@@ -7,7 +7,8 @@
   {%- else -%}—{%- endif -%}
 {% endmacro %}
 
-<!-- Current Ratings -->
+<!-- Head-to-head stats -->
+<div class="page-section-head">Head-to-head stats</div>
 <div class="table-wrap">
     <table class="h2h-ratings-table">
         <thead>
@@ -31,26 +32,29 @@
                 </td>
             </tr>
             {% endfor %}
+            <!-- Career stats rows -->
+            <tr class="h2h-stats-row h2h-stats-row--first">
+                <td>Total Races</td>
+                <td class="{{ 'h2h-winner' if athlete1.stats.total_races > athlete2.stats.total_races else '' }}">{{ athlete1.stats.total_races }}</td>
+                <td class="{{ 'h2h-winner' if athlete2.stats.total_races > athlete1.stats.total_races else '' }}">{{ athlete2.stats.total_races }}</td>
+            </tr>
+            <tr class="h2h-stats-row">
+                <td>Wins</td>
+                <td class="{{ 'h2h-winner' if athlete1.stats.wins > athlete2.stats.wins else '' }}">{{ athlete1.stats.wins }}</td>
+                <td class="{{ 'h2h-winner' if athlete2.stats.wins > athlete1.stats.wins else '' }}">{{ athlete2.stats.wins }}</td>
+            </tr>
+            <tr class="h2h-stats-row">
+                <td>Podiums</td>
+                <td class="{{ 'h2h-winner' if athlete1.stats.podiums > athlete2.stats.podiums else '' }}">{{ athlete1.stats.podiums }}</td>
+                <td class="{{ 'h2h-winner' if athlete2.stats.podiums > athlete1.stats.podiums else '' }}">{{ athlete2.stats.podiums }}</td>
+            </tr>
         </tbody>
     </table>
 </div>
 
-<!-- Career Statistics -->
-<div class="collapsible-card">
-    <div class="career-stats">
-        {% for stat in [
-            ('Total Races', athlete1.stats.total_races, athlete2.stats.total_races),
-            ('Wins', athlete1.stats.wins, athlete2.stats.wins),
-            ('Podiums', athlete1.stats.podiums, athlete2.stats.podiums)
-        ] %}
-        <div class="career-stat-val {{ 'career-winner' if stat[1] > stat[2] else '' }}">{{ stat[1] }}</div>
-        <div class="career-stat-label">{{ stat[0] }}</div>
-        <div class="career-stat-val career-stat-right {{ 'career-winner' if stat[2] > stat[1] else '' }}">{{ stat[2] }}</div>
-        {% endfor %}
-    </div>
-</div>
+<!-- Head-to-head races -->
+<div class="page-section-head">Head-to-head races</div>
 
-<!-- Head-to-Head -->
 {% if head_to_head %}
 
     <!-- Win count summary -->
@@ -102,135 +106,51 @@
     </div>
 
 {% else %}
-<p style="text-align: center; color: var(--text-light);">No head-to-head races found</p>
+<p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">No head-to-head races found</p>
 {% endif %}
 
-<!-- Historical Ratings Comparisons -->
-<div class="collapsible-card">
-    <h3 class="card-title">
-        Ratings Comparison
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-
-    <!-- Alignment button -->
-    <button 
-        id="align-btn" 
-        class="align-starts-button"
-        onclick="alignChartStarts()"
-    >
-        Align Career Starts
-    </button>
-    <p class="align-button-hint">Compare careers from Day 0 regardless of actual dates</p>
-
-        <div class="charts-grid">
-            <div class="mini-chart full-width">
-                <h4>Overall Ratings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="overall-ratings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim Ratings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-ratings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike Ratings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-ratings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Run Ratings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-ratings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Transition Ratings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="transition-ratings-canvas"></canvas>
-                </div>
-            </div>
+<!-- Rating History -->
+<div class="page-section-head" id="ratings-section-title">
+    Rating History — Overall
+    <button id="align-btn" class="align-starts-button" onclick="alignChartStarts()">Align Career Starts</button>
+</div>
+<div class="collapsible-card ratings-history-section" id="ratings-section">
+    <div class="ratings-main-chart">
+        <canvas id="ratings-main-canvas"></canvas>
+    </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchRatingsDisc('{{ disc }}')">
+            <canvas id="ratings-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 
-<!-- Rankings Comparison -->
-<div class="collapsible-card">
-    <h3 class="card-title">
-        Rankings Comparison
-        <span class="collapse-toggle" onclick="toggleCollapse(this)">−</span>
-    </h3>
-    <div class="collapsible-content">
-        <div class="charts-grid">
-            <div class="mini-chart full-width">
-                <h4>Overall World Rankings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="overall-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Swim Rankings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="swim-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Bike Rankings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="bike-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Run Rankings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="run-rankings-canvas"></canvas>
-                </div>
-            </div>
-            <div class="mini-chart">
-                <h4>Transition Rankings</h4>
-                <div class="chart-container-compact">
-                    <canvas id="transition-rankings-canvas"></canvas>
-                </div>
-            </div>
+<!-- World Rankings -->
+<div class="page-section-head" id="rankings-section-title">World Rankings — Overall</div>
+<div class="collapsible-card ratings-history-section" id="rankings-section">
+    <div class="ratings-main-chart">
+        <canvas id="rankings-main-canvas"></canvas>
+    </div>
+    <div class="ratings-mini-row">
+        {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+        <div class="ratings-mini {% if disc == 'overall' %}active{% endif %}" data-disc="{{ disc }}" data-label="{{ disc.capitalize() }}" onclick="switchRankingsDisc('{{ disc }}')">
+            <canvas id="rankings-mini-{{ disc }}"></canvas>
         </div>
+        {% endfor %}
     </div>
 </div>
 
 {% block comparison_specific_js %}
-<!-- Rating comparison charts -->
-<script id="overall-ratings-data" type="application/json">
-    {{ overall_ratings_chart | tojson }}
-</script>
-<script id="swim-ratings-data" type="application/json">
-    {{ swim_ratings_chart | tojson }}
-</script>
-<script id="bike-ratings-data" type="application/json">
-    {{ bike_ratings_chart | tojson }}
-</script>
-<script id="run-ratings-data" type="application/json">
-    {{ run_ratings_chart | tojson }}
-</script>
-<script id="transition-ratings-data" type="application/json">
-    {{ transition_ratings_chart | tojson }}
-</script>
-<!-- Rankings comparison charts -->
-<script id="overall-rankings-data" type="application/json">
-    {{ overall_rankings_chart | tojson }}
-</script>
-<script id="swim-rankings-data" type="application/json">
-    {{ swim_rankings_chart | tojson }}
-</script>
-<script id="bike-rankings-data" type="application/json">
-    {{ bike_rankings_chart | tojson }}
-</script>
-<script id="run-rankings-data" type="application/json">
-    {{ run_rankings_chart | tojson }}
-</script>
-<script id="transition-rankings-data" type="application/json">
-    {{ transition_rankings_chart | tojson }}
-</script>
+<script id="overall-ratings-data" type="application/json">{{ overall_ratings_chart | tojson }}</script>
+<script id="swim-ratings-data" type="application/json">{{ swim_ratings_chart | tojson }}</script>
+<script id="bike-ratings-data" type="application/json">{{ bike_ratings_chart | tojson }}</script>
+<script id="run-ratings-data" type="application/json">{{ run_ratings_chart | tojson }}</script>
+<script id="transition-ratings-data" type="application/json">{{ transition_ratings_chart | tojson }}</script>
+<script id="overall-rankings-data" type="application/json">{{ overall_rankings_chart | tojson }}</script>
+<script id="swim-rankings-data" type="application/json">{{ swim_rankings_chart | tojson }}</script>
+<script id="bike-rankings-data" type="application/json">{{ bike_rankings_chart | tojson }}</script>
+<script id="run-rankings-data" type="application/json">{{ run_rankings_chart | tojson }}</script>
+<script id="transition-rankings-data" type="application/json">{{ transition_rankings_chart | tojson }}</script>
 {% endblock %}

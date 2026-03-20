@@ -86,8 +86,11 @@ function parseTime(timeStr) {
 
 function sortTable(table, column, asc = true) {
     const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+    const allRows = Array.from(tbody.querySelectorAll('tr'));
+    // Sub-race rows use a colspan and have fewer cells — exclude from sort and reinsert after
+    const subRows = allRows.filter(r => r.classList.contains('sub-race-row'));
+    const rows    = allRows.filter(r => !r.classList.contains('sub-race-row'));
+
     // Skip if no data
     if (rows.length === 1 && rows[0].querySelector('.no-data')) return;
     
@@ -131,8 +134,17 @@ function sortTable(table, column, asc = true) {
         return 0;
     });
     
-    // Reappend rows in sorted order
+    // Reappend sorted rows, then re-attach each sub-race row after its parent.
+    // Parent rows are identified by the toggle button's data-parent matching the sub-row's data-parent.
     rows.forEach(row => tbody.appendChild(row));
+    subRows.forEach(sub => {
+        const parentId = sub.dataset.parent;
+        const parentRow = parentId && Array.from(tbody.querySelectorAll('tr')).find(
+            r => r.querySelector(`.sub-race-toggle[data-parent="${parentId}"]`)
+        );
+        if (parentRow) parentRow.after(sub);
+        else tbody.appendChild(sub);
+    });
 }
 
 function getJSON(id) {

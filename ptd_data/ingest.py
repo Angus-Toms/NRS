@@ -48,8 +48,8 @@ def race_category(prog_name):
     if first in ('para', 'ptvi', 'pts5', 'pts4', 'pts3', 'pts2', 'ptwc', 'awad',
                  'relay', 'mixed', 'team', 'overall', 'open'):
         return None
-    # Everything else (age-group brackets, masters, etc.) is AG
-    return 'ag'
+    # Everything else (age-group brackets, masters, etc.) — skip for now
+    return None
 
 
 def is_valid_program(prog_name):

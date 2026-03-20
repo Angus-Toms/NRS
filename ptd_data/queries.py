@@ -99,7 +99,7 @@ def search_athletes_full(query, disc="overall", order="top", country=None,
         filters.append("a.year_of_birth <= ?")
         params.append(int(yob_end))
     if active_only:
-        filters.append("c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR")
+        filters.append("c.last_race_date >= CURRENT_DATE - INTERVAL 18 MONTHS")
 
     where = " AND ".join(filters)
     order_clause = (
@@ -432,7 +432,7 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
         filters.append("a.year_of_birth <= ?")
         params.append(yob_end)
     if active_only:
-        filters.append("c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR")
+        filters.append("c.last_race_date >= CURRENT_DATE - INTERVAL 18 MONTHS")
     if order == "hot":
         filters.append(f"COALESCE(c.{rating_col} - ya.{rating_col}, 0) != 0")
 
@@ -458,7 +458,9 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
             SELECT DISTINCT ON (rk.athlete_id)
                    rk.athlete_id,
                    rk.world_overall, rk.world_swim, rk.world_bike,
-                   rk.world_run, rk.world_transition
+                   rk.world_run, rk.world_transition,
+                   rk.active_world_overall, rk.active_world_swim, rk.active_world_bike,
+                   rk.active_world_run, rk.active_world_transition
             FROM rankings rk
             JOIN races r ON rk.race_id = r.race_id
             ORDER BY rk.athlete_id, r.race_date DESC, rk.race_id DESC
@@ -489,7 +491,9 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
             a.profile_img,
             c.overall, c.swim, c.bike, c.run, c.transition,
             cr.world_overall, cr.world_swim, cr.world_bike, cr.world_run, cr.world_transition,
-            c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR AS active,
+            cr.active_world_overall, cr.active_world_swim, cr.active_world_bike,
+            cr.active_world_run, cr.active_world_transition,
+            c.last_race_date >= CURRENT_DATE - INTERVAL 18 MONTHS AS active,
             COALESCE(s.race_starts, 0) AS race_starts,
             COALESCE(s.wins, 0) AS wins,
             COALESCE(c.overall    - ya.overall,    0) AS overall_change,
@@ -515,6 +519,7 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
         "profile_img",
         "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
         "world_overall", "world_swim", "world_bike", "world_run", "world_transition",
+        "active_world_overall", "active_world_swim", "active_world_bike", "active_world_run", "active_world_transition",
         "active", "race_starts", "wins",
         "overall_change", "swim_change", "bike_change", "run_change", "transition_change",
     ]
@@ -618,7 +623,7 @@ def get_athlete_active_rankings(athlete_id):
                    a.country_full
             FROM current c
             JOIN athletes a ON c.athlete_id = a.athlete_id
-            WHERE c.last_race_date >= CURRENT_DATE - INTERVAL 1 YEAR
+            WHERE c.last_race_date >= CURRENT_DATE - INTERVAL 18 MONTHS
               AND a.gender = (SELECT gender FROM athletes WHERE athlete_id = ?)
         ),
         me AS (SELECT * FROM active WHERE athlete_id = ?)
@@ -988,7 +993,7 @@ def get_athlete_ratings_data(athlete_id):
             res.run_s     - l.run_s     AS run_diff,
             res.t1_s      - l.t1_s      AS t1_diff,
             res.t2_s      - l.t2_s      AS t2_diff,
-            rk.world_overall, rk.world_swim, rk.world_bike, rk.world_run, rk.world_transition,
+            rk.active_world_overall, rk.active_world_swim, rk.active_world_bike, rk.active_world_run, rk.active_world_transition,
             res.status
         FROM ratings ra
         JOIN races r    ON ra.race_id  = r.race_id
@@ -1495,7 +1500,7 @@ def get_athlete_rankings_data(athlete_id):
             rk.race_id,
             r.race_date,
             r.race_title,
-            rk.world_overall,    rk.world_swim,    rk.world_bike,    rk.world_run,    rk.world_transition,
+            rk.active_world_overall,    rk.active_world_swim,    rk.active_world_bike,    rk.active_world_run,    rk.active_world_transition,
             rk.national_overall, rk.national_swim, rk.national_bike, rk.national_run, rk.national_transition,
             res.overall_s, res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
             res.overall_s - l.overall_s AS overall_diff,
@@ -1519,4 +1524,74 @@ def get_athlete_rankings_data(athlete_id):
             "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
             "overall_diff", "swim_diff", "bike_diff", "run_diff", "t1_diff", "t2_diff",
             "status"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Race predictions
+# ---------------------------------------------------------------------------
+
+def get_prediction_models():
+    """Return all prediction models as dict: (gender, distance, discipline) -> {slope, intercept}."""
+    conn = _get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT gender, distance, discipline, slope, intercept FROM prediction_models"
+        ).fetchall()
+    except Exception:
+        return {}  # table not yet created in this DB (schema migration pending)
+    return {(r[0], r[1], r[2]): {"slope": r[3], "intercept": r[4]} for r in rows}
+
+
+def get_race_distance_type(race_id):
+    """Return 'sprint', 'standard', or None.
+
+    event_spec_ids alone is unreliable: many events list both 376 (sprint) and 377
+    (standard) because multiple programme distances run at the same event, making every
+    race in that event look ambiguous.  When both specs are present we fall back to the
+    winner's actual finishing time to disambiguate — a clean split exists at 90 min
+    for males and females alike.
+    """
+    conn = _get_conn()
+    row = conn.execute("SELECT event_spec_ids, gender FROM races WHERE race_id = ?", [race_id]).fetchone()
+    if not row:
+        return None
+    spec, gender = row
+
+    has_sprint   = '376' in spec
+    has_standard = '377' in spec
+
+    if has_sprint and not has_standard:
+        return 'sprint'
+    if has_standard and not has_sprint:
+        return 'standard'
+    if has_sprint and has_standard:
+        # Ambiguous — use winner's time to decide.  Threshold: 90 min (5400 s).
+        winner = conn.execute(
+            "SELECT overall_s FROM results WHERE race_id = ? AND position = 1", [race_id]
+        ).fetchone()
+        if winner and winner[0] > 0:
+            return 'sprint' if winner[0] < 5400 else 'standard'
+    return None
+
+
+def get_race_pre_race_ratings(race_id):
+    """Return most-recent rating for each field athlete before this race date.
+
+    Returns list of dicts with athlete_id + per-discipline ratings.
+    Athletes with no prior race are simply absent from the result.
+    """
+    conn = _get_conn()
+    rows = conn.execute("""
+        WITH race_info AS (SELECT race_date FROM races WHERE race_id = ?),
+             field     AS (SELECT DISTINCT athlete_id FROM results WHERE race_id = ?)
+        SELECT DISTINCT ON (ra.athlete_id)
+               ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition
+        FROM ratings ra
+        JOIN races r ON ra.race_id = r.race_id
+        JOIN field f ON ra.athlete_id = f.athlete_id
+        WHERE r.race_date < (SELECT race_date FROM race_info)
+        ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+    """, [race_id, race_id]).fetchall()
+    cols = ["athlete_id", "overall", "swim", "bike", "run", "transition"]
     return [dict(zip(cols, r)) for r in rows]

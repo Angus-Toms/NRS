@@ -153,7 +153,7 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
                 onerror="this.src='${defaultImg}'"
                 alt="${name}">
             <div class="sel-athlete-details">
-                <div class="sel-athlete-name">${countryEmoji} ${name}</div>
+                <div class="sel-athlete-name">${name} ${countryEmoji}</div>
                 ${statsHtml}
             </div>
         </div>
@@ -191,65 +191,80 @@ function showError(message) {
     }, 5000);
 }
 
-async function prefillFromQuery() {
+function _athleteInputs(n) {
+    const searchInput = document.getElementById(`search${n}`);
+    return {
+        searchInput,
+        resultsDiv: document.getElementById(`results${n}`),
+        selectedDiv: document.getElementById(`selected${n}`),
+        searchWrapper: searchInput.closest('.search-input-wrapper'),
+    };
+}
+
+async function prefillFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    const athlete1Id = params.get('athlete1');
-    if (!athlete1Id) {
-        return;
-    }
+    const a1 = params.get('a1') || params.get('athlete1');
+    const a2 = params.get('a2');
+
+    if (!a1) return;
+
+    const fetchAthlete = id => fetch(`/compare/athlete/${encodeURIComponent(id)}`).then(r => r.ok ? r.json() : null);
 
     try {
-        const response = await fetch(`/compare/athlete/${encodeURIComponent(athlete1Id)}`);
-        if (!response.ok) {
-            return;
-        }
-        const athlete = await response.json();
-        if (!athlete || !athlete.athlete_id) {
-            return;
-        }
+        if (a1 && a2) {
+            // Both athletes in URL — prefill and auto-run
+            const [ath1, ath2] = await Promise.all([fetchAthlete(a1), fetchAthlete(a2)]);
+            if (!ath1?.athlete_id || !ath2?.athlete_id) return;
 
-        const searchInput = document.getElementById('search1');
-        const resultsDiv = document.getElementById('results1');
-        const selectedDiv = document.getElementById('selected1');
-        const searchWrapper = searchInput.closest('.search-input-wrapper');
+            const toPayload = a => ({ id: a.athlete_id, name: a.name, gender: a.gender,
+                country_emoji: a.country_emoji, country_name: a.country_name,
+                country_alpha3: a.country_alpha3, year_of_birth: a.year_of_birth });
 
-        selectAthlete('athlete1', {
-            id: athlete.athlete_id,
-            name: athlete.name,
-            gender: athlete.gender,
-            country_emoji: athlete.country_emoji,
-            country_name: athlete.country_name,
-            country_alpha3: athlete.country_alpha3,
-            year_of_birth: athlete.year_of_birth
-        }, searchInput, resultsDiv, selectedDiv, searchWrapper);
+            const i1 = _athleteInputs(1), i2 = _athleteInputs(2);
+            await selectAthlete('athlete1', toPayload(ath1), i1.searchInput, i1.resultsDiv, i1.selectedDiv, i1.searchWrapper);
+            await selectAthlete('athlete2', toPayload(ath2), i2.searchInput, i2.resultsDiv, i2.selectedDiv, i2.searchWrapper);
+            await performComparison(/* pushState= */ false);
+        } else if (a1) {
+            // Single athlete pre-fill (legacy ?athlete1= support)
+            const ath = await fetchAthlete(a1);
+            if (!ath?.athlete_id) return;
+            const i1 = _athleteInputs(1);
+            selectAthlete('athlete1', { id: ath.athlete_id, name: ath.name, gender: ath.gender,
+                country_emoji: ath.country_emoji, country_name: ath.country_name,
+                country_alpha3: ath.country_alpha3, year_of_birth: ath.year_of_birth },
+                i1.searchInput, i1.resultsDiv, i1.selectedDiv, i1.searchWrapper);
+        }
     } catch (error) {
         console.error('Prefill error:', error);
     }
 }
 
-async function performComparison() {
+async function performComparison(pushState = true) {
     const loadingDiv = document.getElementById('loading');
     const resultsDiv = document.getElementById('comparisonResults');
-    
+
     loadingDiv.classList.add('active');
     resultsDiv.classList.remove('active');
 
+    const id1 = selectedAthletes.athlete1.id;
+    const id2 = selectedAthletes.athlete2.id;
+
     try {
-        const response = await fetch(
-            `/compare/${selectedAthletes.athlete1.id}/${selectedAthletes.athlete2.id}`
-        );
-        
+        const response = await fetch(`/compare/${id1}/${id2}`);
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Comparison failed');
         }
 
-        // Get the HTML content directly from the server
         const html = await response.text();
         resultsDiv.innerHTML = html;
         resultsDiv.classList.add('active');
 
-        // --- Load the comparison_results.js dynamically ---
+        if (pushState) {
+            history.pushState({ a1: id1, a2: id2 }, '', `?a1=${id1}&a2=${id2}`);
+        }
+
         loadComparisonResultsJs();
 
     } catch (error) {
@@ -262,39 +277,26 @@ async function performComparison() {
 // --- Load comparison charts dynamically from their js ---
 function loadComparisonResultsJs() {
     if (comparisonGraphsLoaded) {
-        // If script already loaded, just re-init graphs, don't re-add the whole script
-        initOverallChart();
-        initSwimChart();
-        initBikeChart();
-        initRunChart();
-        initTransitionChart();
-        initOverallRankingsChart();
-        initSwimRankingsChart();
-        initBikeRankingsChart();
-        initRunRankingsChart();
-        initTransitionRankingsChart();
+        initRatings();
+        initRankings();
         return;
     }
-    
+
     const script = document.createElement("script");
     const baseUrl = window.STATIC_BASE_URL || "https://www.static.protridata/";
     script.src = `${baseUrl}js/comparison_results.js`;
     document.body.appendChild(script);
 
-    // Initialise all rating graphs
     script.onload = () => {
         comparisonGraphsLoaded = true;
-        initOverallChart();
-        initSwimChart();
-        initBikeChart();
-        initRunChart();
-        initTransitionChart();
+        initRatings();
+        initRankings();
     };
 }
 
 // Initialize
 initSearch('search1', 'results1', 'selected1', 'athlete1');
 initSearch('search2', 'results2', 'selected2', 'athlete2', () => selectedAthletes.athlete1?.gender);
-prefillFromQuery();
+prefillFromUrl();
 
-document.getElementById('compareBtn').addEventListener('click', performComparison);
+document.getElementById('compareBtn').addEventListener('click', () => performComparison());

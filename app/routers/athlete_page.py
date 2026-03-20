@@ -205,7 +205,7 @@ async def get_athlete(request: Request, athlete_id: int):
     # Compute active before rankings so we can skip the query for retired athletes.
     # (athlete_dict isn't built yet, so derive it here from stats directly.)
     _last_date = stats["last_race_date"]
-    _active    = bool(_last_date and _last_date >= (date.today() - timedelta(days=365)))
+    _active    = bool(_last_date and _last_date >= (date.today() - timedelta(days=int(18 * 30.44))))
 
     current_rankings = {}
     if _active:

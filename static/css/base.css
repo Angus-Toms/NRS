@@ -695,6 +695,9 @@ table td a.link:hover   { color: var(--primary-color); }
     gap: 0.625rem;
     margin-bottom: 2rem;
 }
+.race-stat-cards--4 {
+    grid-template-columns: repeat(4, 1fr);
+}
 
 .race-stat-card {
     background: var(--white);
@@ -745,6 +748,23 @@ table td a.link:hover   { color: var(--primary-color); }
 .std-pill--intermediate { background: rgba(59,  130, 246, 0.13); color: #1d4ed8; }
 .std-pill--advanced   { background: rgba(239, 68,  68,  0.12); color: #dc2626; }
 .std-pill--expert { background: rgba(15,  23,  42,  0.08); color: #0f172a; }
+
+/* ── Course condition pill ── */
+.cond-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+}
+.cond-pill--very_fast { background: rgba(21,  128, 61,  0.15); color: #15803d; }
+.cond-pill--fast      { background: rgba(74,  222, 128, 0.18); color: #166534; }
+.cond-pill--normal    { background: rgba(100, 116, 139, 0.12); color: #475569; }
+.cond-pill--slow      { background: rgba(252, 165, 165, 0.25); color: #b91c1c; }
+.cond-pill--very_slow { background: rgba(185, 28,  28,  0.15); color: #991b1b; }
 
 
 .race-stat-sub {

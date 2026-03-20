@@ -22,7 +22,7 @@ function _makeRankTooltipEl(id) {
     const el = document.createElement('div');
     el.id = id;
     Object.assign(el.style, {
-        position: 'fixed', pointerEvents: 'auto', opacity: '0',
+        position: 'fixed', pointerEvents: 'none', opacity: '0',
         background: '#1a1a2e', borderRadius: '10px',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         border: '1px solid rgba(255,255,255,0.1)',
@@ -41,9 +41,9 @@ let _worldRankHovered = false;
 let _natRankHovered   = false;
 
 worldRankTooltipEl.addEventListener('mouseenter', () => { _worldRankHovered = true; });
-worldRankTooltipEl.addEventListener('mouseleave', () => { _worldRankHovered = false; worldRankTooltipEl.style.opacity = '0'; });
+worldRankTooltipEl.addEventListener('mouseleave', () => { _worldRankHovered = false; worldRankTooltipEl.style.opacity = '0'; worldRankTooltipEl.style.pointerEvents = 'none'; });
 natRankTooltipEl.addEventListener('mouseenter',   () => { _natRankHovered = true; });
-natRankTooltipEl.addEventListener('mouseleave',   () => { _natRankHovered = false; natRankTooltipEl.style.opacity = '0'; });
+natRankTooltipEl.addEventListener('mouseleave',   () => { _natRankHovered = false; natRankTooltipEl.style.opacity = '0'; natRankTooltipEl.style.pointerEvents = 'none'; });
 
 function _positionTooltip(tooltipEl, chart, tooltip) {
     const rect   = chart.canvas.getBoundingClientRect();
@@ -62,6 +62,7 @@ function _positionTooltip(tooltipEl, chart, tooltip) {
         tooltipEl.style.left = left + 'px';
         tooltipEl.style.top  = Math.max(8, caretY - tipH - 12) + 'px';
     }
+    tooltipEl.style.pointerEvents = 'auto';
     tooltipEl.style.opacity = '1';
 }
 
@@ -117,14 +118,14 @@ function _fillRankTooltip(tooltipEl, d, disc, rankLabel) {
 
 function worldRankingTooltip(context) {
     const { chart, tooltip } = context;
-    if (tooltip.opacity === 0) { if (!_worldRankHovered) worldRankTooltipEl.style.opacity = '0'; return; }
+    if (tooltip.opacity === 0) { if (!_worldRankHovered) { worldRankTooltipEl.style.opacity = '0'; worldRankTooltipEl.style.pointerEvents = 'none'; } return; }
     _fillRankTooltip(worldRankTooltipEl, tooltip.dataPoints[0].raw, activeWorldDisc, 'world ranking');
     _positionTooltip(worldRankTooltipEl, chart, tooltip);
 }
 
 function natRankingTooltip(context) {
     const { chart, tooltip } = context;
-    if (tooltip.opacity === 0) { if (!_natRankHovered) natRankTooltipEl.style.opacity = '0'; return; }
+    if (tooltip.opacity === 0) { if (!_natRankHovered) { natRankTooltipEl.style.opacity = '0'; natRankTooltipEl.style.pointerEvents = 'none'; } return; }
     _fillRankTooltip(natRankTooltipEl, tooltip.dataPoints[0].raw, activeNatDisc, 'national ranking');
     _positionTooltip(natRankTooltipEl, chart, tooltip);
 }
@@ -322,7 +323,7 @@ const ratingsTooltipEl = (() => {
     const el = document.createElement('div');
     el.id = 'ratings-chart-tooltip';
     Object.assign(el.style, {
-        position: 'fixed', pointerEvents: 'auto', opacity: '0',
+        position: 'fixed', pointerEvents: 'none', opacity: '0',
         background: '#1a1a2e', borderRadius: '10px',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         border: '1px solid rgba(255,255,255,0.1)',
@@ -340,12 +341,13 @@ ratingsTooltipEl.addEventListener('mouseenter', () => { _tooltipHovered = true; 
 ratingsTooltipEl.addEventListener('mouseleave', () => {
     _tooltipHovered = false;
     ratingsTooltipEl.style.opacity = '0';
+    ratingsTooltipEl.style.pointerEvents = 'none';
 });
 
 function ratingsExternalTooltip(context) {
     const { chart, tooltip } = context;
     if (tooltip.opacity === 0) {
-        if (!_tooltipHovered) ratingsTooltipEl.style.opacity = '0';
+        if (!_tooltipHovered) { ratingsTooltipEl.style.opacity = '0'; ratingsTooltipEl.style.pointerEvents = 'none'; }
         return;
     }
 
@@ -542,7 +544,7 @@ const pctTooltipEl = (() => {
     const el = document.createElement('div');
     el.id = 'pct-behind-tooltip';
     Object.assign(el.style, {
-        position: 'fixed', pointerEvents: 'auto', opacity: '0',
+        position: 'fixed', pointerEvents: 'none', opacity: '0',
         background: '#1a1a2e', borderRadius: '10px',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         border: '1px solid rgba(255,255,255,0.1)',
@@ -556,11 +558,11 @@ const pctTooltipEl = (() => {
 
 let _pctHovered = false;
 pctTooltipEl.addEventListener('mouseenter', () => { _pctHovered = true; });
-pctTooltipEl.addEventListener('mouseleave', () => { _pctHovered = false; pctTooltipEl.style.opacity = '0'; });
+pctTooltipEl.addEventListener('mouseleave', () => { _pctHovered = false; pctTooltipEl.style.opacity = '0'; pctTooltipEl.style.pointerEvents = 'none'; });
 
 function pctExternalTooltip(context) {
     const { chart, tooltip } = context;
-    if (tooltip.opacity === 0) { if (!_pctHovered) pctTooltipEl.style.opacity = '0'; return; }
+    if (tooltip.opacity === 0) { if (!_pctHovered) { pctTooltipEl.style.opacity = '0'; pctTooltipEl.style.pointerEvents = 'none'; } return; }
     const d     = tooltip.dataPoints[0].raw;
     const color = DISC_COLORS[activePctDisc];
     const label = DISC_LABELS[activePctDisc];

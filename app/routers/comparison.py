@@ -186,7 +186,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                     "label": info1["name"],
                     "data": [
                         {"x": str(r["race_date"])[:10], "y": int(r[f"{disc}_rating"]),
-                         "race_name": r["race_title"]}
+                         "race_name": r["race_title"], "race_id": r["race_id"],
+                         "change": r[f"{disc}_change"]}
                         for r in ratings_data1
                     ],
                     "borderColor": A1_COLOR, "backgroundColor": A1_COLOR + "20",
@@ -197,7 +198,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
                     "label": info2["name"],
                     "data": [
                         {"x": str(r["race_date"])[:10], "y": int(r[f"{disc}_rating"]),
-                         "race_name": r["race_title"]}
+                         "race_name": r["race_title"], "race_id": r["race_id"],
+                         "change": r[f"{disc}_change"]}
                         for r in ratings_data2
                     ],
                     "borderColor": A2_COLOR, "backgroundColor": A2_COLOR + "20",
@@ -211,6 +213,19 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     rankings_data1 = queries.get_athlete_rankings_data(athlete1_id)
     rankings_data2 = queries.get_athlete_rankings_data(athlete2_id)
 
+    def _with_rank_changes(rows, col):
+        """Annotate each ranking row with the change from the previous ranked race."""
+        points = [r for r in rows if r[col] is not None]
+        result = []
+        for i, r in enumerate(points):
+            prev = points[i - 1][col] if i > 0 else None
+            # Positive rank_chg = improved (moved up, lower number)
+            rank_chg = (prev - r[col]) if prev is not None else None
+            result.append({"x": str(r["race_date"])[:10], "y": r[col],
+                           "race_name": r["race_title"], "race_id": r["race_id"],
+                           "rank_chg": rank_chg})
+        return result
+
     h2h_rankings_chart = {}
     for disc in ["overall", "swim", "bike", "run", "transition"]:
         col = f"world_{disc}"
@@ -218,22 +233,14 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
             "datasets": [
                 {
                     "label": info1["name"],
-                    "data": [
-                        {"x": str(r["race_date"])[:10], "y": r[col],
-                         "race_name": r["race_title"]}
-                        for r in rankings_data1 if r[col] is not None
-                    ],
+                    "data": _with_rank_changes(rankings_data1, col),
                     "borderColor": A1_COLOR, "backgroundColor": A1_COLOR + "20",
                     "pointBackgroundColor": A1_COLOR,
                     "borderWidth": 2, "pointRadius": 3,
                 },
                 {
                     "label": info2["name"],
-                    "data": [
-                        {"x": str(r["race_date"])[:10], "y": r[col],
-                         "race_name": r["race_title"]}
-                        for r in rankings_data2 if r[col] is not None
-                    ],
+                    "data": _with_rank_changes(rankings_data2, col),
                     "borderColor": A2_COLOR, "backgroundColor": A2_COLOR + "20",
                     "pointBackgroundColor": A2_COLOR,
                     "borderWidth": 2, "pointRadius": 3,
