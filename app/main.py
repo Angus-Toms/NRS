@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, comparison, about, robots
+from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, comparison, about, robots, series_page
 from config import RUNTIME_DATA_DIR, STATIC_BASE_URL
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
@@ -70,6 +70,7 @@ app.include_router(leaderboard.router)
 app.include_router(comparison.router)
 app.include_router(about.router)
 app.include_router(robots.router)
+app.include_router(series_page.router)
 
 if __name__ == "__main__":
     import uvicorn

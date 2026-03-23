@@ -100,17 +100,16 @@
 }
 
 .athlete-card:hover .athlete-name { color: var(--primary-color); }
-.athlete-card:hover .rank-badge   { color: #fff; background: var(--primary-color); }
+.athlete-card:hover .rank-badge   { color: var(--primary-color); }
 
 /* Soft podium tints */
 .athlete-card.rank-1 { background-color: #fffdf0; border-color: #e0c040; }
 .athlete-card.rank-2 { background-color: #f9fafb; border-color: #b8c5ce; }
 .athlete-card.rank-3 { background-color: #fef9f4; border-color: #c8a070; }
 
-/* Navy rank badge */
 .rank-badge {
-    background: var(--navy);
-    color: #fff;
+    background: transparent;
+    color: var(--text-light);
     border-radius: var(--border-radius-sm);
     padding: 2px 6px;
     font-size: 0.82rem;
@@ -121,10 +120,9 @@
     transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-/* Podium: gold/silver/bronze tint on the text within the navy badge */
-.rank-badge.rank-1-text { color: #f5c842; }
-.rank-badge.rank-2-text { color: #c8d8e0; }
-.rank-badge.rank-3-text { color: #d4a870; }
+.rank-badge.rank-1-text { color: var(--gold);   }
+.rank-badge.rank-2-text { color: var(--silver); }
+.rank-badge.rank-3-text { color: var(--bronze); }
 
 .athlete-card-content {
     flex: 1;

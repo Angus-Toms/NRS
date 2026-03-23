@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Series — Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Browse curated race series on Pro Tri Data — World Championship Finals and Olympic Games triathlon, with all-time leaders and performance history.">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Series — Pro Tri Data">
+<meta property="og:description" content="Browse curated race series on Pro Tri Data — World Championship Finals and Olympic Games triathlon, with all-time leaders and performance history.">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css">
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Series</h1>
+        <span class="page-hero-subtitle">World Championships &amp; Olympics</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="series-index-page">
+    {% if world_champs %}
+    <section class="series-group">
+        <div class="page-section-head">World Championship Finals</div>
+        <div class="series-cards-grid">
+            {% for s in world_champs %}
+            <a href="/series/{{ s.slug }}" class="series-card">
+                <div class="series-card-header">
+                    <div class="series-card-name">{{ s.name }}</div>
+                </div>
+                <div class="series-card-body">
+                    <p class="series-card-desc">{{ s.description }}</p>
+                    {% if s.race_count and s.earliest_date and s.latest_date %}
+                    <div class="series-card-meta">{{ s.race_count }} editions · {{ s.earliest_date.year }}–{{ s.latest_date.year }}</div>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if olympics %}
+    <section class="series-group">
+        <div class="page-section-head">Olympic Games</div>
+        <div class="series-cards-grid">
+            {% for s in olympics %}
+            <a href="/series/{{ s.slug }}" class="series-card">
+                <div class="series-card-header">
+                    <div class="series-card-name">{{ s.name }}</div>
+                </div>
+                <div class="series-card-body">
+                    <p class="series-card-desc">{{ s.description }}</p>
+                    {% if s.race_count and s.earliest_date and s.latest_date %}
+                    <div class="series-card-meta">{{ s.race_count }} editions · {{ s.earliest_date.year }}–{{ s.latest_date.year }}</div>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

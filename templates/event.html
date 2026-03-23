@@ -42,7 +42,7 @@
             <div class="event-podium-row">
                 <div class="event-podium-left">
                     <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                    <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+                    <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
                     <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
                 </div>
                 <div class="event-podium-right">

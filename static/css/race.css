@@ -550,6 +550,7 @@
 }
 
 .race-view.hidden { display: none; }
+.hidden { display: none; }
 
 /* Position diff badges */
 .pos-diff {

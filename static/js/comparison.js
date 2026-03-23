@@ -250,7 +250,7 @@ async function performComparison(pushState = true) {
     const id2 = selectedAthletes.athlete2.id;
 
     try {
-        const response = await fetch(`/compare/${id1}/${id2}`);
+        const response = await fetch(`/compare/${id1}/${id2}`, { headers: { 'X-Partial': '1' } });
 
         if (!response.ok) {
             const error = await response.json();

@@ -1,0 +1,378 @@
+/* ============================================
+   SERIES INDEX
+   ============================================ */
+
+.series-index-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.series-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.series-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.series-card {
+    position: relative;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.series-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
+}
+
+.series-card-header {
+    background: var(--navy);
+    padding: 0.65rem 1rem;
+}
+
+.series-card-name {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    transition: color var(--transition-fast);
+}
+
+.series-card:hover .series-card-name {
+    color: var(--primary-color);
+}
+
+.series-card-body {
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+}
+
+.series-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.series-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+    margin-top: 0.3rem;
+}
+
+
+/* ============================================
+   SERIES DETAIL PAGE
+   ============================================ */
+
+.series-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+/* ── Recent editions ── */
+.series-editions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* Reuse event-race-card structure, no standards panel needed */
+.series-race-card {
+    position: relative;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.series-race-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
+}
+
+.series-race-card-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.series-race-header {
+    background: var(--navy);
+    padding: 0.55rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.series-race-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    transition: color var(--transition-fast);
+}
+
+.series-race-card:hover .series-race-title {
+    color: var(--primary-color);
+}
+
+.series-race-date {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+/* Podium rows inside series card */
+.series-race-podium {
+    padding: 0.2rem 0;
+}
+
+.series-podium-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.series-podium-row:last-child {
+    border-bottom: none;
+}
+
+.series-podium-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.series-podium-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.series-podium-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    z-index: 1;
+    transition: color var(--transition-fast);
+}
+
+.series-podium-name:hover { color: var(--primary-color); }
+
+.series-podium-right { flex-shrink: 0; }
+
+.series-podium-time {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.series-podium-time--winner {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.series-podium-gap {
+    font-size: 0.72rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Show all editions toggle link */
+.series-show-all {
+    text-align: center;
+}
+
+.series-show-all-link {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    text-decoration: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.4rem 1rem;
+    background: var(--white);
+    display: inline-block;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.series-show-all-link:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* ── All-time leaders ── */
+.series-leaders {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.leaders-table-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.leaders-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaders-table th {
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0.55rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.leaders-table th.col-num { text-align: right; }
+
+.leaders-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background var(--transition-fast);
+}
+
+.leaders-table tbody tr:last-child { border-bottom: none; }
+.leaders-table tbody tr:hover { background: var(--bg-color); }
+
+.leaders-table td {
+    padding: 0.55rem 1rem;
+    font-size: 0.875rem;
+    color: var(--text-color);
+}
+
+.leaders-table td.col-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-light);
+}
+
+.leaders-table td.col-wins {
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.leaders-rank {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-lighter);
+    min-width: 1.5rem;
+    display: inline-block;
+    text-align: right;
+}
+
+.leaders-athlete {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.leaders-athlete-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.leaders-athlete-link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.leaders-athlete-link:hover { color: var(--primary-color); }
+
+/* ── Performance chart ── */
+.series-chart-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.series-chart-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.series-chart-header {
+    background: var(--navy);
+    padding: 0.65rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.series-chart-body {
+    padding: 1.25rem 1.25rem 1rem;
+    position: relative;
+    height: 320px;
+}
+
+/* ── Series link in race hero ── */
+.series-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--primary-color);
+    text-decoration: none;
+    margin-bottom: 0.6rem;
+    transition: color var(--transition-fast);
+}
+
+.series-link:hover { color: #fff; }
+
+@media (max-width: 600px) {
+    .series-cards-grid { grid-template-columns: 1fr; }
+}

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from datetime import date, timedelta
 
-from fastapi import HTTPException, Request, APIRouter
+from fastapi import HTTPException, Query, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
@@ -16,11 +16,12 @@ templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 router = APIRouter()
 
 _TIER_LABELS = {
-    "olympic":         "Olympic",
-    "world_champs":    "World Championships",
-    "wtcs":            "WTCS",
-    "world_cup":       "World Cup",
-    "continental_cup": "Continental Cup",
+    "olympic":          "Olympic",
+    "world_champs":     "World Championships",
+    "ag_world_champs":  "AG World Championships",
+    "wtcs":             "WTCS",
+    "world_cup":        "World Cup",
+    "continental_cup":  "Continental Cup",
 }
 
 
@@ -39,7 +40,7 @@ def format_ordinal(n):
     return f"{n}{suffix}"
 
 
-def _format_position(tier, pos):
+def _format_position(tier, pos, age_group=None):
     pos = int(pos)
     label = _TIER_LABELS.get(tier, tier)
     if tier == "olympic":
@@ -48,26 +49,34 @@ def _format_position(tier, pos):
         if pos == 3: return "Olympic Bronze"
         return f"Olympic Games, {format_ordinal(pos)}"
     if tier == "world_champs":
-        if pos == 1: return "World Champion"
-        if pos == 2: return "World Championship Silver"
-        if pos == 3: return "World Championship Bronze"
-        return f"World Championships, {format_ordinal(pos)}"
+        # age_group is "U23" or "Junior" for non-Elite categories, None for Elite
+        prefix = f"{age_group} " if age_group else ""
+        if pos == 1: return f"{prefix}World Champion"
+        if pos == 2: return f"{prefix}World Championship Silver"
+        if pos == 3: return f"{prefix}World Championship Bronze"
+        return f"{prefix}World Championships, {format_ordinal(pos)}"
+    if tier == "ag_world_champs":
+        if pos == 1: return "AG World Champion"
+        if pos == 2: return "AG World Championship Silver"
+        if pos == 3: return "AG World Championship Bronze"
+        return f"AG World Championships, {format_ordinal(pos)}"
     if pos == 1: return f"{label} Win"
     if pos == 2: return f"{label} Silver"
     if pos == 3: return f"{label} Bronze"
     return f"{label}, {format_ordinal(pos)}"
 
 
-def _build_notable_results(notable_raw):
+def _build_notable_results(notable_raw, tier_order=None):
     """Group notable results by description, collapse multiples, cap per tier."""
-    tier_order = ["olympic", "world_champs", "wtcs", "world_cup", "continental_cup"]
+    if tier_order is None:
+        tier_order = ["olympic", "world_champs", "wtcs", "world_cup", "continental_cup"]
     formatted = []
 
     for tier in tier_order:
         tier_results = [r for r in notable_raw if r["tier"] == tier]
         grouped = OrderedDict()
         for r in sorted(tier_results, key=lambda x: x["position"]):
-            desc = _format_position(tier, r["position"])
+            desc = _format_position(tier, r["position"], r.get("age_group"))
             entry = grouped.setdefault(desc, {"description": desc, "races": [], "count": 0})
             entry["races"].append({"race_id": r["race_id"], "race_name": r["race_handle"], "race_date": r["race_date"]})
             entry["count"] += 1
@@ -171,22 +180,30 @@ def _build_rankings_charts(rankings_data):
 
 
 @router.get("/athlete/{athlete_id}", response_class=HTMLResponse)
-async def get_athlete(request: Request, athlete_id: int):
+async def get_athlete(request: Request, athlete_id: int, category: str = Query('elite')):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         raise HTTPException(status_code=404, detail=f"Athlete {athlete_id} not found")
 
-    current  = queries.get_athlete_current_ratings(athlete_id)
-    changes  = queries.get_athlete_1yr_changes(athlete_id)
-    peaks    = queries.get_athlete_peak_ratings(athlete_id)
-    best     = queries.get_athlete_best_performances(athlete_id)
-    stats    = queries.get_athlete_stats(athlete_id)
-    notable_raw  = queries.get_athlete_notable_results(athlete_id)
-    race_hist    = queries.get_athlete_race_history(athlete_id)
-    rating_hist  = queries.get_athlete_rating_history(athlete_id)
+    # Detect available categories and resolve the requested one
+    available_categories = queries.get_athlete_categories(athlete_id)
+    if not available_categories:
+        raise HTTPException(status_code=404, detail=f"No rating data for athlete {athlete_id}")
+    if category not in available_categories:
+        category = 'elite' if 'elite' in available_categories else available_categories[0]
+
+    current  = queries.get_athlete_current_ratings(athlete_id, category)
+    changes  = queries.get_athlete_1yr_changes(athlete_id, category)
+    peaks    = queries.get_athlete_peak_ratings(athlete_id, category)
+    best     = queries.get_athlete_best_performances(athlete_id, category)
+    stats    = queries.get_athlete_stats(athlete_id, category)
+    notable_raw     = queries.get_athlete_notable_results(athlete_id)
+    ag_notable_raw  = queries.get_athlete_ag_notable_results(athlete_id)
+    race_hist    = queries.get_athlete_race_history(athlete_id, category)
+    rating_hist  = queries.get_athlete_rating_history(athlete_id, category)
     times_data    = queries.get_athlete_times_data(athlete_id)
-    ratings_data  = queries.get_athlete_ratings_data(athlete_id)
-    rankings_data = queries.get_athlete_rankings_data(athlete_id)
+    ratings_data  = queries.get_athlete_ratings_data(athlete_id, category)
+    rankings_data = queries.get_athlete_rankings_data(athlete_id, category)
 
     # --- current ratings card ---
     current_ratings = {}
@@ -202,14 +219,15 @@ async def get_athlete(request: Request, athlete_id: int):
         suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
         return {"n": n, "suffix": suffix}
 
-    # Compute active before rankings so we can skip the query for retired athletes.
-    # (athlete_dict isn't built yet, so derive it here from stats directly.)
-    _last_date = stats["last_race_date"]
-    _active    = bool(_last_date and _last_date >= (date.today() - timedelta(days=int(18 * 30.44))))
+    # Compute active using category-filtered race_hist (already fetched above).
+    # stats["last_race_date"] is category-agnostic so would incorrectly show rankings
+    # for e.g. a retired elite who still races AG.
+    _cat_last = race_hist[0]["race_date"] if race_hist else None
+    _active   = bool(_cat_last and _cat_last >= (date.today() - timedelta(days=int(18 * 30.44))))
 
     current_rankings = {}
     if _active:
-        active_ranks = queries.get_athlete_active_rankings(athlete_id)
+        active_ranks = queries.get_athlete_active_rankings(athlete_id, category)
         if active_ranks:
             for disc in ["overall", "swim", "bike", "run", "transition"]:
                 current_rankings[f"world_{disc}"]    = _make_ranking(active_ranks.get(f"world_{disc}"))
@@ -242,7 +260,7 @@ async def get_athlete(request: Request, athlete_id: int):
     wins        = stats["wins"]
     podiums     = stats["podiums"]
     last_date   = stats["last_race_date"]
-    active      = bool(last_date and last_date >= (date.today() - timedelta(days=365)))
+    active      = _active  # category-specific 18-month window, consistent with rankings
     athlete_dict = {
         **info,
         "race_starts":   race_starts,
@@ -258,21 +276,25 @@ async def get_athlete(request: Request, athlete_id: int):
         athlete_dict[f"max_{disc}_race_id"]       = peaks[f"max_{disc}_race_id"]
         athlete_dict[f"{disc}_increase_race_id"]  = best[f"{disc}_race_id"] or 0
 
-    # --- notable results ---
-    notable_results = _build_notable_results(notable_raw)
+    # --- notable results (elite) and AG palmares ---
+    notable_results    = _build_notable_results(notable_raw)
+    ag_notable_results = _build_notable_results(ag_notable_raw, tier_order=["ag_world_champs"])
 
-    # Split into two display columns balanced by visual height.
-    # Height model (×2 scaled): label row ≈ 1 line + each race row ≈ 0.5 lines → 2 + ceil(races/4)
-    heights = [2 + (len(r["races"]) + 3) // 4 for r in notable_results]
-    total = sum(heights)
-    best_split, best_diff, cumulative = 1, float("inf"), 0
-    for i, h in enumerate(heights):
-        cumulative += h
-        if abs(cumulative - total / 2) <= best_diff:
-            best_diff = abs(cumulative - total / 2)
-            best_split = i + 1
-    notable_col1 = notable_results[:best_split]
-    notable_col2 = notable_results[best_split:]
+    def _split_columns(results):
+        # Split into two display columns balanced by visual height.
+        # Height model (×2 scaled): label row ≈ 1 line + each race row ≈ 0.5 lines → 2 + ceil(races/4)
+        heights = [2 + (len(r["races"]) + 3) // 4 for r in results]
+        total = sum(heights)
+        best_split, best_diff, cumulative = 1, float("inf"), 0
+        for i, h in enumerate(heights):
+            cumulative += h
+            if abs(cumulative - total / 2) <= best_diff:
+                best_diff = abs(cumulative - total / 2)
+                best_split = i + 1
+        return results[:best_split], results[best_split:]
+
+    notable_col1,    notable_col2    = _split_columns(notable_results)
+    ag_notable_col1, ag_notable_col2 = _split_columns(ag_notable_results)
 
     # --- race history table ---
     # Fetch percentile thresholds once for this athlete's gender (cached per process).
@@ -376,8 +398,14 @@ async def get_athlete(request: Request, athlete_id: int):
         "request":        request,
         "active_page":    "athletes",
         "athlete":        athlete_dict,
+        "show_rankings":        _active,
+        "category":             category,
+        "has_elite":            'elite' in available_categories,
+        "has_ag":               'ag' in available_categories,
         "notable_col1":        notable_col1,
         "notable_col2":        notable_col2,
+        "ag_notable_col1":     ag_notable_col1,
+        "ag_notable_col2":     ag_notable_col2,
         "current_ratings":     current_ratings,
         "current_rankings":    current_rankings,
         "rating_changes_1yr":  rating_changes_1yr,

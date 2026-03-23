@@ -195,11 +195,20 @@ def create_schema(conn):
     for col in ("active_world_overall", "active_world_swim", "active_world_bike",
                 "active_world_run", "active_world_transition"):
         conn.execute(f"ALTER TABLE rankings ADD COLUMN IF NOT EXISTS {col} INTEGER")
+    conn.execute("ALTER TABLE series ADD COLUMN IF NOT EXISTS slug VARCHAR DEFAULT ''")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS race_series (
+            race_id   INTEGER NOT NULL REFERENCES races(race_id),
+            series_id INTEGER NOT NULL REFERENCES series(series_id),
+            PRIMARY KEY (race_id, series_id)
+        )
+    """)
 
     # ART indexes on non-PK columns used in WHERE/JOIN clauses
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_recurring_event_id ON events(recurring_event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_date ON events(start_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_recurring_events_series_id ON recurring_events(series_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_race_series_series_id ON race_series(series_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_event_id ON races(event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_race_date ON races(race_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_athletes_country_full ON athletes(country_full)")

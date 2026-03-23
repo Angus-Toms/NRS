@@ -10,6 +10,14 @@
                 Back to event
             </a>
             {% endif %}
+            {% if series %}
+            <a href="/series/{{ series.slug }}" class="series-link">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                {{ series.name }}
+            </a>
+            {% endif %}
             <h1 class="race-hero-title">{{ race.race_title }}</h1>
             <div class="race-hero-meta">
                 <span>{{ race.date.strftime('%d %B %Y') }}</span>
@@ -42,7 +50,7 @@
                 <div class="podium-row">
                     <div class="podium-row-left">
                         <span class="pos-circle {{ 'gold' if athlete.position == 1 else 'silver' if athlete.position == 2 else 'bronze' }}">{{ athlete.position }}</span>
-                        <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}" alt="" class="podium-row-img">
+                        <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}" alt="" class="podium-row-img">
                         <a href="/athlete/{{ athlete.athlete_id }}" class="podium-row-name">{{ athlete.name }} {{ athlete.country_emoji }}</a>
                     </div>
                     <div class="podium-row-right">

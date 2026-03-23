@@ -250,11 +250,12 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     for r in results + ratings:
         r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
 
-    # Compute full-field predictions using pre-trained global models
+    # Compute full-field predictions using pre-trained global models (elite only)
     race_distance = queries.get_race_distance_type(race_id)  # 'sprint' | 'standard' | None
+    is_elite = queries.get_race_category(race_id) == 'elite'
     predictions, pos_diffs, course_conditions = _compute_race_predictions(
         race_id, race, results, queries.get_prediction_models()
-    )
+    ) if is_elite else (None, None, None)
     if predictions:
         for r in predictions:
             r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
@@ -346,6 +347,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
 
     event_id = race.get("event_id")
     event_races = queries.get_races_by_event(event_id) if event_id else []
+    series = queries.get_series_for_race(race_id)
 
     _venue = race["location"]
     race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
@@ -390,4 +392,5 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "has_predictions":         predictions is not None,
         "race_distance":           race_distance,
         "course_conditions":       course_conditions if not ignored_info else None,
+        "series":                  series,
     })

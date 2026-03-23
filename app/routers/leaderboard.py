@@ -12,11 +12,11 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 
 
-def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset):
+def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset, category):
     athletes = queries.get_leaderboard(
         gender=gender, disc=disc, order=order,
         country=country, yob_start=yob_start, yob_end=yob_end,
-        active_only=active_only, offset=offset,
+        active_only=active_only, offset=offset, category=category,
     )
     # Assign display rank and compute template fields
     for i, a in enumerate(athletes):
@@ -44,8 +44,9 @@ async def leaderboard(
     yob_start:   Optional[int] = Query(1950, ge=1950, le=2010),
     yob_end:     Optional[int] = Query(2010, ge=1950, le=2010),
     active_only: bool          = Query(True),
+    category:    str           = Query("elite", regex="^(elite|ag)$"),
 ):
-    athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset=0)
+    athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset=0, category=category)
     return templates.TemplateResponse("leaderboard.html", {
         "request":      request,
         "active_page":  "athletes",
@@ -58,6 +59,7 @@ async def leaderboard(
         "yob_start":    yob_start,
         "yob_end":      yob_end,
         "active_only":  active_only,
+        "category":     category,
     })
 
 
@@ -72,8 +74,9 @@ async def leaderboard_more(
     yob_end:     int           = Query(2010),
     active_only: bool          = Query(True),
     offset:      int           = Query(0),
+    category:    str           = Query("elite", regex="^(elite|ag)$"),
 ):
-    athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset)
+    athletes = _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset, category)
     return templates.TemplateResponse("partials/more_athlete_leaderboard.html", {
         "request":  request,
         "athletes": athletes,

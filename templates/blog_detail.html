@@ -6,10 +6,17 @@
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/about.css">
 {% endblock %}
 
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <a href="/about" class="blog-back"><svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.35em"><polyline points="6,1 1,6 6,11"/></svg>Back</a>
+        <h1>{{ post.title }}</h1>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<section class="blog-detail">
-    <a class="blog-back" href="/about">&larr; Back to About</a>
-    <h1 class="blog-title">{{ post.title }}</h1>
+<div class="blog-detail">
     <div class="blog-body">{{ post.body_html | safe }}</div>
-</section>
+</div>
 {% endblock %}

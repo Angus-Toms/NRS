@@ -38,5 +38,7 @@ async def index(request: Request):
         "recent_events":  queries.get_recent_events(0, 4),
         "men_podium":     queries.get_podium("male"),
         "women_podium":   queries.get_podium("female"),
+        "men_ag_podium":  queries.get_podium("male",   "ag"),
+        "women_ag_podium": queries.get_podium("female", "ag"),
         "latest_blog":    blogs[0] if blogs else None,
     })

@@ -1,38 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}About - Pro Tri Data{% endblock %}
+{% block title %}About — Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Learn how Pro Tri Data's ELO-based rating system works, why it's better than the official World Triathlon rankings, and how to explore athlete and race data.">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="About — Pro Tri Data">
+<meta property="og:description" content="Learn how Pro Tri Data's ELO-based rating system works, why it's better than the official World Triathlon rankings, and how to explore athlete and race data.">
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/about.css">
 {% endblock %}
 
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Pro triathlon, decoded.</h1>
+        <p class="page-hero-subtitle">Pro Tri Data tracks over 60k athletes and 9k races across every level of<br>World Triathlon racing. We combine results, ratings, and context to make<br>performance and development easier to explore.</p>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="about-page">
-    <section class="about-hero">
-        <div class="about-hero-copy">
-            <p class="about-eyebrow">About the project</p>
-            <h1>Pro triathlon, decoded.</h1>
-            <p class="about-lede">
-                Pro Tri Data tracks over 60k athletes and 9k races across every level of World Triathlon racing.
-                We combine results, ratings, and context to make performance and development easier to explore.
-            </p>
-        </div>
-        <div class="about-hero-panel">
-            <h3>What you'll find here</h3>
-            <ul class="about-bullets">
-                <li>Career summaries for every athlete.</li>
-                <li>Race pages with splits, ratings, and performance analysis.</li>
-                <li>Head-to-head comparisons between any athletes across eras.</li>
-            </ul>
-        </div>
-    </section>
-
     <section class="about-qa">
-        <h2 class="section-title">Questions &amp; Answers</h2>
+        <div class="page-section-head">Questions &amp; Answers</div>
         <div class="qa-grid">
             {% for item in qa_items %}
             <article class="qa-card">
-                <h3 class="qa-question">{{ item.question }}</h3>
+                <div class="qa-question">{{ item.question }}</div>
                 <p class="qa-answer">{{ item.answer }}</p>
             </article>
             {% endfor %}
@@ -40,14 +38,17 @@
     </section>
 
     <section class="about-blogs">
-        <h2 class="section-title">From the notebook</h2>
+        <div class="page-section-head">From the notebook</div>
         <div class="blog-grid">
             {% for post in blogs %}
             <article class="blog-card">
-                <p class="blog-eyebrow">Blog</p>
-                <h3 class="blog-title">{{ post.title }}</h3>
-                <p class="blog-body">{{ post.teaser }}</p>
-                <a class="blog-link" href="/about/blog/{{ post.slug }}">Read more</a>
+                <div class="blog-card-header">
+                    <h3 class="blog-title">{{ post.title }}</h3>
+                </div>
+                <div class="blog-card-body">
+                    <p class="blog-body">{{ post.teaser }}</p>
+                    <a class="blog-link" href="/about/blog/{{ post.slug }}">Read more<svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.7em;width:auto;vertical-align:middle;margin-left:0.3em"><polyline points="2,1 7,6 2,11"/></svg></a>
+                </div>
             </article>
             {% endfor %}
         </div>

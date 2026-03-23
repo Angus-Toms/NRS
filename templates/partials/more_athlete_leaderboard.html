@@ -3,7 +3,7 @@
     <div class="rank-badge {{ 'rank-' ~ athlete.rank ~ '-text' if athlete.rank <= 3 else '' }}">#{{athlete.rank}}</div>
     <div class="athlete-card-content">
         <div class="athlete-main-info">
-            <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete['athlete_id'] ~ '.webp' if athlete['profile_img_exists'] else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}" 
+            <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete['athlete_id'] ~ '.webp' if athlete['profile_img_exists'] else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}" 
                  alt="{{ athlete.name }}" 
                  loading="lazy"
                  class="athlete-profile-img">

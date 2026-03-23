@@ -22,3 +22,8 @@ DB_PATH = RUNTIME_DATA_DIR / "ptd.duckdb"
 # WorldTriathlon API
 WORLD_TRIATHLON_API_KEY = "aac0df989cb613114241670ca2f5ff75"
 
+# Deployment
+CF_BUCKET    = "ptd-static-assets"
+RENDER_SSH   = "srv-d58kqtemcj7s73ciqqjg@ssh.frankfurt.render.com"
+RENDER_DB    = "/var/data/ptd.duckdb"
+

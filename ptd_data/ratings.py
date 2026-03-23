@@ -7,7 +7,7 @@ confidence weighting, then computes world and national rankings per gender.
 
 Confidence model:
   - Each athlete tracks a race count. Confidence = min(1, race_count / CONF_THRESHOLD).
-  - Self-K multiplier: new athletes move faster (3× decaying to 1× over CONF_THRESHOLD races).
+  - Self-K multiplier: new athletes move faster (3× at race 0, linearly decaying to 1× over CONF_THRESHOLD races).
   - Opponent weight: pairings against established athletes count more than against newcomers.
 
 Usage:
@@ -40,8 +40,8 @@ def _confidence(race_count):
 
 
 def _self_k_mult(race_count):
-    """Higher K multiplier for new athletes — ~8× at race 0, exponentially decaying to ~1× by race 10."""
-    return 1.0 + 7.0 * math.exp(-0.4 * race_count)
+    """Higher K multiplier for new athletes — 3× at race 0, linearly decaying to 1× by race CONF_THRESHOLD."""
+    return 1.0 + 2.0 * max(0.0, 1.0 - race_count / CONF_THRESHOLD)
 
 
 def compute_all(conn):

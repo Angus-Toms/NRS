@@ -87,13 +87,17 @@ async def get_athlete_for_compare(athlete_id: int):
         "swim_rating":    int(round(ratings["swim_rating"])) if ratings and ratings.get("swim_rating") else None,
         "bike_rating":    int(round(ratings["bike_rating"])) if ratings and ratings.get("bike_rating") else None,
         "run_rating":     int(round(ratings["run_rating"]))  if ratings and ratings.get("run_rating")  else None,
-        "world_rank":     ratings["world_overall"] if ratings else None,
+        "world_rank":     ratings["world_overall"] if (ratings and info.get("active")) else None,
         "wins":           stats["wins"] if stats else None,
     })
 
 
 @router.get("/compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
 async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int):
+    # Direct navigation — redirect to the full compare page which auto-loads via JS
+    if not request.headers.get("X-Partial"):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=f"/compare?a1={athlete1_id}&a2={athlete2_id}", status_code=302)
     info1    = queries.get_athlete_info(athlete1_id)
     info2    = queries.get_athlete_info(athlete2_id)
     if not info1:

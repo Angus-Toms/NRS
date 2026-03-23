@@ -121,7 +121,7 @@
                         {% for p in race.podium[:3] %}
                         <li class="event-race-entry">
                             <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
-                            <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-race-entry-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+                            <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-race-entry-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
                             <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
                             {% if p.position == 1 and p.time %}
                                 <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>

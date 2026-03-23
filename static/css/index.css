@@ -12,6 +12,7 @@
     width: 100vw;
     margin-left: calc(50% - 50vw);
     background: var(--navy);
+    border-bottom: 3px solid var(--primary-color);
     padding: 3.5rem 0;
     margin-top: -20px;
     margin-bottom: 0;
@@ -462,14 +463,6 @@
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.home-lb-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
 }
 
 .home-lb-card-header {
@@ -478,15 +471,17 @@
 }
 
 .home-lb-card-title {
+    display: block;
     font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: #fff;
+    text-decoration: none;
     transition: color var(--transition-fast);
 }
 
-.home-lb-card:hover .home-lb-card-title {
+.home-lb-card-title:hover {
     color: var(--primary-color);
 }
 
@@ -534,6 +529,16 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+
+.lb-name-link {
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+}
+
+.lb-name-link:hover {
+    color: var(--primary-color);
 }
 
 
@@ -629,7 +634,7 @@
 /* ── SECTION 5: ABOUT ── */
 .about-preview {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 1.25rem;
 }
 

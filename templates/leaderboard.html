@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Leaderboard - Pro Tri Data{% endblock %}
+{% set cat_label = 'Age Group' if category == 'ag' else 'Elite' %}
+{% block title %}{{ gender | title }} {{ cat_label }} Triathlon Rankings — {{ disc | title }} | Pro Tri Data{% endblock %}
+
+{% block meta %}
+{% set desc %}World rankings for {{ cat_label | lower }} {{ gender }} triathletes by {{ disc }} ELO rating{% if active_only %}, active athletes only{% endif %}. Updated after every race.{% endset %}
+<meta name="description" content="{{ desc }}">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ gender | title }} {{ cat_label }} Triathlon Rankings — {{ disc | title }} | Pro Tri Data">
+<meta property="og:description" content="{{ desc }}">
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
@@ -19,6 +29,21 @@
     <form method="get" action="/leaderboard" class="filters-form">
 
         <div class="filters-primary">
+
+            <!-- Category -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Category</span>
+                <div class="radio-chips">
+                    <input type="radio" name="category" value="elite" id="cat-elite"
+                        {% if category == 'elite' %}checked{% endif %}>
+                    <label for="cat-elite">Elite</label>
+                    <input type="radio" name="category" value="ag" id="cat-ag"
+                        {% if category == 'ag' %}checked{% endif %}>
+                    <label for="cat-ag">Age Group</label>
+                </div>
+            </div>
+
+            <div class="filter-v-divider"></div>
 
             <!-- Gender -->
             <div class="filter-chip-group">
@@ -77,12 +102,14 @@
             <!-- Active only -->
             <div class="filter-chip-group">
                 <span class="filter-chip-label">Active only</span>
-                <label class="filter-toggle">
-                    <input type="checkbox" name="active_only" id="active_only" value="true"
+                <div class="radio-chips">
+                    <input type="radio" name="active_only" value="true" id="active-yes"
                         {% if active_only %}checked{% endif %}>
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                    <span class="toggle-text">{% if active_only %}On{% else %}Off{% endif %}</span>
-                </label>
+                    <label for="active-yes">On</label>
+                    <input type="radio" name="active_only" value="false" id="active-no"
+                        {% if not active_only %}checked{% endif %}>
+                    <label for="active-no">Off</label>
+                </div>
             </div>
 
             <!-- Spacer pushes actions right -->
@@ -135,7 +162,7 @@
         <div class="rank-badge {{ 'rank-' ~ athlete.rank ~ '-text' if athlete.rank <= 3 else '' }}">#{{athlete.rank}}</div>
         <div class="athlete-card-content">
             <div class="athlete-main-info">
-                <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else STATIC_BASE_URL ~ 'imgs/default_user.jpg' }}"
+                <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
                      alt="{{ athlete.name }}"
                      loading="lazy"
                      class="athlete-profile-img">

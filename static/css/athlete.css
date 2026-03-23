@@ -110,6 +110,41 @@
 }
 
 /* Compare link — ghost pill on navy */
+.athlete-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+.athlete-category-toggle {
+    display: flex;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.category-btn {
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.22rem 0.75rem;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.6);
+    transition: background var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
+}
+
+.category-btn.active {
+    background: #fff;
+    color: var(--navy);
+}
+
+.category-btn:not(.active):hover {
+    color: #fff;
+}
+
 .athlete-compare-link {
     display: inline-flex;
     align-items: center;

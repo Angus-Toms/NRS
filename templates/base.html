@@ -6,14 +6,19 @@
     <meta name="color-scheme" content="only light"> <!-- Enforce light mode -->
     <title>{% block title %}Pro Tri Data{% endblock %}</title>
 
+    <!-- SEO & OpenGraph -->
+    {% block meta %}
+    <meta name="description" content="Pro Tri Data — elite triathlon ratings, results, and performance analysis for 60,000+ athletes and 9,000+ races.">
+    <meta property="og:site_name" content="Pro Tri Data">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Pro Tri Data — Elite Triathlon Ratings &amp; Results">
+    <meta property="og:description" content="Elite triathlon ratings, results, and performance analysis for 60,000+ athletes and 9,000+ races.">
+    {% endblock %}
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-
-    <!-- Import Chart.js Library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ STATIC_BASE_URL }}imgs/favicon-128.png">
@@ -33,7 +38,7 @@
         <div class="header-container">
             <div class="logo">
                 <a href="/">
-                    <img src="{{ STATIC_BASE_URL }}imgs/logo-512.webp" alt="Pro Tri Data Logo" class="logo-img">
+                    <img src="{{ STATIC_BASE_URL }}imgs/logo-64.webp" alt="Pro Tri Data Logo" class="logo-img">
                     <span class="logo-text">Pro Tri Data</span>
                 </a>
             </div>
@@ -63,6 +68,9 @@
         </div>
     </footer>
     
+    <!-- Chart.js loaded here so it doesn't block initial render -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <!-- Page-specific JavaScript -->
     {% block extra_js %}
     {% endblock %}

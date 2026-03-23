@@ -131,9 +131,9 @@
         </div>
         <div class="as-champ-body">
             <img class="as-champ-img"
-                 src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else 'imgs/default_user.jpg' }}"
+                 src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else 'imgs/default_user_64.webp' }}"
                  alt="{{ athlete.name }}"
-                 onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user.jpg'">
+                 onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
             <div class="as-champ-info">
                 <div class="as-champ-namerow">
                     <span class="as-champ-name">{{ athlete.name }}</span>

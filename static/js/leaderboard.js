@@ -43,15 +43,6 @@ function initAdvancedFilters() {
     });
 }
 
-function initActiveOnlyToggle() {
-    const cb   = document.getElementById("active_only");
-    const text = cb && cb.closest("label").querySelector(".toggle-text");
-    if (!cb || !text) return;
-    cb.addEventListener("change", () => {
-        text.textContent = cb.checked ? "On" : "Off";
-    });
-}
-
 function initAgePresets() {
     const yobStart = document.getElementById("yob_start");
     const yobEnd   = document.getElementById("yob_end");
@@ -84,5 +75,4 @@ function initAgePresets() {
 
 initLoadMore();
 initAdvancedFilters();
-initActiveOnlyToggle();
 initAgePresets();
