@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}{{ event.name }}{% endblock %}
+{% block title %}{{ event.name }} — Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ event.name }} — Pro Tri Data">
+<meta property="og:description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ event.name | tojson }},"sport":"Triathlon","url":"https://www.protridata.com/event/{{ event.event_id }}"{% if event.venue %},"location":{"@type":"Place","name":{{ event.venue | tojson }}}{% endif %}}
+</script>
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css">
@@ -42,7 +57,7 @@
             <div class="event-podium-row">
                 <div class="event-podium-left">
                     <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                    <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
+                    <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="{{ p.name }}" class="event-podium-img" onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
                     <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
                 </div>
                 <div class="event-podium-right">

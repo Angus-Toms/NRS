@@ -4,11 +4,19 @@
 
 {% block meta %}
 {% set desc %}Career ELO ratings and race history for {{ athlete.name }}{% if athlete.country_full %}, {{ athlete.country_full }}{% endif %}{% if current_ratings and current_ratings.overall %}. Overall rating: {{ current_ratings.overall }}{% endif %}. View splits, discipline ratings, ranking history and more.{% endset %}
+{% set img_url %}{{ STATIC_BASE_URL }}{% if athlete.profile_img %}athlete_imgs/512/{{ athlete.athlete_id }}.webp{% else %}imgs/logo-512.webp{% endif %}{% endset %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="profile">
 <meta property="og:title" content="{{ athlete.name }} — Career Ratings &amp; Results | Pro Tri Data">
 <meta property="og:description" content="{{ desc }}">
+<meta property="og:image" content="{{ img_url }}">
+{% endblock %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":{{ athlete.name | tojson }},"url":"https://www.protridata.com/athlete/{{ athlete.athlete_id }}","image":{{ img_url | tojson }}{% if athlete.country_full %},"nationality":{{ athlete.country_full | tojson }}{% endif %},"sport":"Triathlon"}
+</script>
 {% endblock %}
 
 {% block extra_css %}

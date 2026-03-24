@@ -1734,26 +1734,28 @@ def get_series_for_race(race_id):
 
 
 def get_series_races(series_id):
-    """All races in series newest-first, each with top-3 podium."""
+    """All races in series newest-first, each with top-3 podium and race standard."""
     from collections import defaultdict
     conn = _get_conn()
 
     race_rows = conn.execute("""
-        SELECT r.race_id, r.race_title, r.race_date, r.prog_name,
-               e.name AS event_name, e.venue, e.country
+        SELECT r.race_id, r.race_title, r.race_date, r.prog_name, r.gender,
+               e.name AS event_name, e.venue, e.country, e.latitude, e.longitude
         FROM race_series rs
         JOIN races r  ON r.race_id  = rs.race_id
         JOIN events e ON e.event_id = r.event_id
         WHERE rs.series_id = ?
         ORDER BY r.race_date DESC
     """, [series_id]).fetchall()
-    race_cols = ["race_id", "race_title", "race_date", "prog_name", "event_name", "venue", "country"]
+    race_cols = ["race_id", "race_title", "race_date", "prog_name", "gender",
+                 "event_name", "venue", "country", "latitude", "longitude"]
     races = [dict(zip(race_cols, r)) for r in race_rows]
     if not races:
         return races
 
     race_ids = [r["race_id"] for r in races]
     id_ph = ','.join(['?'] * len(race_ids))
+
     podium_rows = conn.execute(f"""
         SELECT res.race_id, res.position, res.overall_s,
                a.athlete_id, a.name, n.emoji
@@ -1773,18 +1775,38 @@ def get_series_races(series_id):
             "athlete_id": athlete_id, "name": name, "country_emoji": emoji,
         })
 
+    std_rows = conn.execute(f"""
+        SELECT ra.race_id,
+            SUM((ra.overall    - ra.overall_change)    * EXP(-0.1*(res.position-1))) / SUM(EXP(-0.1*(res.position-1))),
+            SUM((ra.swim       - ra.swim_change)       * EXP(-0.1*(res.position-1))) / SUM(EXP(-0.1*(res.position-1))),
+            SUM((ra.bike       - ra.bike_change)       * EXP(-0.1*(res.position-1))) / SUM(EXP(-0.1*(res.position-1))),
+            SUM((ra.run        - ra.run_change)        * EXP(-0.1*(res.position-1))) / SUM(EXP(-0.1*(res.position-1))),
+            SUM((ra.transition - ra.transition_change) * EXP(-0.1*(res.position-1))) / SUM(EXP(-0.1*(res.position-1)))
+        FROM ratings ra
+        JOIN results res ON ra.race_id = res.race_id AND ra.athlete_id = res.athlete_id
+        WHERE ra.race_id IN ({id_ph})
+          AND res.status = 'Finished'
+          AND res.position IS NOT NULL
+        GROUP BY ra.race_id
+    """, race_ids).fetchall()
+    std_by_race = {
+        r[0]: {"overall": r[1], "swim": r[2], "bike": r[3], "run": r[4], "transition": r[5]}
+        for r in std_rows
+    }
+
     for race in races:
         podium = podiums[race["race_id"]]
         winner_s = podium[0]["overall_s"] if podium else None
         for p in podium:
             p["gap"] = (p["overall_s"] - winner_s) if winner_s and p["position"] != 1 else None
         race["podium"] = podium
+        race["standards_raw"] = std_by_race.get(race["race_id"])
 
     return races
 
 
 def get_series_all_time_leaders(series_id):
-    """Athletes ranked by wins, with 2nd/3rd counts."""
+    """Athletes ranked by wins, with 2nd/3rd counts and formatted win-year list."""
     conn = _get_conn()
     rows = conn.execute("""
         SELECT a.athlete_id, a.name, n.emoji,
@@ -1803,8 +1825,38 @@ def get_series_all_time_leaders(series_id):
         HAVING wins > 0
         ORDER BY wins DESC, seconds DESC, thirds DESC
     """, [series_id]).fetchall()
-    cols = ["athlete_id", "name", "country_emoji", "wins", "seconds", "thirds"]
-    return [dict(zip(cols, r)) for r in rows]
+
+    leaders = [
+        {"athlete_id": r[0], "name": r[1], "country_emoji": r[2],
+         "wins": r[3], "seconds": r[4], "thirds": r[5]}
+        for r in rows
+    ]
+    if not leaders:
+        return leaders
+
+    # Fetch the year of each win so we can show e.g. "2019 · 2022"
+    athlete_ids = [l["athlete_id"] for l in leaders]
+    ph = ','.join(['?'] * len(athlete_ids))
+    win_rows = conn.execute(f"""
+        SELECT res.athlete_id, YEAR(r.race_date) AS yr
+        FROM race_series rs
+        JOIN races r     ON r.race_id = rs.race_id
+        JOIN results res ON res.race_id = r.race_id
+        WHERE rs.series_id = ?
+          AND res.status = 'Finished'
+          AND res.position = 1
+          AND res.athlete_id IN ({ph})
+        ORDER BY r.race_date
+    """, [series_id] + athlete_ids).fetchall()
+
+    win_years: dict[int, list[str]] = {}
+    for athlete_id, yr in win_rows:
+        win_years.setdefault(athlete_id, []).append(str(yr))
+
+    for l in leaders:
+        l["win_years"] = " · ".join(win_years.get(l["athlete_id"], []))
+
+    return leaders
 
 
 def get_series_performance_history(series_id):

@@ -22,12 +22,13 @@ RENDER_SSH=$(  _py RENDER_SSH)
 DB_REMOTE=$(   _py RENDER_DB)
 # ─────────────────────────────────────────────────────────────────────────────
 
-DO_GIT=true; DO_STATIC=true; DO_DB=true
+DO_GIT=true; DO_STATIC=true; DO_DB=true; DO_WORKER=true
 for arg in "$@"; do
     case $arg in
         --no-git)    DO_GIT=false ;;
         --no-static) DO_STATIC=false ;;
         --no-db)     DO_DB=false ;;
+        --no-worker) DO_WORKER=false ;;
     esac
 done
 
@@ -70,11 +71,17 @@ if $DO_STATIC; then
             [ -f "$f" ] || continue
             key="$dir/$(basename "$f")"
             printf "    %-40s" "$key"
-            wrangler r2 object put "$BUCKET/$key" --file "$f" --remote --silent 2>/dev/null \
+            wrangler r2 object put "$BUCKET/$key" --file "$f" --remote > /dev/null 2>&1 \
                 && echo "ok" || echo "FAILED"
         done
     done
     note "If assets look stale, purge the Cloudflare cache for static.protridata.com."
+fi
+
+# ── 3. Cloudflare Worker ──────────────────────────────────────────────────────
+if $DO_WORKER; then
+    step "Cloudflare Worker: deploying ptd-static"
+    (cd "$SCRIPT_DIR/cf-worker" && wrangler deploy)
 fi
 
 # ── 3. DB → Render (atomic swap via tmp file) ─────────────────────────────────
