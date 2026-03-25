@@ -2,9 +2,10 @@
 
 {% block title %}{{ athlete.name }} — Career Ratings &amp; Results | Pro Tri Data{% endblock %}
 
-{% block meta %}
 {% set desc %}Career ELO ratings and race history for {{ athlete.name }}{% if athlete.country_full %}, {{ athlete.country_full }}{% endif %}{% if current_ratings and current_ratings.overall %}. Overall rating: {{ current_ratings.overall }}{% endif %}. View splits, discipline ratings, ranking history and more.{% endset %}
 {% set img_url %}{{ STATIC_BASE_URL }}{% if athlete.profile_img %}athlete_imgs/512/{{ athlete.athlete_id }}.webp{% else %}imgs/logo-512.webp{% endif %}{% endset %}
+
+{% block meta %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="profile">
