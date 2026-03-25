@@ -15,7 +15,7 @@ __pycache__/
 .env
 .env.*
 
-.wrangler
+.wrangler/
 debug
 
 # Data (runtime only — source data in ptd_data/data/ is tracked)

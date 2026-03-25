@@ -260,7 +260,7 @@ def get_recent_events(offset, limit):
     if podium_race_ids:
         ph = ",".join("?" * len(podium_race_ids))
         podium_rows = conn.execute(f"""
-            SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s
+            SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s, a.profile_img
             FROM results res
             JOIN athletes a ON res.athlete_id = a.athlete_id
             JOIN nationalities n ON a.country_full = n.country_full
@@ -271,10 +271,10 @@ def get_recent_events(offset, limit):
         """, podium_race_ids).fetchall()
 
         podium_by_race = {}
-        for race_id, position, athlete_id, name, emoji, overall_s in podium_rows:
+        for race_id, position, athlete_id, name, emoji, overall_s, profile_img in podium_rows:
             podium_by_race.setdefault(race_id, []).append(
                 {"position": position, "athlete_id": athlete_id, "name": name,
-                 "emoji": emoji, "overall_s": overall_s}
+                 "emoji": emoji, "overall_s": overall_s, "profile_img": profile_img}
             )
         # Compute gap (time diff from winner) for 2nd and 3rd
         for entries in podium_by_race.values():
@@ -1142,7 +1142,7 @@ def get_event_races_detail(event_id):
     ph = ",".join("?" * len(race_ids))
 
     podium_rows = conn.execute(f"""
-        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s
+        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s, a.profile_img
         FROM results res
         JOIN athletes a ON res.athlete_id = a.athlete_id
         JOIN nationalities n ON a.country_full = n.country_full
@@ -1153,10 +1153,10 @@ def get_event_races_detail(event_id):
     """, race_ids).fetchall()
 
     podium_by_race = {}
-    for race_id, pos, athlete_id, name, emoji, overall_s in podium_rows:
+    for race_id, pos, athlete_id, name, emoji, overall_s, profile_img in podium_rows:
         podium_by_race.setdefault(race_id, []).append(
             {"position": pos, "athlete_id": athlete_id, "name": name,
-             "emoji": emoji, "overall_s": overall_s}
+             "emoji": emoji, "overall_s": overall_s, "profile_img": profile_img}
         )
 
     std_rows = conn.execute(f"""
@@ -1758,7 +1758,7 @@ def get_series_races(series_id):
 
     podium_rows = conn.execute(f"""
         SELECT res.race_id, res.position, res.overall_s,
-               a.athlete_id, a.name, n.emoji
+               a.athlete_id, a.name, n.emoji, a.profile_img
         FROM results res
         JOIN athletes a ON a.athlete_id = res.athlete_id
         JOIN nationalities n ON n.country_full = a.country_full
@@ -1769,10 +1769,11 @@ def get_series_races(series_id):
     """, race_ids).fetchall()
 
     podiums = defaultdict(list)
-    for race_id, pos, overall_s, athlete_id, name, emoji in podium_rows:
+    for race_id, pos, overall_s, athlete_id, name, emoji, profile_img in podium_rows:
         podiums[race_id].append({
             "position": pos, "overall_s": overall_s,
-            "athlete_id": athlete_id, "name": name, "country_emoji": emoji,
+            "athlete_id": athlete_id, "name": name,
+            "country_emoji": emoji, "profile_img": profile_img,
         })
 
     std_rows = conn.execute(f"""
@@ -1809,7 +1810,7 @@ def get_series_all_time_leaders(series_id):
     """Athletes ranked by wins, with 2nd/3rd counts and formatted win-year list."""
     conn = _get_conn()
     rows = conn.execute("""
-        SELECT a.athlete_id, a.name, n.emoji,
+        SELECT a.athlete_id, a.name, n.emoji, a.profile_img,
                COUNT(CASE WHEN res.position = 1 THEN 1 END) AS wins,
                COUNT(CASE WHEN res.position = 2 THEN 1 END) AS seconds,
                COUNT(CASE WHEN res.position = 3 THEN 1 END) AS thirds
@@ -1827,8 +1828,8 @@ def get_series_all_time_leaders(series_id):
     """, [series_id]).fetchall()
 
     leaders = [
-        {"athlete_id": r[0], "name": r[1], "country_emoji": r[2],
-         "wins": r[3], "seconds": r[4], "thirds": r[5]}
+        {"athlete_id": r[0], "name": r[1], "country_emoji": r[2], "profile_img": r[3],
+         "wins": r[4], "seconds": r[5], "thirds": r[6]}
         for r in rows
     ]
     if not leaders:

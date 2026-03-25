@@ -48,9 +48,7 @@
                 <div class="series-podium-row">
                     <div class="series-podium-left">
                         <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                        <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="{{ p.name }}"
-                             class="series-podium-img"
-                             onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
+                        <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="series-podium-img">
                         <a href="/athlete/{{ p.athlete_id }}" class="series-podium-name">{{ p.name }} {{ p.country_emoji }}</a>
                     </div>
                     <div class="series-podium-right">
@@ -95,9 +93,7 @@
                     <div class="series-podium-row">
                         <div class="series-podium-left">
                             <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                            <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ p.athlete_id }}.webp" alt="{{ p.name }}"
-                                 class="series-podium-img"
-                                 onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
+                            <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="series-podium-img">
                             <a href="/athlete/{{ p.athlete_id }}" class="series-podium-name">{{ p.name }} {{ p.country_emoji }}</a>
                         </div>
                         <div class="series-podium-right">
@@ -156,9 +152,7 @@
                     <tr data-wins="{{ l.wins }}" data-seconds="{{ l.seconds }}" data-thirds="{{ l.thirds }}">
                         <td>
                             <div class="leaders-athlete">
-                                <img src="{{ STATIC_BASE_URL }}athlete_imgs/128/{{ l.athlete_id }}.webp" alt="{{ l.name }}"
-                                     class="leaders-athlete-img"
-                                     onerror="this.src='{{ STATIC_BASE_URL }}imgs/default_user_64.webp'">
+                                <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ l.athlete_id ~ '.webp' if l.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ l.name }}" class="leaders-athlete-img">
                                 <a href="/athlete/{{ l.athlete_id }}" class="leaders-athlete-link">{{ l.name }} {{ l.country_emoji }}</a>
                             </div>
                         </td>
