@@ -449,7 +449,7 @@ table td:first-child { padding-left: 1.25rem; }
 .data-table td:last-child,
 table td:last-child  { padding-right: 1.25rem; }
 
-/* Border on the row, not each cell — cleaner with border-collapse */
+/* Border on the row, not each cell - cleaner with border-collapse */
 .data-table tbody tr,
 table tbody tr {
     border-bottom: 1px solid var(--border-color);
@@ -494,7 +494,7 @@ table tr:hover td {
     align-items: center;
 }
 
-/* Sort indicators — SVG chevrons injected into th.sortable via JS */
+/* Sort indicators - SVG chevrons injected into th.sortable via JS */
 .sort-icon {
     display: inline-flex;
     align-items: center;
@@ -526,7 +526,7 @@ th.sortable.desc .sort-icon { opacity: 1; }
 th.sortable.asc  .si-up   { color: var(--primary-color); }
 th.sortable.desc .si-down { color: var(--primary-color); }
 
-/* Athlete links in tables — always dark, even when visited */
+/* Athlete links in tables - always dark, even when visited */
 table td a.link {
     color: var(--text-color);
     font-weight: 600;
@@ -537,7 +537,7 @@ table td a.link:visited { color: var(--text-color); }
 table td a.link:hover   { color: var(--primary-color); }
 
 /* ============================================
-   PAGE SECTION HEADINGS — standard for all section titles
+   PAGE SECTION HEADINGS - standard for all section titles
    Use .page-section-head on any div/heading that introduces a section.
    ============================================ */
 .page-section-head {
@@ -562,7 +562,7 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 
 /* ============================================
-   HERO STATS — reusable right-side stat cluster for page heroes
+   HERO STATS - reusable right-side stat cluster for page heroes
    ============================================ */
 .hero-stats {
     display: flex;
@@ -776,7 +776,7 @@ table td a.link:hover   { color: var(--primary-color); }
     text-overflow: ellipsis;
 }
 
-/* Race name links inside stat cards — muted, not orange, inherit sub size */
+/* Race name links inside stat cards - muted, not orange, inherit sub size */
 .race-stat-sub a.small-link {
     font-size: inherit;
     color: var(--text-lighter);
@@ -786,7 +786,7 @@ table td a.link:hover   { color: var(--primary-color); }
     color: var(--primary-color);
 }
 
-/* Muted column cells — date, program, YOB */
+/* Muted column cells - date, program, YOB */
 .muted-col {
     font-size: 0.75rem;
     color: var(--text-lighter);
@@ -887,7 +887,7 @@ table td a.link:hover   { color: var(--primary-color); }
     flex-shrink: 0;
 }
 
-/* ── Profile image shadow — applied globally to all circular athlete photos ── */
+/* ── Profile image shadow - applied globally to all circular athlete photos ── */
 .result-avatar,
 .as-result-avatar,
 .as-champ-img,
@@ -983,7 +983,7 @@ table td a.link:hover   { color: var(--primary-color); }
     height: 400px;
 }
 
-/* Rating history section — card is .collapsible-card, this just controls internals */
+/* Rating history section - card is .collapsible-card, this just controls internals */
 .ratings-history-section {
     margin-bottom: 2.5rem;
 }
@@ -1098,7 +1098,7 @@ table td a.link:hover   { color: var(--primary-color); }
 
 /* Pill trails the race name as a plain inline element. The whitespace between
    </a> and <span> in the template acts as the gap; when it wraps, HTML collapses
-   that trailing space so the pill starts flush at the left edge — no indent. */
+   that trailing space so the pill starts flush at the left edge - no indent. */
 .race-col .std-pill {
     font-size: 0.78em;
     margin: 0;
@@ -1676,7 +1676,7 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 
 /* ============================================
-   SHARED SEARCH BOX — used on athletes + races pages
+   SHARED SEARCH BOX - used on athletes + races pages
    (.as-search-box, .as-input, .as-filter-toggle, .as-filters, etc.)
    ============================================ */
 .as-search-box {
@@ -1779,7 +1779,7 @@ table td a.link:hover   { color: var(--primary-color); }
     padding: 0 1.25rem 0.875rem;
 }
 
-/* Results container — hidden when empty */
+/* Results container - hidden when empty */
 .as-results {
     border-top: 1px solid var(--border-color);
 }

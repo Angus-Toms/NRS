@@ -1,4 +1,4 @@
-// Athletes landing page — live search + filters
+// Athletes landing page - live search + filters
 const baseUrl    = window.STATIC_BASE_URL || '';
 const defaultImg = `${baseUrl}imgs/default_user.jpg`;
 
@@ -98,14 +98,14 @@ function renderResults(athletes, disc, order) {
     results.innerHTML = athletes.map(a => {
         const img = a.has_img ? `${baseUrl}athlete_imgs/128/${a.athlete_id}.webp` : defaultImg;
 
-        // Ratings block — 4 disciplines, active one highlighted
+        // Ratings block - 4 disciplines, active one highlighted
         const ratingsHtml = ['overall', 'swim', 'bike', 'run'].map(d => `
             <div class="rating-item">
                 <span class="rating-label">${LABELS[d]}</span>
                 <span class="rating-value${d === disc ? ' rating-highlight' : ''}">${a[d + '_rating']}</span>
             </div>`).join('');
 
-        // Meta row — flag · country · YOB · races · wins
+        // Meta row - flag · country · YOB · races · wins
         const yobItem  = a.year_of_birth ? `<span class="meta-item">b. ${a.year_of_birth}</span>` : '';
         const metaHtml = `
             <span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>

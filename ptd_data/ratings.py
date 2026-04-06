@@ -40,7 +40,7 @@ def _confidence(race_count):
 
 
 def _self_k_mult(race_count):
-    """Higher K multiplier for new athletes — 3× at race 0, linearly decaying to 1× by race CONF_THRESHOLD."""
+    """Higher K multiplier for new athletes - 3× at race 0, linearly decaying to 1× by race CONF_THRESHOLD."""
     return 1.0 + 2.0 * max(0.0, 1.0 - race_count / CONF_THRESHOLD)
 
 
@@ -110,9 +110,9 @@ def _compute_ratings(conn, category):
             if overall_s > 0:
                 if swim_s > overall_s:               # swim longer than entire race
                     swim_s = 0.0
-                if 0 < bike_s < 300:                 # < 5 min bike — placeholder / error
+                if 0 < bike_s < 300:                 # < 5 min bike - placeholder / error
                     bike_s = 0.0
-                if 0 < run_s < 180:                  # < 3 min run — placeholder / error
+                if 0 < run_s < 180:                  # < 3 min run - placeholder / error
                     run_s = 0.0
 
             transition_s = (t1_s + t2_s) if t1_s > 0 and t2_s > 0 else 0.0
@@ -348,7 +348,7 @@ def _flush_rankings(race_id, race_date, participants, gender_state, ranking_rows
 def _fit_prediction_models(conn):
     """Fit WLS linear models: winner_time = slope * pre_race_rating + intercept.
 
-    One model per (gender, distance, discipline) — 20 total.
+    One model per (gender, distance, discipline) - 20 total.
     Saves debug scatter plots to debug/prediction_models/.
     """
     import os
@@ -358,7 +358,7 @@ def _fit_prediction_models(conn):
 
     os.makedirs('debug/prediction_models', exist_ok=True)
 
-    # Transitions vary too much by course layout to model reliably — excluded.
+    # Transitions vary too much by course layout to model reliably - excluded.
     DISCS = ['overall', 'swim', 'bike', 'run']
 
     # Valid winner time ranges per distance and discipline (seconds).
@@ -381,7 +381,7 @@ def _fit_prediction_models(conn):
     }
 
     # All finishers across all elite races. Use overall_s time bounds to classify
-    # distance — correctly handles events that list both 376 and 377.
+    # distance - correctly handles events that list both 376 and 377.
     base_sql = """
         WITH all_finishers AS (
             SELECT res.race_id, res.athlete_id,

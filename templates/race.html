@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}{{ race.race_title }} ({{ race.date.strftime('%Y') }}) — {{ race.gender | title }} Elite | Pro Tri Data{% endblock %}
+{% block title %}{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - {{ race.gender | title }} Elite | Pro Tri Data{% endblock %}
 
 {% block meta %}
 {% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
-{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. {{ race.gender | title }} elite results — {{ finish_count }} finishers. View splits, rating changes, and performance analysis.{% endset %}
+{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. {{ race.gender | title }} elite results - {{ finish_count }} finishers. View splits, rating changes, and performance analysis.{% endset %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ race.race_title }} ({{ race.date.strftime('%Y') }}) — {{ race.gender | title }} Elite | Pro Tri Data">
+<meta property="og:title" content="{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - {{ race.gender | title }} Elite | Pro Tri Data">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}

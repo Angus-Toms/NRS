@@ -1,4 +1,4 @@
-// Chart.js global defaults — match site typography and colour palette
+// Chart.js global defaults - match site typography and colour palette
 Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.color = '#6b7280'; // --text-light
@@ -17,7 +17,7 @@ function _debounce(fn, ms) {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-// Sort table click listeners — safe to call multiple times after partial swaps
+// Sort table click listeners - safe to call multiple times after partial swaps
 function initSortableListeners() {
     document.querySelectorAll('table.sortable-table').forEach(table => {
         const headers = table.querySelectorAll('th.sortable');
@@ -32,7 +32,7 @@ function initSortableListeners() {
     });
 }
 
-// Chart initialisation — destroys existing instances before recreating
+// Chart initialisation - destroys existing instances before recreating
 function initRaceCharts() {
     const charts = [
         // Time histograms
@@ -243,7 +243,7 @@ async function _addPredictionRow(athlete, models, disc, existingIds, tbody, race
     const label      = disc === 'overall' ? '(predicted)' : `(predicted ${disc})`;
     const yobDisplay = athlete.yob
         ? `${athlete.yob}${raceYear ? ` (${raceYear - parseInt(athlete.yob)})` : ''}` : '';
-    const timeStr    = predTimeSecs != null ? formatTime(predTimeSecs) : '—';
+    const timeStr    = predTimeSecs != null ? formatTime(predTimeSecs) : '-';
     const timeDataVal = predTimeSecs != null ? formatTime(predTimeSecs) : '';
 
     // Build the 9 split cells; only the predicted discipline column is populated

@@ -342,8 +342,13 @@
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-    .as-champs-grid,
     .as-lb-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .as-champs-grid {
         grid-template-columns: 1fr;
     }
 

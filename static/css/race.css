@@ -1,5 +1,5 @@
 /* ============================================
-   RACE HERO — full-width navy band (lives outside .page-container)
+   RACE HERO - full-width navy band (lives outside .page-container)
    ============================================ */
 .race-hero {
     background: var(--navy);
@@ -52,7 +52,7 @@
     border-color: var(--primary-color);
 }
 
-/* Back link — subtle white on navy */
+/* Back link - subtle white on navy */
 .back-link {
     display: inline-flex;
     align-items: center;
@@ -69,7 +69,7 @@
     color: rgba(255, 255, 255, 0.85);
 }
 
-/* Race breadcrumb nav — handles event-only, series-only, and series › event */
+/* Race breadcrumb nav - handles event-only, series-only, and series › event */
 .race-nav {
     display: inline-flex;
     align-items: center;
@@ -137,7 +137,7 @@
     user-select: none;
 }
 
-/* Podium — right column */
+/* Podium - right column */
 .race-hero-podium {
     min-width: 260px;
 }
@@ -221,7 +221,7 @@
 .race-stat-section {}
 
 /* ============================================
-   TABLE SECTIONS — card with rounded corners
+   TABLE SECTIONS - card with rounded corners
    Generic .table-section is in base.css; .race-table-section is an alias.
    ============================================ */
 .ignored-race-notice {
@@ -249,7 +249,7 @@
 
 /* Position circles + time cells are in base.css */
 
-/* Athlete links in race tables — bold black, orange on hover */
+/* Athlete links in race tables - bold black, orange on hover */
 .race-table-section td a.link {
     color: var(--text-color);
     font-weight: 600;
@@ -278,7 +278,7 @@
     gap: 0.3em;
 }
 
-/* YOB column — de-emphasised, smaller and lighter than main data */
+/* YOB column - de-emphasised, smaller and lighter than main data */
 .results-table .yob-col,
 .rating-table  .yob-col {
     font-size: 0.75rem;
@@ -286,7 +286,7 @@
 }
 
 /* ============================================
-   PREDICTION — section head row + search bar + predicted row
+   PREDICTION - section head row + search bar + predicted row
    ============================================ */
 
 /* Flex wrapper so the title row and controls button sit on one line */
@@ -457,7 +457,7 @@
 .pred-result-name { font-weight: 600; font-size: 0.875rem; }
 .pred-result-meta { font-size: 0.75rem; color: var(--text-lighter); }
 
-/* Predicted rows — persistent orange tint on all cells */
+/* Predicted rows - persistent orange tint on all cells */
 .predicted-row td { background: rgba(231, 100, 30, 0.13); }
 .predicted-row:hover td { background: rgba(231, 100, 30, 0.20); }
 
@@ -471,7 +471,7 @@
     animation: pred-flash 1.2s ease-out forwards;
 }
 
-/* Predicted athlete name — same weight/size as real names but orange */
+/* Predicted athlete name - same weight/size as real names but orange */
 .pred-name {
     color: var(--primary-color);
     font-weight: 600;
@@ -607,6 +607,6 @@
 .pos-diff-down { color: var(--error-color); }
 .pos-diff-flat { color: var(--text-lighter); }
 
-/* Debut row in predictions table — de-emphasised (no pre-race ratings so less reliable) */
+/* Debut row in predictions table - de-emphasised (no pre-race ratings so less reliable) */
 .debut-row td { color: var(--text-light); font-style: italic; }
 .debut-label { font-size: 0.75em; color: var(--text-lighter); font-style: italic; }

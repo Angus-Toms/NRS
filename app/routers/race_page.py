@@ -34,7 +34,7 @@ def _compute_race_predictions(race_id, race, results, models):
 
     pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
     gender  = race['gender']
-    DISCS   = ['overall', 'swim', 'bike', 'run']  # transitions excluded — too course-specific
+    DISCS   = ['overall', 'swim', 'bike', 'run']  # transitions excluded - too course-specific
 
     # For each discipline, pick the highest-rated athlete as predicted leader,
     # then derive all other times via the ELO log-ratio formula.

@@ -24,7 +24,7 @@ def _category_rank(prog_name):
 
 
 def _sort_races(races):
-    """Flat list ordered by (category, gender) — elite men, elite women, u23 men, u23 women…"""
+    """Flat list ordered by (category, gender) - elite men, elite women, u23 men, u23 women…"""
     gender_rank = {"male": 0, "female": 1}
     return sorted(races, key=lambda r: (
         _category_rank(r["prog_name"]),

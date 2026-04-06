@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ athlete.name }} — Career Ratings &amp; Results | Pro Tri Data{% endblock %}
+{% block title %}{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data{% endblock %}
 
 {% set desc %}Career ELO ratings and race history for {{ athlete.name }}{% if athlete.country_full %}, {{ athlete.country_full }}{% endif %}{% if current_ratings and current_ratings.overall %}. Overall rating: {{ current_ratings.overall }}{% endif %}. View splits, discipline ratings, ranking history and more.{% endset %}
 {% set img_url %}{{ STATIC_BASE_URL }}{% if athlete.profile_img %}athlete_imgs/512/{{ athlete.athlete_id }}.webp{% else %}imgs/logo-512.webp{% endif %}{% endset %}
@@ -9,7 +9,7 @@
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="profile">
-<meta property="og:title" content="{{ athlete.name }} — Career Ratings &amp; Results | Pro Tri Data">
+<meta property="og:title" content="{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ img_url }}">
 {% endblock %}
@@ -88,7 +88,7 @@
             {% for result in col %}
             <div class="palmares-item">
                 <span class="palmares-item-label">{{ result.description }}</span>
-                <span class="palmares-item-sep">—</span>
+                <span class="palmares-item-sep">-</span>
                 <span class="palmares-item-races">
                     {% for race in result.races %}
                         <a href="/race/{{ race.race_id }}" class="palmares-race-link">{{ race.race_name }}</a>{% if not loop.last %}<span class="palmares-race-sep"> · </span>{% endif %}
@@ -102,6 +102,7 @@
 </div>
 {% endif %}
 
+{% if has_ratings %}
 <!-- Current Ratings -->
 <div class="page-section-head">Current Ratings</div>
 <div class="race-stat-cards">
@@ -130,7 +131,7 @@
             <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}" class="ranking-link">
                 {{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup>
             </a>
-            {% else %}—{% endif %}
+            {% else %}-{% endif %}
         </div>
         {% if current_rankings['national_'~disc] %}
         <div class="race-stat-sub">
@@ -180,6 +181,7 @@
     </div>
     {% endfor %}
 </div>
+{% endif %}{# has_ratings #}
 
 <div class="page-section-head">Race Results</div>
 <div class="table-section results-table">
@@ -282,6 +284,7 @@
     </table>
 </div>
 
+{% if has_ratings %}
 <div class="page-section-head">Rating History</div>
 <div class="table-section rating-table">
     <table class="sortable-table">
@@ -341,7 +344,7 @@
     </table>
 </div>
 
-<div class="page-section-head" id="ratings-section-title">Rating History — Overall</div>
+<div class="page-section-head" id="ratings-section-title">Rating History - Overall</div>
 <div class="collapsible-card ratings-history-section">
     <div class="ratings-main-chart">
         <canvas id="ratings-main-canvas"></canvas>
@@ -355,7 +358,7 @@
     </div>
 </div>
 
-<div class="page-section-head" id="world-rankings-section-title">World Rankings — Overall</div>
+<div class="page-section-head" id="world-rankings-section-title">World Rankings - Overall</div>
 <div class="collapsible-card ratings-history-section">
     <div class="ratings-main-chart">
         <canvas id="world-rankings-main-canvas"></canvas>
@@ -369,7 +372,7 @@
     </div>
 </div>
 
-<div class="page-section-head" id="national-rankings-section-title">National Rankings — Overall</div>
+<div class="page-section-head" id="national-rankings-section-title">National Rankings - Overall</div>
 <div class="collapsible-card ratings-history-section">
     <div class="ratings-main-chart">
         <canvas id="national-rankings-main-canvas"></canvas>
@@ -383,7 +386,7 @@
     </div>
 </div>
 
-<div class="page-section-head" id="pct-behind-section-title">% Behind Leader — Overall</div>
+<div class="page-section-head" id="pct-behind-section-title">% Behind Leader - Overall</div>
 <div class="collapsible-card ratings-history-section">
     <div class="ratings-main-chart">
         <canvas id="pct-behind-main-canvas"></canvas>
@@ -396,9 +399,11 @@
         {% endfor %}
     </div>
 </div>
+{% endif %}{# has_ratings #}
 {% endblock %}
 
 {% block extra_js %}
+{% if has_ratings %}
 <!-- Historical ratings chart -->
 <script id="ratings-chart-data" type="application/json">
     {{ ratings_chart | tojson }}
@@ -410,8 +415,9 @@
 <!-- Ranking charts -->
 <script id="world-rankings-chart-data" type="application/json">{{ world_rankings_chart | tojson }}</script>
 <script id="national-rankings-chart-data" type="application/json">{{ national_rankings_chart | tojson }}</script>
+{% endif %}
 
-<!-- Load JS -->
+<!-- Load JS (always needed for table sorting) -->
 <script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
 <script src="{{ STATIC_BASE_URL }}js/athlete.js"></script>
 {% endblock %}

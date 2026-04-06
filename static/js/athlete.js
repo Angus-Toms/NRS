@@ -51,7 +51,7 @@ function _positionTooltip(tooltipEl, chart, tooltip) {
     const caretX = rect.left + tooltip.caretX;
     const caretY = rect.top  + tooltip.caretY;
     if (caretX + tipW + 16 <= window.innerWidth) {
-        // Fits to the right of the cursor — tooltip is outside the canvas, no blocking
+        // Fits to the right of the cursor - tooltip is outside the canvas, no blocking
         tooltipEl.style.left = (caretX + 16) + 'px';
         tooltipEl.style.top  = (caretY - 50) + 'px';
     } else {
@@ -77,7 +77,7 @@ function _fillRankTooltip(tooltipEl, d, disc, rankLabel) {
         ? `<span style="display:inline-block;background:rgba(220,38,38,0.2);color:#f87171;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:6px">${d.status}</span>`
         : '';
 
-    // Build time rows — transition shows T1+T2, others show discipline time
+    // Build time rows - transition shows T1+T2, others show discipline time
     let timeRows = '';
     if (!isDNF) {
         if (disc === 'transition') {
@@ -228,17 +228,19 @@ function switchRankingDisc(disc, type) {
     else         activeNatDisc   = disc;
 
     const heading = document.getElementById(`${type}-rankings-section-title`);
-    if (heading) heading.textContent = `${isWorld ? 'World' : 'National'} Rankings — ${DISC_LABELS[disc]}`;
+    if (heading) heading.textContent = `${isWorld ? 'World' : 'National'} Rankings - ${DISC_LABELS[disc]}`;
 
     buildMainRankingChart(disc, type);
     ['overall', 'swim', 'bike', 'run', 'transition'].forEach(d => buildMiniRankingChart(d, type));
 }
 
 // Init ranking charts
-buildMainRankingChart('overall', 'world');
-['overall', 'swim', 'bike', 'run', 'transition'].forEach(d => buildMiniRankingChart(d, 'world'));
-buildMainRankingChart('overall', 'national');
-['overall', 'swim', 'bike', 'run', 'transition'].forEach(d => buildMiniRankingChart(d, 'national'));
+if (worldRankingsData) {
+    buildMainRankingChart('overall', 'world');
+    ['overall', 'swim', 'bike', 'run', 'transition'].forEach(d => buildMiniRankingChart(d, 'world'));
+    buildMainRankingChart('overall', 'national');
+    ['overall', 'swim', 'bike', 'run', 'transition'].forEach(d => buildMiniRankingChart(d, 'national'));
+}
 
 function toggleNotableResults(button, targetId) {
     const dropdown = document.getElementById(targetId);
@@ -299,7 +301,7 @@ function fmtDiff(s) {
     const t = fmtTime(s);
     return t ? `+${t}` : null;
 }
-// SVG chevron helpers — matches STYLE.md inline SVG convention
+// SVG chevron helpers - matches STYLE.md inline SVG convention
 function _chevronSvg(up, size, col) {
     const pts = up ? '18 15 12 9 6 15' : '6 9 12 15 18 9';
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-bottom:1px"><polyline points="${pts}"></polyline></svg>`;
@@ -307,7 +309,7 @@ function _chevronSvg(up, size, col) {
 // Chevron + number, no +/- prefix (STYLE.md convention)
 function fmtChangeArrow(n) {
     if (n == null) return '';
-    const col = n >= 0 ? '#5eead4' : '#f87171';  // teal-300 / red-400 — legible on dark navy
+    const col = n >= 0 ? '#5eead4' : '#f87171';  // teal-300 / red-400 - legible on dark navy
     return `<span style="color:${col};font-size:11px;font-weight:600;white-space:nowrap">${_chevronSvg(n >= 0, 11, col)}${Math.abs(n)}</span>`;
 }
 // World rank change: positive = improved (moved up). Lower rank number = better.
@@ -318,7 +320,7 @@ function fmtRankChange(n) {
 }
 const DNF_STATUSES = new Set(['DNF', 'LAP', 'NC', 'DNS', 'DQ']);
 
-// Shared HTML tooltip element — pointerEvents: auto for sticky hover
+// Shared HTML tooltip element - pointerEvents: auto for sticky hover
 const ratingsTooltipEl = (() => {
     const el = document.createElement('div');
     el.id = 'ratings-chart-tooltip';
@@ -371,7 +373,7 @@ function ratingsExternalTooltip(context) {
     let timeRows = '';
     if (!isDNF) {
         if (noTime) {
-            // transition disc — show T1 and T2 individually
+            // transition disc - show T1 and T2 individually
             const mkRow = (lbl, t, diff) => {
                 if (!t) return '';
                 const timeR = `<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:rgba(255,255,255,0.5);font-size:11px">${lbl} time</span><span style="color:#fff;font-size:13px;font-weight:600">${fmtTime(t)}</span></div>`;
@@ -510,7 +512,7 @@ function buildMiniChart(disc) {
 const ratingsHeading = document.getElementById('ratings-section-title');
 
 function updateRatingTitle(disc) {
-    if (ratingsHeading) ratingsHeading.textContent = `Rating History — ${DISC_LABELS[disc]}`;
+    if (ratingsHeading) ratingsHeading.textContent = `Rating History - ${DISC_LABELS[disc]}`;
 }
 
 function switchRatingDisc(disc) {
@@ -531,9 +533,11 @@ function switchRatingDisc(disc) {
 }
 
 // Init
-updateRatingTitle('overall');
-buildMainChart('overall');
-['overall', 'swim', 'bike', 'run', 'transition'].forEach(buildMiniChart);
+if (ratingsData) {
+    updateRatingTitle('overall');
+    buildMainChart('overall');
+    ['overall', 'swim', 'bike', 'run', 'transition'].forEach(buildMiniChart);
+}
 
 // % Behind Leader chart -------------------------------------------------------
 const pctBehindData = getJSON('pct-behind-chart-data');
@@ -665,7 +669,7 @@ function switchPctBehindDisc(disc) {
     card.querySelector(`.ratings-mini[data-disc="${disc}"]`).classList.add('active');
     activePctDisc = disc;
     const heading = document.getElementById('pct-behind-section-title');
-    if (heading) heading.textContent = `% Behind Leader — ${DISC_LABELS[disc]}`;
+    if (heading) heading.textContent = `% Behind Leader - ${DISC_LABELS[disc]}`;
     buildMainPctBehindChart(disc);
     ['overall', 'swim', 'bike', 'run'].forEach(buildMiniPctBehindChart);
 }
@@ -698,8 +702,10 @@ window.addEventListener('resize', () => {
 });
 
 // Init
-buildMainPctBehindChart('overall');
-['overall', 'swim', 'bike', 'run'].forEach(buildMiniPctBehindChart);
+if (pctBehindData) {
+    buildMainPctBehindChart('overall');
+    ['overall', 'swim', 'bike', 'run'].forEach(buildMiniPctBehindChart);
+}
 
 // Re-stripe visible (non-sub-race) rows so alternation is correct
 // regardless of how many hidden sub-race rows exist in the DOM.
@@ -722,5 +728,5 @@ document.querySelectorAll('.sub-race-toggle').forEach(btn => {
     });
 });
 
-// Initial stripe pass — also called after sort (sortTable fires on th click)
+// Initial stripe pass - also called after sort (sortTable fires on th click)
 document.querySelectorAll('.results-table tbody, .rating-table tbody').forEach(_restripeTable);

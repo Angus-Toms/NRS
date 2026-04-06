@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ event.name }} — Pro Tri Data{% endblock %}
+{% block title %}{{ event.name }} - Pro Tri Data{% endblock %}
 
 {% block meta %}
 <meta name="description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ event.name }} — Pro Tri Data">
+<meta property="og:title" content="{{ event.name }} - Pro Tri Data">
 <meta property="og:description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
@@ -51,7 +51,7 @@
         <span class="event-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
     </div>
     <div class="event-race-card-body">
-        <!-- Podium — left panel -->
+        <!-- Podium - left panel -->
         <div class="event-race-podium">
             {% for p in race.podium %}
             <div class="event-podium-row">
@@ -72,17 +72,17 @@
             </div>
             {% endfor %}
         </div>
-        <!-- Standards — right panel -->
+        <!-- Standards - right panel -->
         {% if race.standards %}
         <div class="event-race-standards">
             {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
             <div class="event-std-col">
                 <div class="event-std-disc">{{ label }}</div>
-                <div class="event-std-val">{{ race.standards[disc] if race.standards[disc] else '—' }}</div>
+                <div class="event-std-val">{{ race.standards[disc] if race.standards[disc] else '-' }}</div>
                 {% if race.standards[disc] %}
                 <span class="std-pill std-pill--{{ race.standard_classes[disc] }}">{{ race.standard_classes[disc]|title }}</span>
                 {% else %}
-                <span class="event-std-na">—</span>
+                <span class="event-std-na">-</span>
                 {% endif %}
             </div>
             {% endfor %}

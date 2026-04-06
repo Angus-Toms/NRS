@@ -187,23 +187,25 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
 
     # Detect available categories and resolve the requested one
     available_categories = queries.get_athlete_categories(athlete_id)
-    if not available_categories:
-        raise HTTPException(status_code=404, detail=f"No rating data for athlete {athlete_id}")
-    if category not in available_categories:
-        category = 'elite' if 'elite' in available_categories else available_categories[0]
+    has_ratings = bool(available_categories)
+    if has_ratings:
+        if category not in available_categories:
+            category = 'elite' if 'elite' in available_categories else available_categories[0]
+    else:
+        category = 'elite'  # default for race history query; no ratings will be shown
 
-    current  = queries.get_athlete_current_ratings(athlete_id, category)
-    changes  = queries.get_athlete_1yr_changes(athlete_id, category)
-    peaks    = queries.get_athlete_peak_ratings(athlete_id, category)
-    best     = queries.get_athlete_best_performances(athlete_id, category)
+    current  = queries.get_athlete_current_ratings(athlete_id, category) if has_ratings else None
+    changes  = queries.get_athlete_1yr_changes(athlete_id, category)     if has_ratings else None
+    peaks    = queries.get_athlete_peak_ratings(athlete_id, category)    if has_ratings else None
+    best     = queries.get_athlete_best_performances(athlete_id, category) if has_ratings else None
     stats    = queries.get_athlete_stats(athlete_id, category)
     notable_raw     = queries.get_athlete_notable_results(athlete_id)
     ag_notable_raw  = queries.get_athlete_ag_notable_results(athlete_id)
     race_hist    = queries.get_athlete_race_history(athlete_id, category)
-    rating_hist  = queries.get_athlete_rating_history(athlete_id, category)
-    times_data    = queries.get_athlete_times_data(athlete_id)
-    ratings_data  = queries.get_athlete_ratings_data(athlete_id, category)
-    rankings_data = queries.get_athlete_rankings_data(athlete_id, category)
+    rating_hist  = queries.get_athlete_rating_history(athlete_id, category) if has_ratings else []
+    times_data    = queries.get_athlete_times_data(athlete_id)             if has_ratings else []
+    ratings_data  = queries.get_athlete_ratings_data(athlete_id, category) if has_ratings else []
+    rankings_data = queries.get_athlete_rankings_data(athlete_id, category) if has_ratings else []
 
     # --- current ratings card ---
     current_ratings = {}
@@ -223,7 +225,7 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
     # stats["last_race_date"] is category-agnostic so would incorrectly show rankings
     # for e.g. a retired elite who still races AG.
     _cat_last = race_hist[0]["race_date"] if race_hist else None
-    _active   = bool(_cat_last and _cat_last >= (date.today() - timedelta(days=int(18 * 30.44))))
+    _active   = bool(has_ratings and _cat_last and _cat_last >= (date.today() - timedelta(days=int(18 * 30.44))))
 
     current_rankings = {}
     if _active:
@@ -243,23 +245,24 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
 
     # --- peak ratings card ---
     rating_peaks = {}
-    for disc in ["overall", "swim", "bike", "run", "transition"]:
-        rating_peaks[f"max_{disc}"]      = round(peaks[f"max_{disc}"]) if peaks[f"max_{disc}"] else 0
-        rating_peaks[f"max_{disc}_race"] = peaks[f"max_{disc}_race"]
+    if peaks:
+        for disc in ["overall", "swim", "bike", "run", "transition"]:
+            rating_peaks[f"max_{disc}"]      = round(peaks[f"max_{disc}"]) if peaks[f"max_{disc}"] else 0
+            rating_peaks[f"max_{disc}_race"] = peaks[f"max_{disc}_race"]
 
     # --- best performances card ---
-    no_best = {"formatted_str": "-", "css_class": "no-best-performance"}
     best_performances = {}
-    for disc in ["overall", "swim", "bike", "run", "transition"]:
-        change = best[f"{disc}_change"]
-        best_performances[f"{disc}_change"] = format_rating_change(change) if change else no_best
-        best_performances[f"{disc}_race"]   = best[f"{disc}_race"]
+    if best:
+        no_best = {"formatted_str": "-", "css_class": "no-best-performance"}
+        for disc in ["overall", "swim", "bike", "run", "transition"]:
+            change = best[f"{disc}_change"]
+            best_performances[f"{disc}_change"] = format_rating_change(change) if change else no_best
+            best_performances[f"{disc}_race"]   = best[f"{disc}_race"]
 
     # --- athlete dict: merge info + stats + computed fields expected by template ---
     race_starts = stats["race_starts"]
     wins        = stats["wins"]
     podiums     = stats["podiums"]
-    last_date   = stats["last_race_date"]
     active      = _active  # category-specific 18-month window, consistent with rankings
     athlete_dict = {
         **info,
@@ -272,9 +275,10 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
         "podium_pct":    podiums / max(race_starts, 1),
         "active":        active,
     }
-    for disc in ["overall", "swim", "bike", "run", "transition"]:
-        athlete_dict[f"max_{disc}_race_id"]       = peaks[f"max_{disc}_race_id"]
-        athlete_dict[f"{disc}_increase_race_id"]  = best[f"{disc}_race_id"] or 0
+    if peaks and best:
+        for disc in ["overall", "swim", "bike", "run", "transition"]:
+            athlete_dict[f"max_{disc}_race_id"]       = peaks[f"max_{disc}_race_id"]
+            athlete_dict[f"{disc}_increase_race_id"]  = best[f"{disc}_race_id"] or 0
 
     # --- notable results (elite) and AG palmares ---
     notable_results    = _build_notable_results(notable_raw)
@@ -390,14 +394,17 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
     ]
 
     # --- charts ---
-    pct_behind      = _build_pct_behind_chart(times_data)
-    ratings_chart   = _build_ratings_chart(ratings_data)
-    world_rankings_charts, national_rankings_charts = _build_rankings_charts(rankings_data)
+    pct_behind      = _build_pct_behind_chart(times_data) if has_ratings else None
+    ratings_chart   = _build_ratings_chart(ratings_data)  if has_ratings else None
+    world_rankings_charts, national_rankings_charts = (
+        _build_rankings_charts(rankings_data) if has_ratings else ({}, {})
+    )
 
     return templates.TemplateResponse("athlete.html", {
         "request":        request,
         "active_page":    "athletes",
         "athlete":        athlete_dict,
+        "has_ratings":          has_ratings,
         "show_rankings":        _active,
         "category":             category,
         "has_elite":            'elite' in available_categories,

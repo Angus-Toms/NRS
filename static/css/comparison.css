@@ -13,7 +13,7 @@
     /* overflow must stay visible so dropdown can escape the card */
 }
 
-/* Navy header band — matches champ-card-header */
+/* Navy header band - matches champ-card-header */
 .search-box-header {
     background: var(--navy);
     padding: 0.55rem 1.25rem;
@@ -153,7 +153,7 @@
     color: var(--error-color);
 }
 
-/* Profile pic left, name + stats right — mirrors champ-card-body */
+/* Profile pic left, name + stats right - mirrors champ-card-body */
 .sel-athlete-card {
     display: flex;
     align-items: center;
@@ -313,7 +313,7 @@
 .rating-change.negative { color: var(--error-color); }
 .rating-change.neutral  { color: var(--text-light); }
 
-/* Career stats as table rows — separator before the first one */
+/* Career stats as table rows - separator before the first one */
 .h2h-stats-row--first td {
     border-top: 2px solid var(--border-color);
 }

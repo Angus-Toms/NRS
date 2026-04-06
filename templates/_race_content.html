@@ -12,7 +12,7 @@
     </div>
 </div>
 
-<!-- Best Performances — hidden for ignored races (no rating changes computed) -->
+<!-- Best Performances - hidden for ignored races (no rating changes computed) -->
 {% if not ignored_info %}
 <div class="page-section-head">Best Performances</div>
 <div class="race-stat-section">
@@ -34,7 +34,7 @@
 </div>
 {% endif %}
 
-<!-- Course Conditions — only for races with predictions and not ignored/subset -->
+<!-- Course Conditions - only for races with predictions and not ignored/subset -->
 {% if course_conditions %}
 <div class="page-section-head">Course Conditions</div>
 <p class="page-section-sub" style="margin-bottom:1rem">Average difference between predicted and actual finish times. Negative (fast) times imply a fast course or conditions while positive (slow) times indicate a slow or long course and conditions.</p>
@@ -121,7 +121,7 @@
                             {% if athlete.pos_diff is not none %}
                                 {% if athlete.pos_diff > 0 %}<span class="pos-diff pos-diff-up"><svg class="chg-arrow" viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,6.5 5,1.5 9,6.5"/></svg>{{ athlete.pos_diff }}</span>
                                 {% elif athlete.pos_diff < 0 %}<span class="pos-diff pos-diff-down"><svg class="chg-arrow" viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,1.5 5,6.5 9,1.5"/></svg>{{ athlete.pos_diff | abs }}</span>
-                                {% else %}<span class="pos-diff pos-diff-flat">—</span>{% endif %}
+                                {% else %}<span class="pos-diff pos-diff-flat">-</span>{% endif %}
                             {% endif %}
                         </td>
                         <td class="athlete-col" data-value="{{ athlete.name }}">
@@ -169,7 +169,7 @@
 </div>
 
 {% if has_predictions %}
-<p id="predictions-subtitle" class="page-section-sub hidden" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut — their ratings have not yet converged so predictions are less reliable.</p>
+<p id="predictions-subtitle" class="page-section-sub hidden" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut - their ratings have not yet converged so predictions are less reliable.</p>
 <div id="predictions-view" class="race-view race-table-section hidden">
     <div>
         <table class="sortable-table results-table">

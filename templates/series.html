@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ series.name }} — Pro Tri Data{% endblock %}
+{% block title %}{{ series.name }} - Pro Tri Data{% endblock %}
 
 {% block meta %}
 <meta name="description" content="{{ series.description }}{% if series.subtitle %} {{ series.subtitle }}.{% endif %}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ series.name }} — Pro Tri Data">
+<meta property="og:title" content="{{ series.name }} - Pro Tri Data">
 <meta property="og:description" content="{{ series.description }}{% if series.subtitle %} {{ series.subtitle }}.{% endif %}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
@@ -30,55 +30,60 @@
 {% block content %}
 <div class="series-page">
 
-    <!-- Top band: most recent podium (left) + map (right) -->
+    <!-- ── Most recent edition ─────────────────────────────────────────── -->
     {% if races %}
     {% set latest = races[0] %}
-    <section class="series-top">
+    <section class="series-latest-section">
+        <div class="page-section-head">Most Recent Edition</div>
         <div class="series-latest-card">
             <div class="series-latest-header">
-                <span class="series-latest-label">Most Recent</span>
-                <span class="series-latest-meta">
-                    <a href="/race/{{ latest.race_id }}" class="series-latest-link">{{ latest.event_name }}</a>
-                    <span class="series-meta-dot">·</span>
-                    <span>{{ latest.race_date.strftime('%d %B %Y') }}</span>
-                </span>
+                <a href="/race/{{ latest.race_id }}" class="series-latest-title">{{ latest.event_name }}</a>
+                <span class="series-latest-date">{{ latest.race_date.strftime('%d %B %Y') }}</span>
             </div>
-            <div class="series-latest-podium">
+            <div class="series-latest-athletes">
                 {% for p in latest.podium %}
-                <div class="series-podium-row">
-                    <div class="series-podium-left">
-                        <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                        <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="series-podium-img">
-                        <a href="/athlete/{{ p.athlete_id }}" class="series-podium-name">{{ p.name }} {{ p.country_emoji }}</a>
+                {% set pos_cls = 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' %}
+                <div class="series-latest-athlete series-latest-athlete--{{ pos_cls }}">
+                    <div class="series-latest-pos {{ pos_cls }}">
+                        {{ ['1st','2nd','3rd'][p.position - 1] }}
                     </div>
-                    <div class="series-podium-right">
-                        {% if p.position == 1 %}
-                            <span class="series-podium-time series-podium-time--winner">{{ p.time_fmt }}</span>
-                        {% elif p.gap_fmt %}
-                            <span class="series-podium-gap">{{ p.gap_fmt }}</span>
-                        {% else %}
-                            <span class="series-podium-time">{{ p.time_fmt }}</span>
-                        {% endif %}
+                    <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/512/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}"
+                         alt="{{ p.name }}" class="series-latest-athlete-img">
+                    <a href="/athlete/{{ p.athlete_id }}" class="series-latest-athlete-name">{{ p.name }} {{ p.country_emoji }}</a>
+                    <div class="series-latest-time">
+                        {{ p.time_fmt }}{% if p.gap_fmt %} <span class="series-latest-gap">({{ p.gap_fmt }})</span>{% endif %}
                     </div>
+                    {% if p.swim_fmt %}
+                    <div class="series-latest-splits">
+                        <div class="series-split"><span class="series-split-label">Swim</span><span class="series-split-val">{{ p.swim_fmt }}</span></div>
+                        {% if p.t1_fmt %}<div class="series-split series-split--t"><span class="series-split-label">T1</span><span class="series-split-val">{{ p.t1_fmt }}</span></div>{% endif %}
+                        <div class="series-split"><span class="series-split-label">Bike</span><span class="series-split-val">{{ p.bike_fmt }}</span></div>
+                        {% if p.t2_fmt %}<div class="series-split series-split--t"><span class="series-split-label">T2</span><span class="series-split-val">{{ p.t2_fmt }}</span></div>{% endif %}
+                        <div class="series-split"><span class="series-split-label">Run</span><span class="series-split-val">{{ p.run_fmt }}</span></div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
                 {% if not latest.podium %}
-                <div class="series-podium-row"><span style="color:var(--text-lighter);font-size:0.82rem;padding:0.3rem 0">No results recorded</span></div>
+                <div style="padding:1.5rem;color:var(--text-lighter);font-size:0.875rem;">No results recorded</div>
                 {% endif %}
             </div>
         </div>
-
-        {% if map_locations %}
-        <div class="series-map-card">
-            <div id="series-map"></div>
-        </div>
-        {% endif %}
     </section>
     {% endif %}
 
-    <!-- All editions -->
+    <!-- ── Map ─────────────────────────────────────────────────────────── -->
+    {% if map_locations %}
+    <section class="series-map-section">
+        <div class="series-map-card">
+            <div id="series-map"></div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── Previous editions ──────────────────────────────────────────── -->
     <section class="series-editions">
-        <div class="page-section-head">Editions</div>
+        <div class="page-section-head">Previous Editions</div>
         {% for race in races %}
         <div class="series-race-card">
             <a href="/race/{{ race.race_id }}" class="series-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
@@ -87,7 +92,6 @@
                 <span class="series-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
             </div>
             <div class="series-race-card-body">
-                <!-- Podium -->
                 <div class="series-race-podium">
                     {% for p in race.podium %}
                     <div class="series-podium-row">
@@ -108,20 +112,19 @@
                     </div>
                     {% endfor %}
                     {% if not race.podium %}
-                    <div class="series-podium-row"><span style="color:var(--text-lighter);font-size:0.82rem;padding:0.3rem 0">No results recorded</span></div>
+                    <div class="series-podium-row"><span style="color:var(--text-lighter);font-size:0.82rem">No results recorded</span></div>
                     {% endif %}
                 </div>
-                <!-- Standards -->
                 {% if race.standards %}
                 <div class="series-race-standards">
                     {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
                     <div class="series-std-col">
                         <div class="series-std-disc">{{ label }}</div>
-                        <div class="series-std-val">{{ race.standards[disc] if race.standards[disc] else '—' }}</div>
+                        <div class="series-std-val">{{ race.standards[disc] if race.standards[disc] else '-' }}</div>
                         {% if race.standards[disc] %}
                         <span class="std-pill std-pill--{{ race.standard_classes[disc] }}">{{ race.standard_classes[disc]|title }}</span>
                         {% else %}
-                        <span class="series-std-na">—</span>
+                        <span class="series-std-na">-</span>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -132,7 +135,7 @@
         {% endfor %}
     </section>
 
-    <!-- All-time leaders -->
+    <!-- ── All-time leaders ───────────────────────────────────────────── -->
     {% if leaders %}
     <section class="series-leaders">
         <div class="page-section-head">All-time Leaders</div>
@@ -168,16 +171,35 @@
     </section>
     {% endif %}
 
-    <!-- Performance history chart -->
+    <!-- ── Performance history ────────────────────────────────────────── -->
     {% if perf_history | length > 1 %}
     <section class="series-chart-section">
         <div class="page-section-head">Performance History</div>
-        <div class="series-chart-card">
-            <div class="series-chart-header">Winning · 10th · 25th Place Times</div>
-            <div class="series-chart-body">
-                <canvas id="series-perf-chart"></canvas>
+        <div class="series-perf-card">
+            <div class="series-perf-legend" id="series-perf-legend">
+                <span class="series-legend-item series-legend-item--winner" id="series-legend-1">Winner</span>
+                <span class="series-legend-item series-legend-item--p10" id="series-legend-2">10th Place</span>
+                <span class="series-legend-item series-legend-item--p25" id="series-legend-3">25th Place</span>
+            </div>
+            <div class="series-main-chart-wrap">
+                <canvas id="series-chart-main"></canvas>
+            </div>
+            <div class="ratings-mini-row">
+                <div class="ratings-mini active" data-disc="overall" data-label="Overall" onclick="switchSeriesDisc('overall')">
+                    <canvas id="series-thumb-overall"></canvas>
+                </div>
+                <div class="ratings-mini" data-disc="swim" data-label="Swim" onclick="switchSeriesDisc('swim')">
+                    <canvas id="series-thumb-swim"></canvas>
+                </div>
+                <div class="ratings-mini" data-disc="bike" data-label="Bike" onclick="switchSeriesDisc('bike')">
+                    <canvas id="series-thumb-bike"></canvas>
+                </div>
+                <div class="ratings-mini" data-disc="run" data-label="Run" onclick="switchSeriesDisc('run')">
+                    <canvas id="series-thumb-run"></canvas>
+                </div>
             </div>
         </div>
+        <div id="series-tooltip" class="series-chart-tooltip" style="display:none"></div>
     </section>
     {% endif %}
 
@@ -191,44 +213,35 @@
 (function() {
     const locs = {{ map_locations | tojson }};
     const map = L.map('series-map', { zoomControl: true, scrollWheelZoom: false });
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
         maxZoom: 18,
     }).addTo(map);
-
     const icon = L.divIcon({
-        className: 'series-map-pin',
+        className: '',
         html: '<div class="series-map-pin-dot"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
+        iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -8],
     });
-
     const bounds = [];
     locs.forEach(loc => {
         bounds.push([loc.lat, loc.lng]);
-        L.marker([loc.lat, loc.lng], { icon })
-            .addTo(map)
-            .bindPopup(`<strong>${loc.label}</strong><br>${loc.year}`);
+        L.marker([loc.lat, loc.lng], { icon }).addTo(map)
+            .bindPopup(`<strong>${loc.label}</strong><span>${loc.year}</span>`, {
+                className: 'series-map-popup', closeButton: false,
+            });
     });
-
-    if (bounds.length === 1) {
-        map.setView(bounds[0], 6);
-    } else if (bounds.length > 1) {
-        map.fitBounds(bounds, { padding: [24, 24] });
-    }
+    if (bounds.length === 1) { map.setView(bounds[0], 5); }
+    else { map.fitBounds(bounds, { padding: [32, 32], maxZoom: 8 }); }
 })();
 </script>
 {% endif %}
 
-<!-- Sortable leaders table -->
 {% if leaders %}
 <script>
 (function() {
     const table = document.getElementById('leaders-table');
     if (!table) return;
     let sortCol = 'wins', sortAsc = false;
-
     table.querySelectorAll('th.col-sortable').forEach(th => {
         th.style.cursor = 'pointer';
         th.addEventListener('click', () => {
@@ -255,7 +268,6 @@
 <script>
 (function() {
     const raw = {{ perf_history | tojson }};
-    const data = raw.filter(r => r.winner_s);
 
     function fmtTime(s) {
         if (!s) return '';
@@ -265,90 +277,181 @@
         if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
         return `${m}:${String(sec).padStart(2,'0')}`;
     }
+    function fmtDiff(s) {
+        const t = fmtTime(Math.abs(s));
+        return t ? `+${t}` : null;
+    }
 
-    const labels  = data.map(r => r.year);
-    const winners = data.map(r => r.winner_s);
-    const p10     = data.map(r => r.p10_s);
-    const p25     = data.map(r => r.p25_s);
+    const C_WINNER = '#1a1a2e';
+    const C_P10    = '#e87722';
+    const C_P25    = '#94a3b8';
 
-    const ctx = document.getElementById('series-perf-chart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Winner',
-                    data: winners,
-                    borderColor: '#1a1a2e',
-                    backgroundColor: 'rgba(26,26,46,0.08)',
-                    borderWidth: 2.5,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.25,
-                    spanGaps: true,
+    const labels   = raw.map(r => r.year);
+
+    const discKeys = {
+        overall: ['winner_s',    'p10_s',    'p25_s'   ],
+        swim:    ['winner_swim', 'p10_swim', 'p25_swim'],
+        bike:    ['winner_bike', 'p10_bike', 'p25_bike'],
+        run:     ['winner_run',  'p10_run',  'p25_run' ],
+    };
+
+    const tooltip = document.getElementById('series-tooltip');
+    let activeDisc = 'overall';
+    let mainChart  = null;
+
+    // Zebra stripes for category axis
+    const zebraPlugin = {
+        id: 'seriesZebra',
+        beforeDraw(chart) {
+            const xScale = chart.scales.x;
+            if (!xScale || !xScale.ticks.length) return;
+            const { ctx, chartArea: { top, bottom } } = chart;
+            const n = xScale.ticks.length;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.035)';
+            for (let i = 0; i < n; i++) {
+                if (i % 2 !== 0) continue;
+                const cx = xScale.getPixelForTick(i);
+                const halfGap = i < n - 1
+                    ? (xScale.getPixelForTick(i + 1) - cx) / 2
+                    : i > 0 ? (cx - xScale.getPixelForTick(i - 1)) / 2 : 20;
+                ctx.fillRect(cx - halfGap, top, halfGap * 2, bottom - top);
+            }
+            ctx.restore();
+        }
+    };
+
+    function externalTooltip(context, chartEl) {
+        const { tooltip: tip } = context;
+        if (tip.opacity === 0) { tooltip.style.display = 'none'; return; }
+
+        const idx    = tip.dataPoints?.[0]?.dataIndex ?? -1;
+        const entry  = idx >= 0 ? raw[idx] : null;
+        const year   = tip.title?.[0] ?? '';
+        const raceMeta = entry
+            ? `<div class="tt-race-name">${entry.event_name || ''}</div>
+               <div class="tt-race-date">${entry.race_date ? entry.race_date.substring(0, 10) : ''}</div>`
+            : '';
+
+        const winnerVal = tip.dataPoints.find(dp => dp.datasetIndex === 0)?.raw ?? null;
+        const lines = tip.dataPoints.map(dp => {
+            const col   = [C_WINNER, C_P10, C_P25][dp.datasetIndex];
+            const label = dp.dataset.label;
+            const val   = fmtTime(dp.raw);
+            let diff = '';
+            if (dp.datasetIndex > 0 && dp.raw && winnerVal) {
+                const d = fmtDiff(dp.raw - winnerVal);
+                if (d) diff = ` <span class="tt-diff">${d}</span>`;
+            }
+            return `<span class="tt-row"><span class="tt-dot" style="background:${col}"></span>${label}: <strong>${val || '-'}</strong>${diff}</span>`;
+        }).join('');
+
+        tooltip.innerHTML = `<div class="tt-year">${year}</div>${raceMeta}${lines}`;
+
+        const rect     = chartEl.getBoundingClientRect();
+        const wrapRect = chartEl.closest('.series-perf-card').getBoundingClientRect();
+        let left = rect.left - wrapRect.left + tip.caretX + 12;
+        const tipW = 180;
+        if (left + tipW > wrapRect.width) left = rect.left - wrapRect.left + tip.caretX - tipW - 12;
+        tooltip.style.display = 'block';
+        tooltip.style.left    = left + 'px';
+        tooltip.style.top     = (rect.top - wrapRect.top + tip.caretY - 20) + 'px';
+    }
+
+    function makeDatasets(wKey, p10Key, p25Key, isOverall) {
+        const l1 = isOverall ? 'Winner'      : 'Fastest';
+        const l2 = isOverall ? '10th Place'  : '10th Fastest';
+        const l3 = isOverall ? '25th Place'  : '25th Fastest';
+        return [
+            { label: l1, data: raw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 2.5, pointRadius: 3.5, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+            { label: l2, data: raw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 2,   pointRadius: 3,   pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+            { label: l3, data: raw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1.5, pointRadius: 2.5, pointHoverRadius: 4, tension: 0.25, spanGaps: true },
+        ];
+    }
+
+    function buildMain(disc) {
+        const [wKey, p10Key, p25Key] = discKeys[disc];
+        const el = document.getElementById('series-chart-main');
+        if (mainChart) mainChart.destroy();
+        mainChart = new Chart(el, {
+            type: 'line',
+            data: { labels, datasets: makeDatasets(wKey, p10Key, p25Key, disc === 'overall') },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: false,
+                        external: ctx => externalTooltip(ctx, el),
+                    },
                 },
-                {
-                    label: '10th Place',
-                    data: p10,
-                    borderColor: '#357ABD',
-                    backgroundColor: 'rgba(53,122,189,0.06)',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.25,
-                    spanGaps: true,
-                },
-                {
-                    label: '25th Place',
-                    data: p25,
-                    borderColor: '#e85d04',
-                    backgroundColor: 'rgba(232,93,4,0.06)',
-                    borderWidth: 1.5,
-                    borderDash: [4, 3],
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.25,
-                    spanGaps: true,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: { font: { size: 12 }, boxWidth: 20, padding: 16 },
-                },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => {
-                            const v = ctx.raw;
-                            return v ? ` ${ctx.dataset.label}: ${fmtTime(v)}` : '';
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                        ticks: { font: { size: 11 }, maxRotation: 0 },
+                    },
+                    y: {
+                        reverse: true,
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                        ticks: {
+                            font: { size: 11 },
+                            callback: v => fmtTime(v),
+                            maxTicksLimit: 6,
                         },
                     },
                 },
             },
-            scales: {
-                x: {
-                    title: { display: false },
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { font: { size: 11 } },
-                },
-                y: {
-                    title: { display: false },
-                    reverse: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        font: { size: 11 },
-                        callback: v => fmtTime(v),
-                    },
+            plugins: [zebraPlugin],
+        });
+    }
+
+    function buildThumb(disc) {
+        const [wKey, p10Key, p25Key] = discKeys[disc];
+        const el = document.getElementById(`series-thumb-${disc}`);
+        if (!el) return;
+        const hasData = disc === 'overall' || raw.some(r => r[wKey]);
+        if (!hasData) { el.closest('.ratings-mini').style.display = 'none'; return; }
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    { data: raw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                    { data: raw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                    { data: raw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1,   pointRadius: 0, tension: 0.25, spanGaps: true },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false, reverse: true },
                 },
             },
-        },
-    });
+        });
+    }
+
+    window.switchSeriesDisc = function(disc) {
+        if (disc === activeDisc) return;
+        const card = document.getElementById('series-chart-main').closest('.series-perf-card');
+        card.querySelectorAll('.ratings-mini').forEach(el => el.classList.remove('active'));
+        card.querySelector(`.ratings-mini[data-disc="${disc}"]`).classList.add('active');
+        tooltip.style.display = 'none';
+        activeDisc = disc;
+        const isOverall = disc === 'overall';
+        document.getElementById('series-legend-1').textContent = isOverall ? 'Winner'     : 'Fastest';
+        document.getElementById('series-legend-2').textContent = isOverall ? '10th Place' : '10th Fastest';
+        document.getElementById('series-legend-3').textContent = isOverall ? '25th Place' : '25th Fastest';
+        buildMain(disc);
+    };
+
+    buildMain('overall');
+    ['overall', 'swim', 'bike', 'run'].forEach(buildThumb);
 })();
 </script>
 {% endif %}

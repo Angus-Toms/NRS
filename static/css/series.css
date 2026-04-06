@@ -51,9 +51,7 @@
     transition: color var(--transition-fast);
 }
 
-.series-card:hover .series-card-name {
-    color: var(--primary-color);
-}
+.series-card:hover .series-card-name { color: var(--primary-color); }
 
 .series-card-body {
     padding: 0.85rem 1rem;
@@ -87,12 +85,11 @@
     gap: var(--spacing-xl);
 }
 
-/* ── Top section: most recent result + map ── */
-.series-top {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+/* ── Most Recent Edition ── */
+.series-latest-section {
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-lg);
-    align-items: stretch;
 }
 
 .series-latest-card {
@@ -105,45 +102,140 @@
 
 .series-latest-header {
     background: var(--navy);
-    padding: 0.55rem 1rem;
+    padding: 0.65rem 1.25rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.series-latest-label {
-    font-size: 0.62rem;
+.series-latest-title {
+    font-size: 0.95rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.5);
-    white-space: nowrap;
-}
-
-.series-latest-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.series-latest-link {
-    font-weight: 600;
     color: #fff;
     text-decoration: none;
     transition: color var(--transition-fast);
 }
 
-.series-latest-link:hover { color: var(--primary-color); }
+.series-latest-title:hover { color: var(--primary-color); }
 
-.series-latest-podium { padding: 0.2rem 0; }
+.series-latest-date {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
 
-.series-meta-dot {
-    color: rgba(255, 255, 255, 0.3);
-    user-select: none;
+.series-latest-athletes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.series-latest-athlete {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.75rem 1.25rem 1.5rem;
+    gap: 0.5rem;
+    border-right: 1px solid var(--border-color);
+}
+
+.series-latest-athlete:last-child { border-right: none; }
+
+/* Gold column gets a subtle background accent */
+.series-latest-athlete--gold {
+    background: linear-gradient(180deg, rgba(212,175,55,0.07) 0%, transparent 60px);
+}
+
+.series-latest-pos {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+}
+
+.series-latest-pos.gold   { background: rgba(212,175,55,0.15); color: #a07c10; }
+.series-latest-pos.silver { background: rgba(168,169,173,0.15); color: #6b6c70; }
+.series-latest-pos.bronze { background: rgba(205,127,50,0.15);  color: #8b4f0f; }
+
+.series-latest-athlete-img {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--border-color);
+}
+
+.series-latest-athlete--gold .series-latest-athlete-img   { border-color: #d4af37; }
+.series-latest-athlete--silver .series-latest-athlete-img { border-color: #a8a9ad; }
+.series-latest-athlete--bronze .series-latest-athlete-img { border-color: #cd7f32; }
+
+.series-latest-athlete-name {
+    font-size: 0.975rem;
+    font-weight: 700;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+    line-height: 1.2;
+}
+
+.series-latest-athlete-name:hover { color: var(--primary-color); }
+
+.series-latest-time {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.series-latest-gap {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-lighter);
+}
+
+.series-latest-splits {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.25rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+}
+
+.series-split {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    min-width: 3rem;
+}
+
+.series-split--t { opacity: 0.7; }
+
+.series-split-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-lighter);
+}
+
+.series-split-val {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Map section ── */
+.series-map-section {
+    display: flex;
+    flex-direction: column;
 }
 
 .series-map-card {
@@ -152,23 +244,55 @@
     border-radius: var(--border-radius-lg);
     overflow: hidden;
     box-shadow: var(--box-shadow);
-    min-height: 220px;
+    height: 240px;
 }
 
 #series-map {
     width: 100%;
     height: 100%;
-    min-height: 220px;
 }
 
-/* Leaflet map pin */
 .series-map-pin-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--primary-color);
-    border: 2px solid var(--navy);
+    border: 2.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
 }
+
+.series-map-popup .leaflet-popup-content-wrapper {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--border-radius);
+    padding: 0;
+    box-shadow: var(--box-shadow-hover);
+    font-family: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.series-map-popup .leaflet-popup-content {
+    margin: 0.45rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.series-map-popup .leaflet-popup-content strong {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+    display: block;
+}
+
+.series-map-popup .leaflet-popup-content span {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    display: block;
+}
+
+.series-map-popup .leaflet-popup-tip { background: var(--navy); }
 
 /* ── All editions ── */
 .series-editions {
@@ -215,9 +339,7 @@
     transition: color var(--transition-fast);
 }
 
-.series-race-card:hover .series-race-title {
-    color: var(--primary-color);
-}
+.series-race-card:hover .series-race-title { color: var(--primary-color); }
 
 .series-race-date {
     font-size: 0.7rem;
@@ -226,16 +348,15 @@
     white-space: nowrap;
 }
 
-/* Card body: podium left, standards right */
+/* Card body: fixed-width podium left, standards right */
 .series-race-card-body {
     display: flex;
     align-items: stretch;
 }
 
-/* Podium panel */
 .series-race-podium {
-    flex: 0 0 auto;
-    min-width: 280px;
+    flex: 0 0 320px;
+    width: 320px;
     border-right: 1px solid var(--border-color);
     padding: 0.2rem 0;
 }
@@ -249,15 +370,14 @@
     border-bottom: 1px solid var(--border-color);
 }
 
-.series-podium-row:last-child {
-    border-bottom: none;
-}
+.series-podium-row:last-child { border-bottom: none; }
 
 .series-podium-left {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     min-width: 0;
+    flex: 1;
 }
 
 .series-podium-img {
@@ -292,10 +412,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-.series-podium-time--winner {
-    font-size: 0.875rem;
-    font-weight: 700;
-}
+.series-podium-time--winner { font-size: 0.875rem; font-weight: 700; }
 
 .series-podium-gap {
     font-size: 0.72rem;
@@ -337,37 +454,9 @@
     font-variant-numeric: tabular-nums;
 }
 
-.series-std-na {
-    font-size: 0.75rem;
-    color: var(--text-lighter);
-}
+.series-std-na { font-size: 0.75rem; color: var(--text-lighter); }
 
-.series-race-standards .std-pill {
-    margin: 0;
-    font-size: 0.62rem;
-}
-
-/* Show all editions toggle link */
-.series-show-all {
-    text-align: center;
-}
-
-.series-show-all-link {
-    font-size: 0.875rem;
-    color: var(--text-light);
-    text-decoration: none;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 0.4rem 1rem;
-    background: var(--white);
-    display: inline-block;
-    transition: border-color var(--transition-fast), color var(--transition-fast);
-}
-
-.series-show-all-link:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
+.series-race-standards .std-pill { margin: 0; font-size: 0.62rem; }
 
 /* ── All-time leaders ── */
 .series-leaders {
@@ -402,28 +491,12 @@
 }
 
 .leaders-table th.col-num { text-align: right; }
+.leaders-table th.col-sortable:hover { color: #fff; }
 
-.leaders-table th.col-sortable:hover {
-    color: #fff;
-}
+.sort-arrow { font-size: 0.65rem; opacity: 0.5; margin-left: 0.15rem; }
 
-.sort-arrow {
-    font-size: 0.65rem;
-    opacity: 0.5;
-    margin-left: 0.15rem;
-}
-
-.col-editions {
-    color: var(--text-lighter);
-    font-size: 0.8rem;
-    font-variant-numeric: tabular-nums;
-}
-
-td.col-editions {
-    color: var(--text-lighter);
-    font-size: 0.78rem;
-    white-space: nowrap;
-}
+.col-editions { color: var(--text-lighter); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+td.col-editions { color: var(--text-lighter); font-size: 0.78rem; white-space: nowrap; }
 
 .leaders-table tbody tr {
     border-bottom: 1px solid var(--border-color);
@@ -451,20 +524,7 @@ td.col-editions {
     font-variant-numeric: tabular-nums;
 }
 
-.leaders-rank {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-lighter);
-    min-width: 1.5rem;
-    display: inline-block;
-    text-align: right;
-}
-
-.leaders-athlete {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
+.leaders-athlete { display: flex; align-items: center; gap: 0.6rem; }
 
 .leaders-athlete-img {
     width: 28px;
@@ -484,35 +544,116 @@ td.col-editions {
 
 .leaders-athlete-link:hover { color: var(--primary-color); }
 
-/* ── Performance chart ── */
+/* ── Performance history charts ── */
 .series-chart-section {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+    position: relative;
 }
 
-.series-chart-card {
+.series-perf-card {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    overflow: hidden;
     box-shadow: var(--box-shadow);
-}
-
-.series-chart-header {
-    background: var(--navy);
-    padding: 0.65rem 1rem;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.7);
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-}
-
-.series-chart-body {
     padding: 1.25rem 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.series-perf-legend {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.series-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+.series-legend-item::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 2.5px;
+    border-radius: 2px;
+}
+
+.series-legend-item--winner::before { background: #1a1a2e; height: 3px; }
+.series-legend-item--p10::before    { background: #e87722; }
+.series-legend-item--p25::before    { background: #94a3b8; }
+
+.series-main-chart-wrap {
     position: relative;
-    height: 320px;
+    height: 240px;
+}
+
+/* Custom HTML tooltip */
+.series-chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    background: var(--navy);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 0.75rem;
+    box-shadow: var(--box-shadow-hover);
+    min-width: 160px;
+}
+
+.tt-year {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 0.1rem;
+}
+
+.tt-race-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 0.05rem;
+}
+
+.tt-race-date {
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 0.4rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.tt-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.85);
+    padding: 0.1rem 0;
+}
+
+.tt-row strong { color: #fff; font-variant-numeric: tabular-nums; }
+
+.tt-diff {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #f87171;
+    font-variant-numeric: tabular-nums;
+}
+
+.tt-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
 /* ── Series link in race hero ── */
@@ -533,29 +674,17 @@ td.col-editions {
 @media (max-width: 700px) {
     .series-cards-grid { grid-template-columns: 1fr; }
 
-    .series-top {
-        grid-template-columns: 1fr;
-    }
+    .series-latest-athletes { grid-template-columns: 1fr; }
+    .series-latest-athlete  { border-right: none; border-bottom: 1px solid var(--border-color); }
+    .series-latest-athlete:last-child { border-bottom: none; }
 
-    .series-map-card {
-        min-height: 200px;
-    }
-
-    #series-map {
-        min-height: 200px;
-    }
-
-    .series-race-card-body {
-        flex-direction: column;
-    }
-
+    .series-race-card-body { flex-direction: column; }
     .series-race-podium {
+        flex: unset;
+        width: 100%;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
 
-    .series-race-standards {
-        justify-content: space-between;
-        padding: 0.875rem 1rem;
-    }
+    .series-race-standards { justify-content: space-between; padding: 0.875rem 1rem; }
 }

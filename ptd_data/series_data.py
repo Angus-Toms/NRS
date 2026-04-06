@@ -16,7 +16,7 @@ WORLD_CHAMPS_EVENTS = [
     4760, 4745, 4958, 4635, 4489, 4492, 4580, 4692,
     # 2007–2008 (BG World Championships)
     4792, 4793,
-    # 2009–2025 Grand Finals / Championship Finals (no 2020 — COVID)
+    # 2009–2025 Grand Finals / Championship Finals (no 2020 - COVID)
     5105, 4990, 45142, 54377, 66427, 74437, 90168, 97645, 107164,
     117107, 127488, 130051, 163568, 170132, 183767, 188992,
 ]

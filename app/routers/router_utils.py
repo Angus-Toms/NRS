@@ -1,6 +1,6 @@
 # Formatting functions for FastAPI routers
 
-# SVG chevron arrows — stroke-based so they scale cleanly with font size
+# SVG chevron arrows - stroke-based so they scale cleanly with font size
 # and align geometrically rather than relying on Unicode glyph metrics.
 _SVG_UP   = ('<svg class="chg-arrow" viewBox="0 0 10 8" fill="none" '
              'stroke="currentColor" stroke-width="2" stroke-linecap="round" '

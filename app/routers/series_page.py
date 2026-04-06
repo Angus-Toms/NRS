@@ -53,10 +53,18 @@ async def series_detail(request: Request, slug: str):
         for g in {r["gender"] for r in races if r.get("gender")}
     }
 
+    def _fmt_split(v):
+        return format_time(v) if v and v > 0 else ""
+
     for race in races:
         for p in race["podium"]:
             p["time_fmt"] = format_time(p["overall_s"])
             p["gap_fmt"]  = format_time_behind(p["gap"]) if p.get("gap") else ""
+            p["swim_fmt"] = _fmt_split(p.get("swim_s"))
+            p["t1_fmt"]   = _fmt_split(p.get("t1_s"))
+            p["bike_fmt"] = _fmt_split(p.get("bike_s"))
+            p["t2_fmt"]   = _fmt_split(p.get("t2_s"))
+            p["run_fmt"]  = _fmt_split(p.get("run_s"))
 
         raw = race.pop("standards_raw", None)
         thresh = thresholds_by_gender.get(race.get("gender"))
@@ -67,7 +75,7 @@ async def series_detail(request: Request, slug: str):
             race["standards"]        = None
             race["standard_classes"] = None
 
-    # Map pins — races with non-zero coordinates
+    # Map pins - races with non-zero coordinates
     map_locations = [
         {
             "lat":     r["latitude"],

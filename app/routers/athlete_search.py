@@ -15,7 +15,7 @@ templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 
 def _fmt_change(v):
     if not v:
-        return "—"
+        return "-"
     return f"+{int(round(v))}" if v > 0 else str(int(round(v)))
 
 

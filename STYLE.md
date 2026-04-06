@@ -1,13 +1,13 @@
-# Pro Tri Data — Style Guide
+# Pro Tri Data - Style Guide
 
 ## Design Philosophy
 
 Pro Tri Data is a **data-first** stats site. Every design decision serves the goal of making numerical information easy to read, compare, and explore. The principles in order of priority:
 
-1. **Clarity over decoration** — if an element doesn't communicate something, remove it.
-2. **Numerical readability** — numbers are the product; they must be legible and scannable at a glance.
-3. **Consistency** — identical data types always look identical, regardless of context.
-4. **Simplicity** — one typeface, a small colour palette, minimal chrome.
+1. **Clarity over decoration** - if an element doesn't communicate something, remove it.
+2. **Numerical readability** - numbers are the product; they must be legible and scannable at a glance.
+3. **Consistency** - identical data types always look identical, regardless of context.
+4. **Simplicity** - one typeface, a small colour palette, minimal chrome.
 
 The aesthetic result is clean and editorial. It should feel like a well-designed reference tool, not a dashboard or a marketing site.
 
@@ -47,7 +47,7 @@ https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500
 
 ### Numeric formatting
 
-All numbers use `font-variant-numeric: tabular-nums` so columns stay aligned. Large display ratings (the five-column rating boxes) use weight 800. Never use a condensed or different typeface for numbers — Jakarta Sans is legible at all sizes.
+All numbers use `font-variant-numeric: tabular-nums` so columns stay aligned. Large display ratings (the five-column rating boxes) use weight 800. Never use a condensed or different typeface for numbers - Jakarta Sans is legible at all sizes.
 
 ---
 
@@ -58,7 +58,7 @@ All numbers use `font-variant-numeric: tabular-nums` so columns stay aligned. La
   --page-bg:   #f4f4f2;   /* warm off-white page background */
   --card-bg:   #ffffff;   /* card and table surfaces */
   --navy:      #1a1a2e;   /* header, section bands, subheading chips */
-  --orange:    #e85d04;   /* primary accent — links, highlights, active states */
+  --orange:    #e85d04;   /* primary accent - links, highlights, active states */
   --orange-dk: #c44d03;   /* orange hover */
   --text:      #111827;   /* primary text */
   --muted:     #6b7280;   /* secondary text, metadata */
@@ -102,17 +102,17 @@ h2.section-heading {
 }
 ```
 
-Do not add eyebrow labels above section headings — the heading text is sufficient. Eyebrows are reserved for navigation cards where the category label is genuinely useful.
+Do not add eyebrow labels above section headings - the heading text is sufficient. Eyebrows are reserved for navigation cards where the category label is genuinely useful.
 
 ---
 
 ## Cards
 
-Cards (white surface, 1px border, `border-radius: 8px`) are useful for grouping related content — tables, athlete profiles, event listings — but should not become the default wrapper for everything. A page that is entirely cards reads as a grid of boxes; prefer open layout with `<hr>` dividers between sections, and reserve cards for content that genuinely benefits from a contained surface.
+Cards (white surface, 1px border, `border-radius: 8px`) are useful for grouping related content - tables, athlete profiles, event listings - but should not become the default wrapper for everything. A page that is entirely cards reads as a grid of boxes; prefer open layout with `<hr>` dividers between sections, and reserve cards for content that genuinely benefits from a contained surface.
 
 ### Hover state
 
-Cards that are clickable show an orange border and a slightly deeper shadow on hover. The card title colour also transitions to orange. Never use a background-colour change as the primary hover signal — the border change is enough.
+Cards that are clickable show an orange border and a slightly deeper shadow on hover. The card title colour also transitions to orange. Never use a background-colour change as the primary hover signal - the border change is enough.
 
 ```css
 .card:hover {
@@ -176,7 +176,7 @@ Alternating rows use a very subtle `#fafafa` stripe. Row hover uses `--highlight
 
 - Position numbers: left-aligned, fixed narrow width
 - Athlete names: left-aligned, flex
-- Times and ratings: left-aligned (default) — **do not right-align**; the tabular-nums setting handles column width consistency
+- Times and ratings: left-aligned (default) - **do not right-align**; the tabular-nums setting handles column width consistency
 - Change indicators: inline after the value, same cell
 
 ### Sortable columns
@@ -207,7 +207,7 @@ Orange tint is used on the primary (overall) rating value. Other disciplines use
 
 ## Rating Changes
 
-Rating change indicators appear inline after the rating number. The format is **arrow + number only** — no `+` or `−` prefix, as the arrow already communicates direction:
+Rating change indicators appear inline after the rating number. The format is **arrow + number only** - no `+` or `−` prefix, as the arrow already communicates direction:
 
 ```
 ↑45    (not ↑+45 or +45)
@@ -229,8 +229,8 @@ In rating history tables the change indicator is a smaller inline `<span>` after
 
 Each split cell (Swim, T1, Bike, T2, Run, Overall) contains two lines:
 
-1. The time itself — `font-weight: 500`, `0.875rem`, `--text`
-2. The gap to the fastest time in that split — `font-weight: 400`, `0.7rem`, `--muted`
+1. The time itself - `font-weight: 500`, `0.875rem`, `--text`
+2. The gap to the fastest time in that split - `font-weight: 400`, `0.7rem`, `--muted`
 
 The fastest time in each split is highlighted in orange (`font-weight: 600`), with `"fastest"` as the gap line instead of a `+0:00`.
 
@@ -253,7 +253,7 @@ The Overall column uses slightly bolder weight (`font-weight: 700`) and `display
 
 In race results, positions 1–3 use filled colour circles (gold/silver/bronze) with dark text. Position 4+ uses plain muted text with no circle.
 
-In race history tables, positions use coloured text only — no circles:
+In race history tables, positions use coloured text only - no circles:
 
 ```css
 .pos-first  { font-weight: 700; color: var(--gold);   }
@@ -264,7 +264,7 @@ In race history tables, positions use coloured text only — no circles:
 
 ### DNS / DNF / DQ
 
-Non-finishes are displayed as plain italic text in `--lighter`. No background colour, no pill — the lighter italic treatment is sufficient to distinguish them from a numeric position without adding visual noise.
+Non-finishes are displayed as plain italic text in `--lighter`. No background colour, no pill - the lighter italic treatment is sufficient to distinguish them from a numeric position without adding visual noise.
 
 ```css
 .pos-dns,
@@ -295,7 +295,7 @@ Each race within an event card shows a three-entry podium. Columns are separated
 }
 ```
 
-Athlete names in podiums truncate with `text-overflow: ellipsis` — never wrap.
+Athlete names in podiums truncate with `text-overflow: ellipsis` - never wrap.
 
 ---
 
@@ -312,7 +312,7 @@ The top-level nav cards (Athletes, Races, Compare, Leaderboard) use a **3px top 
 }
 ```
 
-Each card has an eyebrow (category label), heading, short description, and a "View →" style link. The eyebrow is orange uppercase — it functions as a category tag, not decorative chrome.
+Each card has an eyebrow (category label), heading, short description, and a "View →" style link. The eyebrow is orange uppercase - it functions as a category tag, not decorative chrome.
 
 ---
 
@@ -326,7 +326,7 @@ Breakpoints are minimal. The layout is designed mobile-first where practical.
 | `< 700px` | Nav cards grid collapses from 4 → 2 columns; hero stacks vertically |
 | `< 500px` | Hero stats hide or collapse; rating grid may scroll horizontally |
 
-Tables do not reflow on mobile — they scroll horizontally inside their container. This is preferable to collapsing columns, as column alignment is essential to reading split data.
+Tables do not reflow on mobile - they scroll horizontally inside their container. This is preferable to collapsing columns, as column alignment is essential to reading split data.
 
 ---
 
@@ -350,7 +350,7 @@ The standard filter control for mutually-exclusive options (discipline, sort ord
 </div>
 ```
 
-Active state: white background, orange text, subtle shadow. Inactive: grey bg, muted text. This is the only approved style for segmented filter controls — never use button-based chips.
+Active state: white background, orange text, subtle shadow. Inactive: grey bg, muted text. This is the only approved style for segmented filter controls - never use button-based chips.
 
 ### Action buttons
 
@@ -391,7 +391,7 @@ Dot-separated metadata below athlete names. Use `.meta-val` for numeric values (
 </div>
 ```
 
-Dots are injected via `::before` CSS — do not add them manually in markup.
+Dots are injected via `::before` CSS - do not add them manually in markup.
 
 ---
 
@@ -416,7 +416,7 @@ font-size: 0.75rem;
 Pill-shaped buttons in a flex row. Active state: orange fill, white text. Inactive: `--border` background, `--muted` text.
 
 ### Section divider
-`<hr class="rule">` between major sections. Margin `3rem 0 0`. Do not wrap sections in containers purely for visual separation — the rule is sufficient.
+`<hr class="rule">` between major sections. Margin `3rem 0 0`. Do not wrap sections in containers purely for visual separation - the rule is sufficient.
 
 ### Sticky header
 The site header is `position: sticky; top: 0; z-index: 100`. It uses `--navy` background with `border-bottom: 1px solid rgba(255,255,255,0.08)`. Active nav item has an orange underline border.
@@ -460,7 +460,7 @@ On a navy card the primary title text is white; it transitions to orange on hove
 .card:hover .title { color: var(--orange); }
 ```
 
-Never use `transform: translateY(...)` as a hover effect on cards — the border-colour change and shadow are sufficient.
+Never use `transform: translateY(...)` as a hover effect on cards - the border-colour change and shadow are sufficient.
 
 ---
 
@@ -485,7 +485,7 @@ Use Feather-style inline SVGs (`stroke="currentColor"`, `fill="none"`) so icons 
 
 ### Chevron navigation
 
-Use inline SVG chevrons (`polyline points`) for all inter-page navigation links. Left-pointing for "back" links, right-pointing for "forward" / detail links. Always pair the chevron with a text label — never use the chevron alone.
+Use inline SVG chevrons (`polyline points`) for all inter-page navigation links. Left-pointing for "back" links, right-pointing for "forward" / detail links. Always pair the chevron with a text label - never use the chevron alone.
 
 | Direction | Use case | Points value |
 |-----------|----------|--------------|
@@ -529,7 +529,7 @@ All circular profile images use a **2px navy border** and a subtle shadow. The n
 
 ### Active vs retired athletes
 
-Do not use coloured borders (green/red) to signal active/retired status — those colours are reserved exclusively for rating change indicators. Instead, retired athletes receive reduced opacity and a slight desaturation:
+Do not use coloured borders (green/red) to signal active/retired status - those colours are reserved exclusively for rating change indicators. Instead, retired athletes receive reduced opacity and a slight desaturation:
 
 ```css
 .profile-img.inactive {
@@ -542,4 +542,4 @@ Active athletes use the default styling with no modifier class. The `.active` cl
 
 ### Podium avatars
 
-Race and search podium displays use gold/silver/bronze `box-shadow` rings on position 1/2/3 photos. This is the one exception to the navy-border rule — the colour directly encodes finishing position and is contextually unambiguous.
+Race and search podium displays use gold/silver/bronze `box-shadow` rings on position 1/2/3 photos. This is the one exception to the navy-border rule - the colour directly encodes finishing position and is contextually unambiguous.

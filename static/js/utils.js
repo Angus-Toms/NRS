@@ -87,7 +87,7 @@ function parseTime(timeStr) {
 function sortTable(table, column, asc = true) {
     const tbody = table.querySelector('tbody');
     const allRows = Array.from(tbody.querySelectorAll('tr'));
-    // Sub-race rows use a colspan and have fewer cells — exclude from sort and reinsert after
+    // Sub-race rows use a colspan and have fewer cells - exclude from sort and reinsert after
     const subRows = allRows.filter(r => r.classList.contains('sub-race-row'));
     const rows    = allRows.filter(r => !r.classList.contains('sub-race-row'));
 

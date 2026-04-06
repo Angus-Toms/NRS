@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
 {% set cat_label = 'Age Group' if category == 'ag' else 'Elite' %}
-{% block title %}{{ gender | title }} {{ cat_label }} Triathlon Rankings — {{ disc | title }} | Pro Tri Data{% endblock %}
+{% block title %}{{ gender | title }} {{ cat_label }} Triathlon Rankings - {{ disc | title }} | Pro Tri Data{% endblock %}
 
 {% block meta %}
 {% set desc %}World rankings for {{ cat_label | lower }} {{ gender }} triathletes by {{ disc }} ELO rating{% if active_only %}, active athletes only{% endif %}. Updated after every race.{% endset %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ gender | title }} {{ cat_label }} Triathlon Rankings — {{ disc | title }} | Pro Tri Data">
+<meta property="og:title" content="{{ gender | title }} {{ cat_label }} Triathlon Rankings - {{ disc | title }} | Pro Tri Data">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}

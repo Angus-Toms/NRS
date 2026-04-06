@@ -53,7 +53,7 @@ def race_category(prog_name):
 
 
 def is_valid_program(prog_name):
-    """Legacy shim — True if this program should be processed at all."""
+    """Legacy shim - True if this program should be processed at all."""
     return race_category(prog_name) is not None
 
 
@@ -236,7 +236,7 @@ class Ingester:
 
 
     def _ingest_events(self, events):
-        """Single pass over events — fetches programs once, processes both genders."""
+        """Single pass over events - fetches programs once, processes both genders."""
         existing_event_ids = set(
             r[0] for r in self.conn.execute(
                 "SELECT DISTINCT event_id FROM races"
@@ -291,13 +291,13 @@ class Ingester:
         print(f"Done. Checked {checked} new events, ingested {new_count} programs")
 
     def _fetch_programs(self, event_id):
-        """GET /events/{id}/programs — returns list of dicts."""
+        """GET /events/{id}/programs - returns list of dicts."""
         response = _session.get(f"{BASE_URL}/events/{event_id}/programs")
         data = response.json().get('data', [])
         return data if data else []
 
     def _fetch_results(self, event_id, prog_id):
-        """GET /events/{id}/programs/{prog_id}/results — returns list of result dicts."""
+        """GET /events/{id}/programs/{prog_id}/results - returns list of result dicts."""
         url = f"{BASE_URL}/events/{event_id}/programs/{prog_id}/results"
         response = _session.get(url)
         results = response.json().get('data', {}).get('results', [])

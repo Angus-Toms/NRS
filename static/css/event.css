@@ -1,5 +1,5 @@
 /* ============================================
-   EVENT HERO — full-width navy band
+   EVENT HERO - full-width navy band
    ============================================ */
 .event-hero {
     background: var(--navy);
@@ -37,7 +37,7 @@
 }
 
 /* ============================================
-   RACE CARDS — single-column stack
+   RACE CARDS - single-column stack
    ============================================ */
 .event-races-list {
     display: flex;
@@ -219,7 +219,7 @@
     color: var(--text-lighter);
 }
 
-/* Pills inside standards panel — reset any table-context overrides */
+/* Pills inside standards panel - reset any table-context overrides */
 .event-race-standards .std-pill {
     margin: 0;
     font-size: 0.62rem;

@@ -2,9 +2,9 @@
 Detects races that should be excluded from ELO calculations.
 
 Two detection strategies:
-1. Subset detection — races whose athletes are a subset of another same-date, same-gender race
+1. Subset detection - races whose athletes are a subset of another same-date, same-gender race
    (e.g. U23 results extracted from Elite race, championship results within a larger cup)
-2. Oversized races — >100 entries, likely combined AG + elite, needs manual review
+2. Oversized races - >100 entries, likely combined AG + elite, needs manual review
 
 Usage:
     python -m ptd_data.ignored
@@ -67,11 +67,11 @@ def detect_all(conn):
                     continue
 
                 if athletes_a < athletes_b:
-                    # A is a strict subset of B — ignore A, B is the parent
+                    # A is a strict subset of B - ignore A, B is the parent
                     ignored[rid_a] = (f"{prog_a} results are a subset of {title_b}", rid_b)
                     break
                 elif athletes_b < athletes_a:
-                    # B is a strict subset of A — ignore B, A is the parent
+                    # B is a strict subset of A - ignore B, A is the parent
                     ignored[rid_b] = (f"{prog_b} results are a subset of {title_a}", rid_a)
 
     # --- Oversized race detection ---
@@ -98,7 +98,7 @@ def detect_all(conn):
     for race_id, (reason, parent_id) in sorted(ignored.items()):
         print(f"  {race_id}: {reason}" + (f" (parent: {parent_id})" if parent_id else ""))
 
-    # Always finish by re-applying manual overrides — detect_all cleared the table above.
+    # Always finish by re-applying manual overrides - detect_all cleared the table above.
     load_manual_ignored(conn)
 
 

@@ -135,12 +135,12 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
             </div>
             <div class="sel-stat-divider"></div>
             <div class="sel-stat">
-                <span class="sel-stat-num">${full.world_rank != null ? '#' + full.world_rank : '—'}</span>
+                <span class="sel-stat-num">${full.world_rank != null ? '#' + full.world_rank : '-'}</span>
                 <span class="sel-stat-lbl">World rank</span>
             </div>
             <div class="sel-stat-divider"></div>
             <div class="sel-stat">
-                <span class="sel-stat-num">${full.wins ?? '—'}</span>
+                <span class="sel-stat-num">${full.wins ?? '-'}</span>
                 <span class="sel-stat-lbl">Career wins</span>
             </div>
         </div>` : '';
@@ -212,7 +212,7 @@ async function prefillFromUrl() {
 
     try {
         if (a1 && a2) {
-            // Both athletes in URL — prefill and auto-run
+            // Both athletes in URL - prefill and auto-run
             const [ath1, ath2] = await Promise.all([fetchAthlete(a1), fetchAthlete(a2)]);
             if (!ath1?.athlete_id || !ath2?.athlete_id) return;
 

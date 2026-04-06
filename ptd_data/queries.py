@@ -1,7 +1,7 @@
 """
 Read-only query functions against the PTD DuckDB database.
 
-All functions return plain dicts/lists — no custom objects, no DataFrames.
+All functions return plain dicts/lists - no custom objects, no DataFrames.
 Formatting stays in the routers.
 """
 
@@ -309,7 +309,7 @@ def search_events_full(query, country=None, year_start=None, year_end=None,
                        sort="desc", limit=20):
     """
     Search events by name/venue/country with optional filters.
-    Returns events with their constituent races (no podiums — compact search results).
+    Returns events with their constituent races (no podiums - compact search results).
     """
     conn = _get_conn()
     q = f"%{query}%"
@@ -812,7 +812,7 @@ def get_athlete_notable_results(athlete_id):
             elif prog.startswith("Junior"):
                 age_group = "Junior"
             else:
-                age_group = None  # Elite — no prefix
+                age_group = None  # Elite - no prefix
             notable.append({"tier": "world_champs", "position": position,
                              "race_id": race_id, "race_handle": race_handle,
                              "race_date": race_date, "age_group": age_group})
@@ -1010,7 +1010,7 @@ def get_athlete_times_data(athlete_id):
             res.swim_s,
             res.bike_s,
             res.run_s,
-            -- pct behind leader — computed against all athletes in each race
+            -- pct behind leader - computed against all athletes in each race
             CASE WHEN res.overall_s > 0 THEN (res.overall_s - w.min_overall) / w.min_overall END AS overall_pct_behind,
             CASE WHEN res.swim_s    > 0 THEN (res.swim_s    - w.min_swim)    / w.min_swim    END AS swim_pct_behind,
             CASE WHEN res.bike_s    > 0 THEN (res.bike_s    - w.min_bike)    / w.min_bike    END AS bike_pct_behind,
@@ -1633,7 +1633,7 @@ def get_race_distance_type(race_id):
     event_spec_ids alone is unreliable: many events list both 376 (sprint) and 377
     (standard) because multiple programme distances run at the same event, making every
     race in that event look ambiguous.  When both specs are present we fall back to the
-    winner's actual finishing time to disambiguate — a clean split exists at 90 min
+    winner's actual finishing time to disambiguate - a clean split exists at 90 min
     for males and females alike.
     """
     conn = _get_conn()
@@ -1650,7 +1650,7 @@ def get_race_distance_type(race_id):
     if has_standard and not has_sprint:
         return 'standard'
     if has_sprint and has_standard:
-        # Ambiguous — use winner's time to decide.  Threshold: 90 min (5400 s).
+        # Ambiguous - use winner's time to decide.  Threshold: 90 min (5400 s).
         winner = conn.execute(
             "SELECT overall_s FROM results WHERE race_id = ? AND position = 1", [race_id]
         ).fetchone()
@@ -1758,6 +1758,7 @@ def get_series_races(series_id):
 
     podium_rows = conn.execute(f"""
         SELECT res.race_id, res.position, res.overall_s,
+               res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
                a.athlete_id, a.name, n.emoji, a.profile_img
         FROM results res
         JOIN athletes a ON a.athlete_id = res.athlete_id
@@ -1769,9 +1770,11 @@ def get_series_races(series_id):
     """, race_ids).fetchall()
 
     podiums = defaultdict(list)
-    for race_id, pos, overall_s, athlete_id, name, emoji, profile_img in podium_rows:
+    for race_id, pos, overall_s, swim_s, bike_s, run_s, t1_s, t2_s, athlete_id, name, emoji, profile_img in podium_rows:
         podiums[race_id].append({
             "position": pos, "overall_s": overall_s,
+            "swim_s": swim_s, "bike_s": bike_s, "run_s": run_s,
+            "t1_s": t1_s, "t2_s": t2_s,
             "athlete_id": athlete_id, "name": name,
             "country_emoji": emoji, "profile_img": profile_img,
         })
@@ -1822,7 +1825,7 @@ def get_series_all_time_leaders(series_id):
         WHERE rs.series_id = ?
           AND res.position IN (1, 2, 3)
           AND res.status = 'Finished'
-        GROUP BY a.athlete_id, a.name, n.emoji
+        GROUP BY a.athlete_id, a.name, n.emoji, a.profile_img
         HAVING wins > 0
         ORDER BY wins DESC, seconds DESC, thirds DESC
     """, [series_id]).fetchall()
@@ -1861,26 +1864,44 @@ def get_series_all_time_leaders(series_id):
 
 
 def get_series_performance_history(series_id):
-    """Per-race winner/10th/25th overall times for the performance chart."""
+    """Per-race winner/10th/25th overall + split times for the performance charts."""
     conn = _get_conn()
     rows = conn.execute("""
         WITH ranked AS (
-            SELECT r.race_id, r.race_date, res.overall_s,
-                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY res.overall_s ASC) AS pos_rank
+            SELECT r.race_id, r.race_date, e.name AS event_name,
+                   res.overall_s, res.swim_s, res.bike_s, res.run_s,
+                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY res.overall_s ASC) AS pos_rank,
+                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY NULLIF(res.swim_s, 0) ASC NULLS LAST) AS swim_rank,
+                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY NULLIF(res.bike_s, 0) ASC NULLS LAST) AS bike_rank,
+                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY NULLIF(res.run_s,  0) ASC NULLS LAST) AS run_rank
             FROM race_series rs
             JOIN races r     ON r.race_id = rs.race_id
+            JOIN events e    ON e.event_id = r.event_id
             JOIN results res ON res.race_id = r.race_id
             WHERE rs.series_id = ?
               AND res.status = 'Finished'
               AND res.overall_s > 0
         )
-        SELECT race_id, race_date,
-               MAX(CASE WHEN pos_rank = 1  THEN overall_s END) AS winner_s,
-               MAX(CASE WHEN pos_rank = 10 THEN overall_s END) AS p10_s,
-               MAX(CASE WHEN pos_rank = 25 THEN overall_s END) AS p25_s
+        SELECT race_id, race_date, MAX(event_name) AS event_name,
+               MAX(CASE WHEN pos_rank  = 1  THEN overall_s END) AS winner_s,
+               MAX(CASE WHEN pos_rank  = 10 THEN overall_s END) AS p10_s,
+               MAX(CASE WHEN pos_rank  = 25 THEN overall_s END) AS p25_s,
+               MAX(CASE WHEN swim_rank = 1  AND swim_s > 0 THEN swim_s END) AS winner_swim,
+               MAX(CASE WHEN swim_rank = 10 AND swim_s > 0 THEN swim_s END) AS p10_swim,
+               MAX(CASE WHEN swim_rank = 25 AND swim_s > 0 THEN swim_s END) AS p25_swim,
+               MAX(CASE WHEN bike_rank = 1  AND bike_s > 0 THEN bike_s END) AS winner_bike,
+               MAX(CASE WHEN bike_rank = 10 AND bike_s > 0 THEN bike_s END) AS p10_bike,
+               MAX(CASE WHEN bike_rank = 25 AND bike_s > 0 THEN bike_s END) AS p25_bike,
+               MAX(CASE WHEN run_rank  = 1  AND run_s  > 0 THEN run_s  END) AS winner_run,
+               MAX(CASE WHEN run_rank  = 10 AND run_s  > 0 THEN run_s  END) AS p10_run,
+               MAX(CASE WHEN run_rank  = 25 AND run_s  > 0 THEN run_s  END) AS p25_run
         FROM ranked
         GROUP BY race_id, race_date
         ORDER BY race_date
     """, [series_id]).fetchall()
-    cols = ["race_id", "race_date", "winner_s", "p10_s", "p25_s"]
+    cols = ["race_id", "race_date", "event_name",
+            "winner_s", "p10_s", "p25_s",
+            "winner_swim", "p10_swim", "p25_swim",
+            "winner_bike", "p10_bike", "p25_bike",
+            "winner_run",  "p10_run",  "p25_run"]
     return [dict(zip(cols, r)) for r in rows]

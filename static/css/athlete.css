@@ -1,6 +1,6 @@
 /* ============================================
     ATHLETE HERO SECTION
-    Full-width navy band — lives outside .page-container
+    Full-width navy band - lives outside .page-container
     ============================================ */
 .athlete-hero {
     background: var(--navy);
@@ -98,7 +98,7 @@
     user-select: none;
 }
 
-/* Stat numbers — white, bolder */
+/* Stat numbers - white, bolder */
 .hero-stat-n {
     font-weight: 600;
     color: #fff;
@@ -109,7 +109,7 @@
     font-size: 0.8rem;
 }
 
-/* Compare link — ghost pill on navy */
+/* Compare link - ghost pill on navy */
 .athlete-hero-actions {
     display: flex;
     align-items: center;
@@ -167,7 +167,7 @@
 }
 
 /* ============================================
-    PALMARES — navy-header card, full-width in page content
+    PALMARES - navy-header card, full-width in page content
     ============================================ */
 .palmares-card {
     background: var(--white);
@@ -210,7 +210,7 @@
     position: relative;
 }
 
-/* Inset divider between items — :last-child naturally suppresses it on the final item in each column */
+/* Inset divider between items - :last-child naturally suppresses it on the final item in each column */
 .palmares-item:not(:last-child)::after {
     content: '';
     position: absolute;
@@ -289,7 +289,7 @@ sup.ordinal-suffix {
     font-size: var(--font-size-bg);
 }
 
-/* 1yr change shown in stat card sub-row — flex so SVG chevron centres */
+/* 1yr change shown in stat card sub-row - flex so SVG chevron centres */
 .rating-change-1yr {
     font-size: 0.75rem;
     display: inline-flex;
@@ -302,7 +302,7 @@ sup.ordinal-suffix {
 .rating-change-1yr.negative { color: var(--error-color); }
 .rating-change-1yr.neutral  { color: var(--text-light); }
 
-/* Sub-race expand toggle — sits inline in the date cell */
+/* Sub-race expand toggle - sits inline in the date cell */
 .sub-race-toggle {
     background: none;
     border: none;
@@ -330,7 +330,7 @@ sup.ordinal-suffix {
     transform: rotate(90deg);
 }
 
-/* Disable CSS nth-child striping for athlete tables — JS handles it via .stripe-even */
+/* Disable CSS nth-child striping for athlete tables - JS handles it via .stripe-even */
 .results-table tbody tr:nth-child(even) td,
 .rating-table tbody tr:nth-child(even) td {
     background: unset;
@@ -386,7 +386,7 @@ tr.sub-race-row .link:hover {
     min-width: 0;
 }
 
-/* Muted date/program columns — same visual weight as YOB in race tables */
+/* Muted date/program columns - same visual weight as YOB in race tables */
 .results-table td.date-col,
 .results-table td.program-col,
 .rating-table td.date-col,

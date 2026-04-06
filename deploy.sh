@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy.sh — commit/push, upload static assets to R2, copy DB to Render
+# deploy.sh - commit/push, upload static assets to R2, copy DB to Render
 #
 # Usage:
 #   ./deploy.sh                   # run all three steps
@@ -42,7 +42,7 @@ if $DO_GIT; then
     step "Git"
     git add -A
     if git diff --cached --quiet; then
-        note "Nothing staged — skipping commit."
+        note "Nothing staged - skipping commit."
     else
         git diff --cached --stat
         echo ""
@@ -81,7 +81,7 @@ fi
 if $DO_DB; then
     DB_SIZE=$(du -sh "$DB_LOCAL" | cut -f1)
     step "Render: copying DB ($DB_SIZE)"
-    # Upload to a temp path first, then mv — avoids a window where the file is half-written
+    # Upload to a temp path first, then mv - avoids a window where the file is half-written
     scp "$DB_LOCAL" "$RENDER_SSH:${DB_REMOTE}.new"
     ssh "$RENDER_SSH" "mv '${DB_REMOTE}.new' '${DB_REMOTE}'"
     echo "  Copied."

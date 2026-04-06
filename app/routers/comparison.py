@@ -94,7 +94,7 @@ async def get_athlete_for_compare(athlete_id: int):
 
 @router.get("/compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
 async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int):
-    # Direct navigation — redirect to the full compare page which auto-loads via JS
+    # Direct navigation - redirect to the full compare page which auto-loads via JS
     if not request.headers.get("X-Partial"):
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=f"/compare?a1={athlete1_id}&a2={athlete2_id}", status_code=302)
@@ -178,7 +178,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
         for d in discs
     ]
 
-    # Rating charts — chronological data for both athletes
+    # Rating charts - chronological data for both athletes
     ratings_data1 = queries.get_athlete_ratings_data(athlete1_id)
     ratings_data2 = queries.get_athlete_ratings_data(athlete2_id)
 
@@ -213,7 +213,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
             ]
         }
 
-    # Rankings charts — chronological world ranking data for both athletes
+    # Rankings charts - chronological world ranking data for both athletes
     rankings_data1 = queries.get_athlete_rankings_data(athlete1_id)
     rankings_data2 = queries.get_athlete_rankings_data(athlete2_id)
 

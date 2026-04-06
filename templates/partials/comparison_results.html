@@ -4,7 +4,7 @@
   {%- elif pos == 3 -%}<span class="pos-circle bronze">3</span>
   {%- elif pos -%}<span class="pos-other">{{ pos }}</span>
   {%- elif status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] -%}<span class="pos-dnf">{{ status }}</span>
-  {%- else -%}—{%- endif -%}
+  {%- else -%}-{%- endif -%}
 {% endmacro %}
 
 <!-- Head-to-head stats -->
@@ -111,7 +111,7 @@
 
 <!-- Rating History -->
 <div class="page-section-head" id="ratings-section-title">
-    Rating History — Overall
+    Rating History - Overall
     <button id="align-btn" class="align-starts-button" onclick="alignChartStarts()">Align Career Starts</button>
 </div>
 <div class="collapsible-card ratings-history-section" id="ratings-section">
@@ -128,7 +128,7 @@
 </div>
 
 <!-- World Rankings -->
-<div class="page-section-head" id="rankings-section-title">World Rankings — Overall</div>
+<div class="page-section-head" id="rankings-section-title">World Rankings - Overall</div>
 <div class="collapsible-card ratings-history-section" id="rankings-section">
     <div class="ratings-main-chart">
         <canvas id="rankings-main-canvas"></canvas>

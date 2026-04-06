@@ -189,7 +189,7 @@ def create_schema(conn):
         )
     """)
 
-    # Column migrations — ADD COLUMN IF NOT EXISTS is idempotent so safe to
+    # Column migrations - ADD COLUMN IF NOT EXISTS is idempotent so safe to
     # run on every write connection. Add new columns here rather than relying
     # on a separate ALTER TABLE, so any DB (local or Render) self-migrates.
     for col in ("active_world_overall", "active_world_swim", "active_world_bike",
@@ -385,7 +385,7 @@ def load_corrections(conn):
 def load_manual_ignored(conn):
     """Load manually specified ignored races from data/ignored.csv.
 
-    Call AFTER detect_all() — that function clears the table first, so manual
+    Call AFTER detect_all() - that function clears the table first, so manual
     entries must be (re-)inserted afterwards with INSERT OR IGNORE.
     Skips rows where race_id isn't in the races table (FK would fail).
     """

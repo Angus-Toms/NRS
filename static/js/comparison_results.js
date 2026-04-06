@@ -321,7 +321,7 @@
             el.classList.toggle('active', el.dataset.disc === disc)
         );
         document.getElementById('ratings-section-title').textContent =
-            `Rating History — ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
+            `Rating History - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
         if (ratingsMainChart) ratingsMainChart.destroy();
         ratingsMainChart = buildMainChart('ratings-main-canvas', disc, 'ratings', false);
     }
@@ -343,7 +343,7 @@
             el.classList.toggle('active', el.dataset.disc === disc)
         );
         document.getElementById('rankings-section-title').textContent =
-            `World Rankings — ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
+            `World Rankings - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
         if (rankingsMainChart) rankingsMainChart.destroy();
         rankingsMainChart = buildMainChart('rankings-main-canvas', disc, 'rankings', true);
     }
