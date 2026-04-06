@@ -436,7 +436,9 @@ def _fit_prediction_models(conn):
 
             data = np.array(rows, dtype=np.float64)
             # cols: 0-4 = time cols, 5-9 = rating cols, 10 = race_count
-            ws_all = np.maximum(1.0, data[:, 10])
+            # Weight by experience using same confidence curve as the ELO model:
+            # min(1, race_count / CONF_THRESHOLD) — debuts get 0, full weight at 10 starts.
+            ws_all = np.minimum(1.0, data[:, 10] / CONF_THRESHOLD)
 
             for disc_idx, disc in enumerate(DISCS):
                 ys = data[:, disc_idx]       # winner times
@@ -444,9 +446,9 @@ def _fit_prediction_models(conn):
                 ws = ws_all.copy()
 
                 lo, hi = TIME_BOUNDS[distance][disc]
-                # Apply per-discipline time bounds, discard first 5 races (ratings
-                # not yet converged from START_RATING), and require non-zero split
-                mask = (ys >= lo) & (ys <= hi) & (xs > 100) & (ws > 5)
+                # Apply per-discipline time bounds, exclude debuts (ws=0, ratings
+                # not yet initialised), and require a non-zero pre-race rating.
+                mask = (ys >= lo) & (ys <= hi) & (xs > 100) & (ws > 0)
                 ys, xs, ws = ys[mask], xs[mask], ws[mask]
                 n = len(ys)
                 if n < 30:

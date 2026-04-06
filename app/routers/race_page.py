@@ -110,30 +110,40 @@ def _compute_race_predictions(race_id, race, results, models):
         if predicted is not None and actual is not None:
             pos_diffs[aid] = predicted - actual  # positive = beat prediction
 
-    # Course conditions: avg(predicted - actual) per discipline for finishers.
-    # Expressed as % of avg predicted overall; positive = fast/short course.
+    # Course conditions: weighted avg(predicted - actual) per discipline for finishers.
+    # Debuts excluded entirely; athletes with <10 prior starts weighted by min(1, starts/10)
+    # to match the confidence model in ratings.py. Expressed as % of weighted avg predicted
+    # overall; positive = fast/short course.
     # Thresholds: ±1% = normal, ±1-3% = fast/slow, >±3% = very fast/slow.
-    pred_overalls = [preds[r['athlete_id']]['overall'] for r in results
-                     if r['status'] not in DNF_STATUSES
-                     and r['athlete_id'] in preds
-                     and preds[r['athlete_id']].get('overall')]
-    avg_pred_overall = sum(pred_overalls) / len(pred_overalls) if pred_overalls else None
+    CONF_THRESHOLD = 10
+
+    def _exp_weight(aid):
+        pr = pre_ratings.get(aid)
+        if pr is None:
+            return 0.0  # debut — exclude
+        starts = pr.get('prior_starts', 0) or 0
+        return min(1.0, starts / CONF_THRESHOLD)
+
+    finishers = [r for r in results if r['status'] not in DNF_STATUSES and r['athlete_id'] in preds]
+    pred_overalls_w = [(preds[r['athlete_id']]['overall'], _exp_weight(r['athlete_id']))
+                       for r in finishers if preds[r['athlete_id']].get('overall')]
+    total_w = sum(w for _, w in pred_overalls_w)
+    avg_pred_overall = (sum(p * w for p, w in pred_overalls_w) / total_w) if total_w > 0 else None
 
     course_conditions = {}
     if avg_pred_overall:
         for disc in DISCS:
             time_key = f'{disc}_s'
-            diffs = [
-                preds[r['athlete_id']][disc] - r[time_key]
-                for r in results
-                if r['status'] not in DNF_STATUSES
-                and r['athlete_id'] in preds
-                and preds[r['athlete_id']].get(disc)
-                and (r.get(time_key) or 0) > 0
+            weighted_diffs = [
+                (preds[r['athlete_id']][disc] - r[time_key], _exp_weight(r['athlete_id']))
+                for r in finishers
+                if preds[r['athlete_id']].get(disc) and (r.get(time_key) or 0) > 0
+                and _exp_weight(r['athlete_id']) > 0
             ]
-            if len(diffs) < 3:
+            if len(weighted_diffs) < 3:
                 continue
-            avg_diff = sum(diffs) / len(diffs)
+            total_dw = sum(w for _, w in weighted_diffs)
+            avg_diff  = sum(d * w for d, w in weighted_diffs) / total_dw
             pct = avg_diff / avg_pred_overall
             if   pct >  0.03: category = 'very_fast'
             elif pct >  0.01: category = 'fast'

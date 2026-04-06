@@ -1670,14 +1670,18 @@ def get_race_pre_race_ratings(race_id):
         WITH race_info AS (SELECT race_date FROM races WHERE race_id = ?),
              field     AS (SELECT DISTINCT athlete_id FROM results WHERE race_id = ?)
         SELECT DISTINCT ON (ra.athlete_id)
-               ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition
+               ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+               (SELECT COUNT(*) FROM results res2
+                JOIN races r2 ON res2.race_id = r2.race_id
+                WHERE res2.athlete_id = ra.athlete_id
+                  AND r2.race_date < (SELECT race_date FROM race_info)) AS prior_starts
         FROM ratings ra
         JOIN races r ON ra.race_id = r.race_id
         JOIN field f ON ra.athlete_id = f.athlete_id
         WHERE r.race_date < (SELECT race_date FROM race_info)
         ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
     """, [race_id, race_id]).fetchall()
-    cols = ["athlete_id", "overall", "swim", "bike", "run", "transition"]
+    cols = ["athlete_id", "overall", "swim", "bike", "run", "transition", "prior_starts"]
     return [dict(zip(cols, r)) for r in rows]
 
 
