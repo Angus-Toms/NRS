@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}{{ series.name }} - Pro Tri Data{% endblock %}
+{% set full_title = series.name + (' - ' + active_program_label if active_program_label else '') %}
+{% block title %}{{ full_title }} - Pro Tri Data{% endblock %}
 
 {% block meta %}
-<meta name="description" content="{{ series.description }}{% if series.subtitle %} {{ series.subtitle }}.{% endif %}">
+<meta name="description" content="{{ series.description }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ series.name }} - Pro Tri Data">
-<meta property="og:description" content="{{ series.description }}{% if series.subtitle %} {{ series.subtitle }}.{% endif %}">
+<meta property="og:title" content="{{ full_title }} - Pro Tri Data">
+<meta property="og:description" content="{{ series.description }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
 
@@ -21,8 +22,31 @@
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
-        <h1>{{ series.name }}</h1>
-        {% if series.subtitle %}<span class="page-hero-subtitle">{{ series.subtitle }}</span>{% endif %}
+        <div>
+            <h1>{{ series.name }}{% if active_program_label %} <span class="series-hero-program">- {{ active_program_label }}</span>{% endif %}</h1>
+        </div>
+        {% if hero_stats and hero_stats.editions %}
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ hero_stats.editions }}</span>
+                <span class="hero-stat-lbl">Editions</span>
+            </div>
+            {% if hero_stats.unique_winners %}
+            <div class="hero-stat-sep"></div>
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ hero_stats.unique_winners }}</span>
+                <span class="hero-stat-lbl">Winners</span>
+            </div>
+            {% endif %}
+            {% if hero_stats.year_span %}
+            <div class="hero-stat-sep"></div>
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ hero_stats.year_span }}</span>
+                <span class="hero-stat-lbl">Years</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -30,14 +54,28 @@
 {% block content %}
 <div class="series-page">
 
+    <!-- ── Program tab bar ─────────────────────────────────────────────── -->
+    {% if program_tabs | length > 1 %}
+    <nav class="series-program-tabs" aria-label="Program selector">
+        {% for tab in program_tabs %}
+        <a href="?program={{ tab.slug }}"
+           class="series-program-tab{% if tab.active %} series-program-tab--active{% endif %}">
+            {{ tab.label }}
+            <span class="series-program-tab-count">{{ tab.count }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
     <!-- ── Most recent edition ─────────────────────────────────────────── -->
     {% if races %}
     {% set latest = races[0] %}
     <section class="series-latest-section">
         <div class="page-section-head">Most Recent Edition</div>
         <div class="series-latest-card">
+            <a href="/race/{{ latest.race_id }}" class="series-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
             <div class="series-latest-header">
-                <a href="/race/{{ latest.race_id }}" class="series-latest-title">{{ latest.event_name }}</a>
+                <a href="/race/{{ latest.race_id }}" class="series-latest-title">{{ latest.event_name }}{% if active_program_label %} - {{ active_program_label }}{% endif %}{% if latest.is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</a>
                 <span class="series-latest-date">{{ latest.race_date.strftime('%d %B %Y') }}</span>
             </div>
             <div class="series-latest-athletes">
@@ -84,11 +122,11 @@
     <!-- ── Previous editions ──────────────────────────────────────────── -->
     <section class="series-editions">
         <div class="page-section-head">Previous Editions</div>
-        {% for race in races %}
+        {% for race in races[1:] %}
         <div class="series-race-card">
             <a href="/race/{{ race.race_id }}" class="series-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
             <div class="series-race-header">
-                <span class="series-race-title">{{ race.event_name }}</span>
+                <span class="series-race-title">{{ race.event_name }}{% if active_program_label %} - {{ active_program_label }}{% endif %}{% if race.is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</span>
                 <span class="series-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
             </div>
             <div class="series-race-card-body">
@@ -135,34 +173,59 @@
         {% endfor %}
     </section>
 
-    <!-- ── All-time leaders ───────────────────────────────────────────── -->
+    <!-- ── Recurring venues ────────────────────────────────────────────── -->
+    {% if recurring_groups %}
+    <section class="series-recurring">
+        <div class="page-section-head">Recurring Venues</div>
+        <div class="series-recurring-grid">
+            {% for g in recurring_groups %}
+            <div class="series-recurring-card">
+                <div class="series-recurring-name">{{ g.name }}</div>
+                <div class="series-recurring-meta">
+                    {{ g.edition_count }} editions ·
+                    {{ g.first_date.year }}{% if g.last_date.year != g.first_date.year %}–{{ g.last_date.year }}{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── Most Wins ─────────────────────────────────────────────────── -->
     {% if leaders %}
     <section class="series-leaders">
-        <div class="page-section-head">All-time Leaders</div>
+        <div class="page-section-head">Most Wins</div>
         <div class="leaders-table-card">
             <table class="leaders-table" id="leaders-table">
                 <thead>
                     <tr>
-                        <th>Athlete</th>
-                        <th class="col-num col-sortable" data-col="wins">Wins <span class="sort-arrow">↕</span></th>
-                        <th class="col-num col-sortable" data-col="seconds">2nd <span class="sort-arrow">↕</span></th>
-                        <th class="col-num col-sortable" data-col="thirds">3rd <span class="sort-arrow">↕</span></th>
+                        <th class="col-athlete-head">Athlete</th>
+                        <th class="col-podiums-head">Podiums</th>
                         <th class="col-editions">Editions Won</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for l in leaders %}
-                    <tr data-wins="{{ l.wins }}" data-seconds="{{ l.seconds }}" data-thirds="{{ l.thirds }}">
+                    <tr>
                         <td>
                             <div class="leaders-athlete">
                                 <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ l.athlete_id ~ '.webp' if l.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ l.name }}" class="leaders-athlete-img">
                                 <a href="/athlete/{{ l.athlete_id }}" class="leaders-athlete-link">{{ l.name }} {{ l.country_emoji }}</a>
                             </div>
                         </td>
-                        <td class="col-wins">{{ l.wins }}</td>
-                        <td class="col-num">{{ l.seconds }}</td>
-                        <td class="col-num">{{ l.thirds }}</td>
-                        <td class="col-editions">{{ l.win_years }}</td>
+                        <td class="col-podiums">
+                            {%- set gc = l.podiums | selectattr('position','equalto',1) | list | length -%}
+                            {%- set sc = l.podiums | selectattr('position','equalto',2) | list | length -%}
+                            {%- set bc = l.podiums | selectattr('position','equalto',3) | list | length -%}
+                            {%- if gc %}<span class="podium-group"><span class="podium-n">{{ gc }}×</span><span class="pos-circle pos-circle--sm gold">1</span></span>{% endif -%}
+                            {%- if sc %}<span class="podium-group"><span class="podium-n">{{ sc }}×</span><span class="pos-circle pos-circle--sm silver">2</span></span>{% endif -%}
+                            {%- if bc %}<span class="podium-group"><span class="podium-n">{{ bc }}×</span><span class="pos-circle pos-circle--sm bronze">3</span></span>{% endif -%}
+                        </td>
+                        <td class="col-editions">
+                            {%- for w in l.win_editions -%}
+                            <span class="si-edition-item"><a href="/race/{{ w.race_id }}" class="si-edition">{{ w.short }}</a>{%- if not loop.last %}<span class="si-edition-sep">·</span>{%- endif %}</span>{%- if not loop.last %}<wbr>{%- endif -%}
+                            {%- endfor -%}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -174,7 +237,10 @@
     <!-- ── Performance history ────────────────────────────────────────── -->
     {% if perf_history | length > 1 %}
     <section class="series-chart-section">
-        <div class="page-section-head">Performance History</div>
+        <div class="page-section-head">
+            <span id="series-chart-title">Winning times - Overall</span>
+            <div class="radio-chips series-format-chips" id="series-format-chips"></div>
+        </div>
         <div class="series-perf-card">
             <div class="series-perf-legend" id="series-perf-legend">
                 <span class="series-legend-item series-legend-item--winner" id="series-legend-1">Winner</span>
@@ -236,33 +302,6 @@
 </script>
 {% endif %}
 
-{% if leaders %}
-<script>
-(function() {
-    const table = document.getElementById('leaders-table');
-    if (!table) return;
-    let sortCol = 'wins', sortAsc = false;
-    table.querySelectorAll('th.col-sortable').forEach(th => {
-        th.style.cursor = 'pointer';
-        th.addEventListener('click', () => {
-            const col = th.dataset.col;
-            sortAsc = (col === sortCol) ? !sortAsc : false;
-            sortCol = col;
-            table.querySelectorAll('th.col-sortable .sort-arrow').forEach(a => a.textContent = '↕');
-            th.querySelector('.sort-arrow').textContent = sortAsc ? '↑' : '↓';
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            rows.sort((a, b) => {
-                const av = parseInt(a.dataset[col], 10);
-                const bv = parseInt(b.dataset[col], 10);
-                return sortAsc ? av - bv : bv - av;
-            });
-            rows.forEach(r => tbody.appendChild(r));
-        });
-    });
-})();
-</script>
-{% endif %}
 
 {% if perf_history | length > 1 %}
 <script>
@@ -286,8 +325,6 @@
     const C_P10    = '#e87722';
     const C_P25    = '#94a3b8';
 
-    const labels   = raw.map(r => r.year);
-
     const discKeys = {
         overall: ['winner_s',    'p10_s',    'p25_s'   ],
         swim:    ['winner_swim', 'p10_swim', 'p25_swim'],
@@ -295,9 +332,24 @@
         run:     ['winner_run',  'p10_run',  'p25_run' ],
     };
 
+    // ── Format classification (heuristic from overall winning time) ───
+    const FORMAT_LABELS = { standard: 'Standard', sprint: 'Sprint', 'super-sprint': 'Super Sprint' };
+    const FORMAT_ORDER  = ['standard', 'sprint', 'super-sprint'];
+    function classifyFormat(winner_s) {
+        if (!winner_s) return 'standard';
+        if (winner_s < 2700) return 'super-sprint';
+        if (winner_s < 5400) return 'sprint';
+        return 'standard';
+    }
+    const presentFormats = [...new Set(raw.map(r => classifyFormat(r.winner_s)))]
+        .sort((a, b) => FORMAT_ORDER.indexOf(a) - FORMAT_ORDER.indexOf(b));
+
     const tooltip = document.getElementById('series-tooltip');
-    let activeDisc = 'overall';
-    let mainChart  = null;
+    let activeDisc   = 'overall';
+    let activeFormat = presentFormats[0];
+    let filteredRaw  = raw.filter(r => classifyFormat(r.winner_s) === activeFormat);
+    let mainChart    = null;
+    const thumbCharts = {};
 
     // Zebra stripes for category axis
     const zebraPlugin = {
@@ -326,7 +378,7 @@
         if (tip.opacity === 0) { tooltip.style.display = 'none'; return; }
 
         const idx    = tip.dataPoints?.[0]?.dataIndex ?? -1;
-        const entry  = idx >= 0 ? raw[idx] : null;
+        const entry  = idx >= 0 ? filteredRaw[idx] : null;
         const year   = tip.title?.[0] ?? '';
         const raceMeta = entry
             ? `<div class="tt-race-name">${entry.event_name || ''}</div>
@@ -363,9 +415,9 @@
         const l2 = isOverall ? '10th Place'  : '10th Fastest';
         const l3 = isOverall ? '25th Place'  : '25th Fastest';
         return [
-            { label: l1, data: raw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 2.5, pointRadius: 3.5, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
-            { label: l2, data: raw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 2,   pointRadius: 3,   pointHoverRadius: 5, tension: 0.25, spanGaps: true },
-            { label: l3, data: raw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1.5, pointRadius: 2.5, pointHoverRadius: 4, tension: 0.25, spanGaps: true },
+            { label: l1, data: filteredRaw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 2.5, pointRadius: 3.5, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+            { label: l2, data: filteredRaw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 2,   pointRadius: 3,   pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+            { label: l3, data: filteredRaw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1.5, pointRadius: 2.5, pointHoverRadius: 4, tension: 0.25, spanGaps: true },
         ];
     }
 
@@ -375,7 +427,7 @@
         if (mainChart) mainChart.destroy();
         mainChart = new Chart(el, {
             type: 'line',
-            data: { labels, datasets: makeDatasets(wKey, p10Key, p25Key, disc === 'overall') },
+            data: { labels: filteredRaw.map(r => r.year), datasets: makeDatasets(wKey, p10Key, p25Key, disc === 'overall') },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -411,16 +463,18 @@
         const [wKey, p10Key, p25Key] = discKeys[disc];
         const el = document.getElementById(`series-thumb-${disc}`);
         if (!el) return;
-        const hasData = disc === 'overall' || raw.some(r => r[wKey]);
+        if (thumbCharts[disc]) { thumbCharts[disc].destroy(); delete thumbCharts[disc]; }
+        const hasData = disc === 'overall' || filteredRaw.some(r => r[wKey]);
         if (!hasData) { el.closest('.ratings-mini').style.display = 'none'; return; }
-        new Chart(el, {
+        el.closest('.ratings-mini').style.display = '';
+        thumbCharts[disc] = new Chart(el, {
             type: 'line',
             data: {
-                labels,
+                labels: filteredRaw.map(r => r.year),
                 datasets: [
-                    { data: raw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                    { data: raw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                    { data: raw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1,   pointRadius: 0, tension: 0.25, spanGaps: true },
+                    { data: filteredRaw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                    { data: filteredRaw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                    { data: filteredRaw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1,   pointRadius: 0, tension: 0.25, spanGaps: true },
                 ],
             },
             options: {
@@ -436,6 +490,38 @@
         });
     }
 
+    // ── Format chips ──────────────────────────────────────────────────
+    function buildFormatChips() {
+        const container = document.getElementById('series-format-chips');
+        if (!container || presentFormats.length <= 1) {
+            if (container) container.style.display = 'none';
+            return;
+        }
+        presentFormats.forEach(fmt => {
+            const id  = `fmt-${fmt}`;
+            const inp = document.createElement('input');
+            inp.type = 'radio'; inp.name = 'series-format'; inp.id = id; inp.value = fmt;
+            inp.checked = fmt === activeFormat;
+            inp.addEventListener('change', () => switchFormat(fmt));
+            const lbl = document.createElement('label');
+            lbl.htmlFor = id;
+            lbl.textContent = FORMAT_LABELS[fmt];
+            container.appendChild(inp);
+            container.appendChild(lbl);
+        });
+    }
+
+    function switchFormat(fmt) {
+        if (fmt === activeFormat) return;
+        activeFormat = fmt;
+        filteredRaw  = raw.filter(r => classifyFormat(r.winner_s) === fmt);
+        tooltip.style.display = 'none';
+        buildMain(activeDisc);
+        ['overall', 'swim', 'bike', 'run'].forEach(buildThumb);
+    }
+
+    const discTitles = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run' };
+
     window.switchSeriesDisc = function(disc) {
         if (disc === activeDisc) return;
         const card = document.getElementById('series-chart-main').closest('.series-perf-card');
@@ -447,9 +533,11 @@
         document.getElementById('series-legend-1').textContent = isOverall ? 'Winner'     : 'Fastest';
         document.getElementById('series-legend-2').textContent = isOverall ? '10th Place' : '10th Fastest';
         document.getElementById('series-legend-3').textContent = isOverall ? '25th Place' : '25th Fastest';
+        document.getElementById('series-chart-title').textContent = `Winning times - ${discTitles[disc]}`;
         buildMain(disc);
     };
 
+    buildFormatChips();
     buildMain('overall');
     ['overall', 'swim', 'bike', 'run'].forEach(buildThumb);
 })();

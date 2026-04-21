@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Countries - Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Browse {{ totals.countries }} triathlon nations with {{ totals.athletes }} ranked athletes on Pro Tri Data. National leaderboards, championship medals and races hosted by each country.">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Countries - Pro Tri Data">
+<meta property="og:description" content="Triathlon nations, national leaderboards and races hosted worldwide.">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css">
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Countries</h1>
+        <span class="page-hero-subtitle">
+            {{ totals.countries }} nations · {{ totals.athletes }} athletes · {{ totals.host_races }} host events
+        </span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="country-index-page">
+    {% for block in continent_blocks %}
+    <section class="country-index-group">
+        <div class="page-section-head">{{ block.continent }}</div>
+        <div class="country-index-grid">
+            {% for c in block.countries if c.athlete_count > 0 %}
+            <a href="/country/{{ c.alpha3 }}" class="country-index-card">
+                <div class="country-index-flag">{{ c.emoji }}</div>
+                <div class="country-index-body">
+                    <div class="country-index-name">{{ c.country_full }}</div>
+                    <div class="country-index-meta">
+                        {{ c.athlete_count }} athlete{{ 's' if c.athlete_count != 1 else '' }}
+                        {% if c.race_host_count %} · {{ c.race_host_count }} host event{{ 's' if c.race_host_count != 1 else '' }}{% endif %}
+                    </div>
+                    {% if c.top_athlete_id %}
+                    <div class="country-index-top">
+                        <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ c.top_athlete_id ~ '.webp' if c.top_athlete_img else 'imgs/default_user_64.webp' }}"
+                             alt="{{ c.top_athlete_name }}" class="country-index-top-img">
+                        <span class="country-index-top-name">{{ c.top_athlete_name }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

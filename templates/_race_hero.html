@@ -2,33 +2,37 @@
     <div class="race-hero-inner">
         <!-- Left: back nav + title + metadata + race switcher -->
         <div class="race-hero-left">
-            {% if series or event_id %}
-            <nav class="race-nav">
-                <svg class="race-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                {% if series %}
-                <a href="/series/{{ series.slug }}" class="race-nav-crumb">{{ series.name }}</a>
-                {% elif event_id %}
-                <a href="/event/{{ event_id }}" class="race-nav-crumb">Event</a>
-                {% endif %}
-            </nav>
+            {% if context_links %}
+            <div class="race-context-pills">
+                {% for link in context_links %}
+                <a href="{{ link.url }}" class="race-context-pill">{{ link.label }}</a>
+                {% endfor %}
+            </div>
             {% endif %}
-            <h1 class="race-hero-title">{{ race.race_title }}</h1>
+            <h1 class="race-hero-title">{{ race.race_title }}{% if race.is_multi_stage or (ignored_info and ignored_info.parent_is_multi_stage) %} {% include "_multi_stage_badge.html" %}{% endif %}</h1>
             <div class="race-hero-meta">
                 <span>{{ race.date.strftime('%d %B %Y') }}</span>
                 <span class="race-meta-dot">·</span>
                 <span>{% if race_location %}{{ race_location }}, {% endif %}{{ race_country }}</span>
             </div>
+            {% if is_upcoming %}
+            <div class="race-hero-finishers">
+                <span class="upcoming-badge">Upcoming</span>
+                {{ entry_count }} entered
+                {% if days_until is not none %}· {% if days_until == 0 %}Today{% elif days_until == 1 %}Tomorrow{% else %}{{ days_until }} days away{% endif %}{% endif %}
+            </div>
+            {% else %}
             <div class="race-hero-finishers">
                 {{ race.athlete_count }} athletes · {{ finish_count }} finishers · {{ dnf_count }} DNFs
             </div>
+            {% endif %}
             {% if event_races|length > 1 %}
+            {%- set event_is_multi_stage = event_races | selectattr('is_multi_stage') | list | length > 0 -%}
             <div class="race-switcher">
                 {% set max_pills = 5 %}
                 {% for r in event_races[:max_pills] %}
                 <button class="race-pill{{ ' active' if r.race_id == race.race_id else '' }}"
-                        onclick="switchRace({{ r.race_id }})">{{ r.prog_name }}</button>
+                        onclick="switchRace({{ r.race_id }})">{{ r.prog_name }}{% if event_is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</button>
                 {% endfor %}
                 {% if event_races|length > max_pills %}
                 <a href="/event/{{ event_id }}" class="race-pill race-pill-more">+{{ event_races|length - max_pills }} more</a>
@@ -37,8 +41,8 @@
             {% endif %}
         </div>
 
-        <!-- Right: podium -->
-        {% if splits_data %}
+        <!-- Right: podium (past races only) -->
+        {% if splits_data and not is_upcoming %}
         <div class="race-hero-podium">
             <div class="podium-label">Podium</div>
             {% for athlete in splits_data[:3] %}

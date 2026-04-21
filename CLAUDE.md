@@ -16,3 +16,7 @@ This is a solo project. Write code as a competent human would - LEAN and DIRECT.
 - Do NOT use broad except Exception or bare except clauses.
 - Raise exceptions directly with a clear message; don't swallow or re-wrap them.
 - I/O operations (file reads, network calls) are acceptable places to catch exceptions, but handle them explicitly - not just to suppress the error.
+
+## Code style
+
+- Avoid em-dashes and emojis at all times, unless otherwise stated.

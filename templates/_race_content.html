@@ -54,6 +54,19 @@
 </div>
 {% endif %}
 
+<!-- Other editions at this venue -->
+{% if other_editions %}
+<div class="page-section-head">Other Years at This Venue</div>
+<div class="other-editions-row">
+    {% for oe in other_editions %}
+    <a href="/race/{{ oe.race_id }}" class="other-edition-pill">
+        <span class="other-edition-year">{{ oe.year }}</span>
+        <span class="other-edition-name">{{ oe.event_name }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Results Table -->
 <div class="results-section-head">
     <div class="page-section-head" id="results-section-title">Race Results</div>
@@ -92,6 +105,11 @@
         </div>
     </div>
 </div>
+{% if race.is_multi_stage %}
+<p class="race-multi-stage-note">
+    This race result likely combined multiple finals - listed positions reflect overall standings, but finish times may not be strictly increasing.
+</p>
+{% endif %}
 <div id="results-view" class="race-view race-table-section">
     <div>
         <table class="sortable-table results-table">
@@ -112,7 +130,7 @@
                 {% if splits_data %}
                     {% for athlete in splits_data %}
                     <tr>
-                        <td class="position-col" data-value="{{ athlete.position }}">
+                        <td class="position-col" data-value="{{ athlete.position if athlete.position is not none else athlete.status }}">
                             {% if athlete.position == 1 %}<span class="pos-circle gold">1</span>
                             {% elif athlete.position == 2 %}<span class="pos-circle silver">2</span>
                             {% elif athlete.position == 3 %}<span class="pos-circle bronze">3</span>
@@ -229,9 +247,13 @@
 <div class="page-section-head">Ratings &amp; Changes</div>
 {% if ignored_info %}
 <p class="ignored-race-notice">
+    {% if ignored_info.parent_is_multi_stage %}
+    This race is one stage of a multi-round event. Rating changes are calculated from the combined final results.
+    {% else %}
     To avoid duplication, no rating changes are calculated for this race as these results were taken from another race.
+    {% endif %}
     {% if ignored_info.parent_race_id %}
-    See the full race results <a href="/race/{{ ignored_info.parent_race_id }}" class="link">{{ ignored_info.parent_race_title }}</a> to view rating changes.
+    Check the full race results (<a href="/race/{{ ignored_info.parent_race_id }}" class="link">{{ ignored_info.parent_race_title }}</a>) to view rating changes.
     {% endif %}
 </p>
 {% else %}
@@ -254,19 +276,19 @@
                 {% if ratings_data %}
                     {% for athlete in ratings_data %}
                     <tr>
-                        <td class="position-col" data-value="{{ athlete.position }}">
+                        <td class="position-col" data-value="{{ athlete.position if athlete.position is not none else athlete.status }}">
                             {% if athlete.position == 1 %}<span class="pos-circle gold">1</span>
                             {% elif athlete.position == 2 %}<span class="pos-circle silver">2</span>
                             {% elif athlete.position == 3 %}<span class="pos-circle bronze">3</span>
                             {% elif athlete.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ athlete.status }}</span>
                             {% else %}<span class="pos-other">{{ athlete.position }}</span>{% endif %}
                         </td>
-                        <td data-value="{{ athlete.name }}">
+                        <td class="athlete-col" data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">
                                 {{ "{} {}".format(athlete.name, athlete.country_emoji) }}
                             </a>
                         </td>
-                        <td data-value="{{ athlete.year_of_birth }}">
+                        <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">
                             {{ "{} ({})".format(athlete.year_of_birth, athlete.age) if athlete.year_of_birth else "" }}
                         </td>
                         <td data-value="{{ athlete.overall_rating }}">
@@ -309,6 +331,58 @@
             </tbody>
         </table>
     </div>
+</div>
+{% endif %}
+
+<!-- Corrections -->
+{% if corrections_data %}
+<div class="page-section-head">Corrections</div>
+<p class="page-section-sub" style="margin-bottom:1rem">
+    The following result times have been manually corrected to fix data entry errors from the official results. Corrected splits are used in all rating calculations; original values are shown for reference.
+</p>
+<div class="race-table-section">
+    <table class="corrections-table sortable-table">
+        <thead>
+            <tr>
+                <th class="sortable corr-pos-col"    data-sort="position">Pos</th>
+                <th class="sortable corr-athlete-col" data-sort="string">Athlete</th>
+                <th class="corr-note-col">Note</th>
+                <th class="sortable corr-time-col" data-sort="time">Swim</th>
+                <th class="sortable corr-time-col" data-sort="time">T1</th>
+                <th class="sortable corr-time-col" data-sort="time">Bike</th>
+                <th class="sortable corr-time-col" data-sort="time">T2</th>
+                <th class="sortable corr-time-col" data-sort="time">Run</th>
+                <th class="sortable corr-time-col" data-sort="time">Overall</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in corrections_data %}
+            <tr>
+                <td class="corr-pos-col" data-value="{{ c.position if c.position else 9999 }}">
+                    {% if c.position == 1 %}<span class="pos-circle gold">1</span>
+                    {% elif c.position == 2 %}<span class="pos-circle silver">2</span>
+                    {% elif c.position == 3 %}<span class="pos-circle bronze">3</span>
+                    {% elif c.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ c.status }}</span>
+                    {% else %}<span class="pos-other">{{ c.position }}</span>{% endif %}
+                </td>
+                <td class="corr-athlete-col" data-value="{{ c.name }}">
+                    <a href="/athlete/{{ c.athlete_id }}" class="link">{{ c.name }}</a> {{ c.country_emoji }}
+                </td>
+                <td class="corr-note-col">{{ c.notes }}</td>
+                {% for f in c.fields %}
+                <td class="corr-time-col{% if f.changed %} corr-changed{% endif %}" data-value="{{ f.corr }}">
+                    {% if f.changed %}
+                        {% if f.orig %}<span class="corr-orig">{{ f.orig }}</span>{% endif %}
+                        <span class="corr-new">{{ f.corr if f.corr else '-' }}</span>
+                    {% else %}
+                        <span class="corr-unchanged">{{ f.corr if f.corr else '-' }}</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endif %}
 

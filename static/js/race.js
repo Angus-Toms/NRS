@@ -20,13 +20,15 @@ function _debounce(fn, ms) {
 // Sort table click listeners - safe to call multiple times after partial swaps
 function initSortableListeners() {
     document.querySelectorAll('table.sortable-table').forEach(table => {
-        const headers = table.querySelectorAll('th.sortable');
-        headers.forEach((header, index) => {
+        const allHeaders = Array.from(table.querySelectorAll('th'));
+        const sortableHeaders = table.querySelectorAll('th.sortable');
+        sortableHeaders.forEach((header) => {
             header.addEventListener('click', () => {
+                const colIndex = allHeaders.indexOf(header);
                 const isAsc = header.classList.contains('asc');
-                headers.forEach(h => h.classList.remove('asc', 'desc'));
+                sortableHeaders.forEach(h => h.classList.remove('asc', 'desc'));
                 header.classList.add(isAsc ? 'desc' : 'asc');
-                sortTable(table, index, !isAsc);
+                sortTable(table, colIndex, !isAsc);
             });
         });
     });

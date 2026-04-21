@@ -111,8 +111,7 @@ function sortTable(table, column, asc = true) {
             aVal = parseFloat(aVal);
             bVal = parseFloat(bVal);
         } else if (sortType === 'position') {
-            // Handle special cases for position
-            const specialValues = { 'LAP': 9997, 'DNF': 9998, 'DQ': 9999 };
+            const specialValues = { 'NC': 9995, 'LAP': 9996, 'DNF': 9997, 'DQ': 9998, 'DNS': 9999 };
             aVal = specialValues[aVal] !== undefined ? specialValues[aVal] : parseInt(aVal) || Infinity;
             bVal = specialValues[bVal] !== undefined ? specialValues[bVal] : parseInt(bVal) || Infinity;
         } else if (sortType === 'race-id' || sortType === 'date' || sortType === 'string') {

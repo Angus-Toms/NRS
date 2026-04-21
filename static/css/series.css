@@ -5,73 +5,327 @@
 .series-index-page {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);
+    gap: var(--spacing-lg);
 }
 
 .series-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: 0.65rem;
 }
 
-.series-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--spacing-lg);
+/* Tighter section heading on this page — subtitle sits right beneath the title */
+.series-group .page-section-head {
+    margin-bottom: 0;
+    align-items: flex-start;
 }
 
-.series-card {
-    position: relative;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    box-shadow: var(--box-shadow);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    text-decoration: none;
+.series-group .page-section-sub { margin: 0.1rem 0 0; }
+
+/* Align the see-series link to the first line of the title */
+.series-group .page-section-head > .si-see-series { margin-top: 0.5rem; }
+
+/* ── Per-series block ── */
+.si-series {
     display: flex;
     flex-direction: column;
+    gap: 0.65rem;
 }
 
-.series-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
+/* Sibling series within a tier group: generous gap — the series name's own
+   underline (si-series-head border-bottom) provides the visual divider. */
+.si-series + .si-series { margin-top: calc(var(--spacing-lg) + 0.5rem); }
+
+.si-series-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
 }
 
-.series-card-header {
-    background: var(--navy);
-    padding: 0.65rem 1rem;
-}
+.si-series-head .si-see-series { margin-top: 0.25rem; }
 
-.series-card-name {
-    font-size: 0.875rem;
+.si-series-name {
+    font-size: 1.05rem;
     font-weight: 700;
-    color: #fff;
-    margin: 0;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+}
+
+.si-series-head .page-section-sub { margin: 0.1rem 0 0; font-size: 0.8rem; }
+
+/* ── See-series chevron link (matches style of other site links) ── */
+.si-see-series {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+    letter-spacing: 0;
     transition: color var(--transition-fast);
 }
 
-.series-card:hover .series-card-name { color: var(--primary-color); }
+.si-see-series:hover { color: var(--primary-hover); }
 
-.series-card-body {
-    padding: 0.85rem 1rem;
+.si-chev {
+    transition: transform var(--transition-fast);
+    margin-top: 1px;
+}
+
+.si-see-series:hover .si-chev { transform: translateX(2px); }
+
+/* page-section-head is a flex row; push see-series to the right */
+.page-section-head .si-see-series { font-size: 0.85rem; }
+
+/* ── Kicker labels (Latest Edition / Most Wins) ── */
+.si-latest-kicker,
+.si-wins-kicker {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-lighter);
+    margin-top: 0.15rem;
+}
+
+/* ── Stacked edition cards + show-earlier toggle ── */
+.si-editions-stack {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+}
+
+.si-edition-card.is-hidden { display: none; }
+
+.si-show-more-editions {
+    align-self: flex-end;
+    background: none;
+    border: 0;
+    padding: 0.2rem 0;
+    margin-top: 0.15rem;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
     gap: 0.3rem;
-    flex: 1;
+    transition: color var(--transition-fast);
 }
 
-.series-card-desc {
-    font-size: 0.82rem;
-    color: var(--text-light);
-    margin: 0;
-    line-height: 1.5;
+.si-show-more-editions:hover { color: var(--primary-hover); }
+
+.si-chev-down { transition: transform var(--transition-fast); }
+.si-show-more-editions:hover .si-chev-down { transform: translateY(1px); }
+
+/* ── Series body: Latest Edition (left, wider) + Most Wins (right, open styling) ── */
+.si-series-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
 }
 
-.series-card-meta {
-    font-size: 0.75rem;
+/* Single-column fallback when one side has no content */
+.si-series-body > *:only-child { grid-column: 1 / -1; }
+
+.si-latest-col,
+.si-wins-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+/* ── All-time leader blocks: boxed card, genders stacked with dividers ── */
+.si-leaders {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--white);
+    overflow: hidden;
+}
+
+.si-leader {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.55rem 1rem 0.75rem;
+    min-width: 0;
+}
+
+.si-leader > .si-leader-head { margin-bottom: -0.1rem; }
+
+.si-leader-head {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     color: var(--text-lighter);
-    margin-top: 0.3rem;
+}
+
+.si-leader-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.si-leader-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 0.85rem;
+    row-gap: 0.35rem;
+    align-items: center;
+    min-width: 0;
+}
+
+.si-leader-body {
+    display: contents;
+    text-decoration: none;
+    color: var(--text-color);
+}
+
+.si-leader-img {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+    align-self: center;
+}
+
+.si-leader-body:hover .si-leader-name { color: var(--primary-color); }
+
+.si-leader-name {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    transition: color var(--transition-fast);
+}
+
+.si-leader-wins {
+    grid-column: 3;
+    grid-row: 1;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.si-leader-wins-n {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    line-height: 1;
+}
+
+.si-leader-wins-lbl {
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+}
+
+.si-leader-empty { font-size: 0.9rem; color: var(--text-lighter); }
+
+.si-leader-editions {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-light);
+    overflow-wrap: anywhere;
+}
+
+.si-edition-item {
+    white-space: nowrap;
+}
+
+.si-edition {
+    color: var(--text-light);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a.si-edition:hover {
+    color: var(--primary-color);
+}
+
+.si-edition-sep {
+    color: var(--text-lighter);
+    margin: 0 0.55rem;
+}
+
+.si-leader-extras {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.si-leader-extras.is-hidden { display: none; }
+
+.si-leader-more-btn {
+    align-self: flex-end;
+    background: none;
+    border: 0;
+    padding: 0.24rem 0;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.si-leader-more-btn:hover { color: var(--primary-color); }
+
+/* Inline expand / collapse for the edition list */
+.si-editions-extra { display: none; }
+.si-leader-editions.is-expanded .si-editions-extra { display: inline; }
+
+.si-editions-toggle {
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: var(--text-lighter);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+
+.si-editions-toggle:hover { color: var(--primary-color); }
+
+.si-editions-toggle::before { content: attr(data-more); }
+.si-leader-editions.is-expanded .si-editions-toggle::before { content: attr(data-less); }
+
+@media (max-width: 900px) {
+    .si-series-body { grid-template-columns: 1fr; gap: 0.9rem; }
 }
 
 
@@ -93,11 +347,17 @@
 }
 
 .series-latest-card {
+    position: relative;
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     overflow: hidden;
     box-shadow: var(--box-shadow);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.series-latest-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
 }
 
 .series-latest-header {
@@ -117,7 +377,8 @@
     transition: color var(--transition-fast);
 }
 
-.series-latest-title:hover { color: var(--primary-color); }
+.series-latest-title:hover,
+.series-latest-card:hover .series-latest-title { color: var(--primary-color); }
 
 .series-latest-date {
     font-size: 0.75rem;
@@ -495,8 +756,28 @@
 
 .sort-arrow { font-size: 0.65rem; opacity: 0.5; margin-left: 0.15rem; }
 
-.col-editions { color: var(--text-lighter); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-td.col-editions { color: var(--text-lighter); font-size: 0.78rem; white-space: nowrap; }
+.col-athlete-head { width: 30%; }
+.col-podiums-head { width: 160px; white-space: nowrap; }
+.col-podiums { white-space: nowrap; padding-right: 1.25rem; }
+.podium-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.5rem;
+}
+.podium-group:last-child { margin-right: 0; }
+.podium-n {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+}
+.pos-circle--sm {
+    width: 17px;
+    height: 17px;
+    font-size: 0.6rem;
+}
+.col-editions { font-size: 0.8rem; }
+td.col-editions { font-size: 0.78rem; }
 
 .leaders-table tbody tr {
     border-bottom: 1px solid var(--border-color);
@@ -524,7 +805,7 @@ td.col-editions { color: var(--text-lighter); font-size: 0.78rem; white-space: n
     font-variant-numeric: tabular-nums;
 }
 
-.leaders-athlete { display: flex; align-items: center; gap: 0.6rem; }
+.leaders-athlete { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
 
 .leaders-athlete-img {
     width: 28px;
@@ -539,6 +820,9 @@ td.col-editions { color: var(--text-lighter); font-size: 0.78rem; white-space: n
     font-weight: 600;
     color: var(--text-color);
     text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: color var(--transition-fast);
 }
 
@@ -688,3 +972,75 @@ td.col-editions { color: var(--text-lighter); font-size: 0.78rem; white-space: n
 
     .series-race-standards { justify-content: space-between; padding: 0.875rem 1rem; }
 }
+
+/* ── Program tabs ───────────────────────────────────────────────── */
+.series-program-tabs {
+    display: flex;
+    align-self: flex-start;
+    background: var(--border-color);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 1px;
+    margin: 0 0 1.5rem;
+}
+.series-program-tab {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 5px;
+    color: var(--text-light);
+    text-decoration: none;
+    font-size: 0.82rem; font-weight: 500;
+    white-space: nowrap;
+    line-height: 1.4;
+    transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+.series-program-tab:hover { color: var(--text-color); }
+.series-program-tab--active {
+    background: var(--white);
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.series-program-tab-count {
+    font-size: 0.72rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+}
+.series-program-tab--active .series-program-tab-count { color: var(--primary-color); opacity: 0.75; }
+
+/* ── Series hero program suffix ─────────────────────────────────── */
+.series-hero-program {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* ── Recurring venues ───────────────────────────────────────────── */
+.series-recurring { margin-bottom: 2rem; }
+.series-recurring-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.625rem;
+}
+.series-recurring-card {
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg, #fff);
+}
+.series-recurring-name { font-weight: 600; font-size: 0.9375rem; }
+.series-recurring-meta {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+}
+
+.series-subgroup-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-lighter);
+    margin: 1rem 0 0.5rem;
+}
+.series-subgroup-label:first-child { margin-top: 0; }

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Upcoming Races - Pro Tri Data{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css">
+<style>
+    /* Races wrap: column container that takes the space .event-races used to occupy */
+    .event-card-races-wrap {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    /* Prevent .event-races from flex-growing vertically inside the column wrap */
+    .event-card-races-wrap .event-races { flex: none; }
+
+
+    /* Stacked (expanded) race rows sit below the main pair */
+    .event-race--stacked {
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* Hidden section */
+    .event-more-races { display: flex; flex-direction: column; }
+    .event-more-races.hidden { display: none; }
+
+    /* "+N more / Show fewer" button */
+    .event-more-btn {
+        display: block;
+        width: 100%;
+        border: none;
+        border-top: 1px solid var(--border-color);
+        background: none;
+        cursor: pointer;
+        text-align: left;
+        padding: 0.35rem 1rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-light);
+        pointer-events: all;
+        transition: color var(--transition-fast);
+    }
+    .event-more-btn:hover { color: var(--primary-color); }
+
+    /* Predicted podium label in header */
+    .event-race-predicted-label {
+        font-size: 0.65rem;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text-lighter);
+    }
+    .event-race-dot-sep { color: var(--text-lighter); margin: 0 0.1rem; }
+</style>
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <div>
+            <h1>Upcoming Races</h1>
+            <p class="page-hero-subtitle">Start lists and predicted results for the next 90 days</p>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ events | length }}</span>
+                <span class="hero-stat-lbl">Events</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if events %}
+<div class="home-events-grid rs-events-grid">
+    {% for event in events %}
+    <div class="event-card">
+        <div class="event-card-header">
+            <a href="/event/{{ event.event_id }}" class="event-card-title" style="pointer-events:all;text-decoration:none">{{ event.name }}</a>
+        </div>
+
+        <div class="event-card-body">
+            <div class="event-card-info">
+                <div class="event-meta-item">
+                    <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <span class="event-meta-text">{{ event.start_date.strftime('%-d %B %Y') }}</span>
+                </div>
+                <div class="event-meta-item">
+                    <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span class="event-meta-text">{% if event.venue %}{{ event.venue }}, {% endif %}{{ event.country }}</span>
+                </div>
+            </div>
+
+            <div class="event-card-races-wrap">
+                {# First two races side-by-side #}
+                <div class="event-races">
+                    {% for race in event.races[:2] %}
+                    <div class="event-race">
+                        <div class="event-race-header">
+                            <a href="/race/{{ race.race_id }}" class="event-race-title">
+                                {{ race.prog_name }}{% if race.podium %} <span class="event-race-dot-sep">·</span> <span class="event-race-predicted-label">Predicted Podium</span>{% endif %}
+                            </a>
+                        </div>
+                        {% if race.podium %}
+                        <ol class="event-race-podium">
+                            {% for p in race.podium %}
+                            <li class="event-race-entry">
+                                <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
+                                <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-race-entry-img">
+                                <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                                {% if p.position == 1 and p.time %}
+                                    <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
+                                {% elif p.gap %}
+                                    <span class="event-entry-time event-entry-time--diff">{{ p.gap }}</span>
+                                {% elif p.time %}
+                                    <span class="event-entry-time event-entry-time--diff">{{ p.time }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {# Additional races revealed on demand #}
+                {% if event.races | length > 2 %}
+                <div class="event-more-races hidden">
+                    {% for race in event.races[2:] %}
+                    <div class="event-race event-race--stacked">
+                        <div class="event-race-header">
+                            <a href="/race/{{ race.race_id }}" class="event-race-title">
+                                {{ race.prog_name }}{% if race.podium %} <span class="event-race-dot-sep">·</span> <span class="event-race-predicted-label">Predicted Podium</span>{% endif %}
+                            </a>
+                        </div>
+                        {% if race.podium %}
+                        <ol class="event-race-podium">
+                            {% for p in race.podium %}
+                            <li class="event-race-entry">
+                                <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
+                                <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-race-entry-img">
+                                <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                                {% if p.position == 1 and p.time %}
+                                    <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
+                                {% elif p.gap %}
+                                    <span class="event-entry-time event-entry-time--diff">{{ p.gap }}</span>
+                                {% elif p.time %}
+                                    <span class="event-entry-time event-entry-time--diff">{{ p.time }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <button class="event-more-btn" onclick="toggleMoreRaces(this)">
+                    +{{ event.races | length - 2 }} more
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="page-section-sub">No upcoming races found.</p>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleMoreRaces(btn) {
+    const wrap = btn.closest('.event-card-races-wrap');
+    const more = wrap.querySelector('.event-more-races');
+    const hidden = more.classList.toggle('hidden');
+    const count = more.querySelectorAll('.event-race--stacked').length;
+    btn.textContent = hidden ? `+${count} more` : 'Show fewer';
+}
+</script>
+{% endblock %}

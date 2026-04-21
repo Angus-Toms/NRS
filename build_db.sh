@@ -3,17 +3,24 @@
 #
 # Steps (in order):
 #   1. ingest       - fetch from World Triathlon API, upsert races/athletes/results
-#   2. ignored      - auto-detect subset/oversized races, then apply manual ignored.csv overrides
-#   3. series       - populate race_series membership from series_data.py definitions
-#   4. ratings      - load corrections.csv, recompute ELO ratings + rankings
+#   2. pto          - scrape stats.protriathletes.org for long-course results
+#   3. ignored      - auto-detect subset/oversized races, then apply manual ignored.csv overrides
+#   4. stages       - flag combined rows of multi-stage events (heats/semis/A-B finals);
+#                     must run after ignored (writes to ignored_races)
+#   5. series       - load series.csv, apply rules, apply event_series.csv overrides
+#   6. autocorr     - detect mechanical anomalies, write auto-correction rows
+#   7. ratings      - load corrections.csv, recompute ELO ratings + rankings
 #
 # Usage:
 #   ./build_db.sh                     # run all steps
-#   ./build_db.sh --skip-ingest       # skip API fetch (e.g. data already ingested)
+#   ./build_db.sh --skip-ingest       # skip WT API fetch (e.g. data already ingested)
+#   ./build_db.sh --skip-pto          # skip PTO scrape
+#   ./build_db.sh --skip-stages       # skip multi-stage flagging
 #   ./build_db.sh --skip-ignored      # skip ignored-race detection
 #   ./build_db.sh --skip-series       # skip series membership rebuild
+#   ./build_db.sh --skip-autocorr     # skip auto-correction pass
 #   ./build_db.sh --skip-ratings      # skip ratings/rankings recompute
-#   ./build_db.sh --ratings-only      # shortcut: only recompute ratings + rankings
+#   ./build_db.sh --ratings-only      # shortcut: auto-corr + recompute ratings + rankings
 
 set -euo pipefail
 
@@ -25,15 +32,18 @@ step()    { echo -e "\n${GREEN}${BOLD}==> $*${RESET}"; }
 note()    { echo -e "${YELLOW}    $*${RESET}"; }
 elapsed() { echo -e "    done in ${BOLD}$(( SECONDS - $1 ))s${RESET}"; }
 
-DO_INGEST=true; DO_IGNORED=true; DO_SERIES=true; DO_RATINGS=true
+DO_INGEST=true; DO_PTO=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_AUTOCORR=true; DO_RATINGS=true
 
 for arg in "$@"; do
     case $arg in
         --skip-ingest)   DO_INGEST=false ;;
+        --skip-pto)      DO_PTO=false ;;
+        --skip-stages)   DO_STAGES=false ;;
         --skip-ignored)  DO_IGNORED=false ;;
         --skip-series)   DO_SERIES=false ;;
+        --skip-autocorr) DO_AUTOCORR=false ;;
         --skip-ratings)  DO_RATINGS=false ;;
-        --ratings-only)  DO_INGEST=false; DO_IGNORED=false; DO_SERIES=false ;;
+        --ratings-only)  DO_INGEST=false; DO_PTO=false; DO_STAGES=false; DO_IGNORED=false; DO_SERIES=false ;;
     esac
 done
 
@@ -47,7 +57,15 @@ if $DO_INGEST; then
     elapsed $T
 fi
 
-# ── 2. Ignored races ──────────────────────────────────────────────────────────
+# ── 2. PTO scrape ─────────────────────────────────────────────────────────────
+if $DO_PTO; then
+    step "PTO - scrape stats.protriathletes.org for long-course results"
+    T=$SECONDS
+    python3 -m ptd_data.pto_ingest
+    elapsed $T
+fi
+
+# ── 3. Ignored races ──────────────────────────────────────────────────────────
 if $DO_IGNORED; then
     step "Ignored races - auto-detect subsets/oversized + manual ignored.csv"
     T=$SECONDS
@@ -55,15 +73,32 @@ if $DO_IGNORED; then
     elapsed $T
 fi
 
-# ── 3. Series membership ──────────────────────────────────────────────────────
-if $DO_SERIES; then
-    step "Series - rebuild race_series membership"
+# ── 4. Multi-stage flagging ───────────────────────────────────────────────────
+# Runs AFTER ignored: stages.py adds stage rows to ignored_races.
+if $DO_STAGES; then
+    step "Stages - flag multi-round events + ignore their stage rows"
     T=$SECONDS
-    python3 -m ptd_data.series_data
+    python3 -m ptd_data.stages
     elapsed $T
 fi
 
-# ── 4. Ratings + Rankings ─────────────────────────────────────────────────────
+# ── 5. Series membership ──────────────────────────────────────────────────────
+if $DO_SERIES; then
+    step "Series - load series.csv, apply rules, apply CSV overrides"
+    T=$SECONDS
+    python3 -m ptd_data.series_rules
+    elapsed $T
+fi
+
+# ── 6. Auto corrections ───────────────────────────────────────────────────────
+if $DO_AUTOCORR; then
+    step "Auto-corrections - detect mechanical anomalies, write auto rows"
+    T=$SECONDS
+    python3 -m ptd_data.auto_corrections
+    elapsed $T
+fi
+
+# ── 7. Ratings + Rankings ─────────────────────────────────────────────────────
 if $DO_RATINGS; then
     step "Ratings + Rankings - load corrections.csv, recompute ELO + rankings"
     T=$SECONDS

@@ -175,21 +175,25 @@
         </div>
 
         <div class="home-lb-grid">
-            {% for label, podium, gender_slug, cat in [
-                ("Elite Men",   men_podium,      "male",   "elite"),
-                ("Elite Women", women_podium,    "female", "elite"),
-                ("AG Men",      men_ag_podium,   "male",   "ag"),
-                ("AG Women",    women_ag_podium, "female", "ag"),
+            {% for label, podium, gender_slug, cat, crs in [
+                ("Elite Men",         men_podium,         "male",   "elite", "short"),
+                ("Elite Women",       women_podium,       "female", "elite", "short"),
+                ("AG Men",            men_ag_podium,      "male",   "ag",    "short"),
+                ("AG Women",          women_ag_podium,    "female", "ag",    "short"),
+                ("Long Course Men",   men_long_podium,    "male",   "elite", "long"),
+                ("Long Course Women", women_long_podium,  "female", "elite", "long"),
             ] %}
             <div class="home-lb-card">
                 <div class="home-lb-card-header">
-                    <a href="/leaderboard?gender={{ gender_slug }}&category={{ cat }}" class="home-lb-card-title">All-time {{ label }}</a>
+                    <a href="/leaderboard?gender={{ gender_slug }}&category={{ cat }}&course={{ crs }}" class="home-lb-card-title">All-time {{ label }}</a>
                 </div>
                 <ol class="home-lb-list">
                     {% for a in podium %}
                     <li class="home-lb-item">
                         <span class="lb-pos lb-pos--{{ loop.index }}">{{ loop.index }}</span>
-                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}" class="lb-name lb-name-link">{{ a.country_emoji }} {{ a.name }}</a>
+                        <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img else 'imgs/default_user_64.webp' }}"
+                             alt="{{ a.name }}" class="lb-img" loading="lazy">
+                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-name lb-name-link">{{ a.name }} {{ a.country_emoji }}</a>
                         <span class="lb-rating">{{ "%.1f"|format(a.overall) }}</span>
                     </li>
                     {% endfor %}

@@ -39,15 +39,37 @@
         <div class="athlete-hero-info">
             <div class="athlete-hero-name-row">
                 <h1 class="athlete-hero-name">
-                    {{ athlete.name }} {{ athlete.country_emoji }}
+                    {{ athlete.name }}
+                    {% if athlete.country_alpha3 %}
+                        <a href="/country/{{ athlete.country_alpha3 }}" class="athlete-hero-flag-link" title="{{ athlete.country_full }}">{{ athlete.country_emoji }}</a>
+                    {% else %}
+                        {{ athlete.country_emoji }}
+                    {% endif %}
                     <span class="athlete-status-chip {{ 'status-active' if athlete.active else 'status-retired' }}">{{ 'Active' if athlete.active else 'Retired' }}</span>
                 </h1>
                 <div class="athlete-hero-actions">
+                    {% if available_courses and available_courses|length > 1 %}
+                    <div class="athlete-course-summary">
+                        {% for c in ['short', 'long'] %}
+                            {% set cs = course_summaries.get(c) %}
+                            {% if cs %}
+                            <a href="/athlete/{{ athlete.athlete_id }}?course={{ c }}&category={{ category }}"
+                               class="course-summary-card {{ 'active' if course == c else '' }}">
+                                <span class="course-summary-label">{{ 'Short Course' if c == 'short' else 'Long Course' }}</span>
+                                <span class="course-summary-rating">{{ cs.overall_rating }}</span>
+                                {% if cs.world_overall %}
+                                <span class="course-summary-rank">#{{ cs.world_overall.n }} world</span>
+                                {% endif %}
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     {% if has_elite and has_ag %}
                     <div class="athlete-category-toggle">
-                        <a href="/athlete/{{ athlete.athlete_id }}?category=elite"
+                        <a href="/athlete/{{ athlete.athlete_id }}?category=elite&course={{ course }}"
                            class="category-btn {{ 'active' if category == 'elite' else '' }}">Elite</a>
-                        <a href="/athlete/{{ athlete.athlete_id }}?category=ag"
+                        <a href="/athlete/{{ athlete.athlete_id }}?category=ag&course={{ course }}"
                            class="category-btn {{ 'active' if category == 'ag' else '' }}">Age Group</a>
                     </div>
                     {% endif %}
@@ -55,7 +77,11 @@
                 </div>
             </div>
             <div class="athlete-hero-meta">
-                {{ athlete.country_full }}
+                {% if athlete.country_alpha3 %}
+                    <a href="/country/{{ athlete.country_alpha3 }}" class="athlete-hero-country-link">{{ athlete.country_full }}</a>
+                {% else %}
+                    {{ athlete.country_full }}
+                {% endif %}
                 {% if athlete.year_of_birth != 0 %}
                 <span class="hero-meta-dot">·</span> b. {{ athlete.year_of_birth|int }}
                 {% endif %}
@@ -183,6 +209,67 @@
 </div>
 {% endif %}{# has_ratings #}
 
+{% if upcoming_races %}
+<div class="page-section-head">Upcoming Races</div>
+<p class="page-section-sub" style="margin-bottom:0.75rem">Predicted positions and splits are based on current ratings. Actual results may vary.</p>
+<div class="table-section results-table upcoming-races-table">
+    <table class="sortable-table">
+        <thead>
+            <tr>
+                <th class="sortable date-col"     data-sort="date">Date</th>
+                <th class="sortable race-col"     data-sort="string">Race</th>
+                <th class="sortable program-col"  data-sort="string">Program</th>
+                <th class="sortable position-col" data-sort="number">Pred. Pos</th>
+                <th class="sortable time-col"     data-sort="time">Pred. Swim</th>
+                <th class="sortable time-col"     data-sort="time">Pred. Bike</th>
+                <th class="sortable time-col"     data-sort="time">Pred. Run</th>
+                <th class="sortable time-col overall-col" data-sort="time">Pred. Overall</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in upcoming_races %}
+            <tr>
+                <td class="date-col muted-col" data-value="{{ r.race_date }}">
+                    {{ r.race_date.strftime('%d %b %Y') }}
+                </td>
+                <td class="race-col" data-value="{{ r.event_name }}">
+                    <a href="/race/{{ r.race_id }}" class="link">{{ r.event_name }}</a>
+                    {% if r.std_class %}<span class="std-pill std-pill--{{ r.std_class }}">{{ r.std_class|title }}</span>{% endif %}
+                </td>
+                <td class="program-col muted-col" data-value="{{ r.prog_name }}">{{ r.prog_name }}</td>
+                <td class="position-col" data-value="{{ r.pred_pos if r.pred_pos else 9999 }}">
+                    {% if r.pred_pos == 1 %}<span class="pos-circle gold">1</span>
+                    {% elif r.pred_pos == 2 %}<span class="pos-circle silver">2</span>
+                    {% elif r.pred_pos == 3 %}<span class="pos-circle bronze">3</span>
+                    {% elif r.pred_pos %}<span class="pos-other">{{ r.pred_pos }}</span>
+                    {% else %}<span class="pos-other">—</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ r.pred_swim or '' }}">
+                    <span class="time-cell-main{{ ' fastest' if r.pred_swim_behind == 'fastest' else '' }}">{{ r.pred_swim or '' }}</span>
+                    {% if r.pred_swim_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
+                    {% elif r.pred_swim_behind %}<span class="time-cell-gap">{{ r.pred_swim_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ r.pred_bike or '' }}">
+                    <span class="time-cell-main{{ ' fastest' if r.pred_bike_behind == 'fastest' else '' }}">{{ r.pred_bike or '' }}</span>
+                    {% if r.pred_bike_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
+                    {% elif r.pred_bike_behind %}<span class="time-cell-gap">{{ r.pred_bike_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col" data-value="{{ r.pred_run or '' }}">
+                    <span class="time-cell-main{{ ' fastest' if r.pred_run_behind == 'fastest' else '' }}">{{ r.pred_run or '' }}</span>
+                    {% if r.pred_run_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
+                    {% elif r.pred_run_behind %}<span class="time-cell-gap">{{ r.pred_run_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col overall-col" data-value="{{ r.pred_overall or '' }}">
+                    <span class="overall-time">{{ r.pred_overall or '' }}</span>
+                    {% if r.pred_overall_behind and r.pred_overall_behind != 'fastest' %}<span class="time-cell-gap">{{ r.pred_overall_behind }}</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <div class="page-section-head">Race Results</div>
 <div class="table-section results-table">
     <table class="sortable-table">
@@ -213,6 +300,7 @@
                 </td>
                 <td class="race-col" data-value="{{ race.race_title }}">
                     <a href="/race/{{ race.race_id }}" class="link">{{ race.race_title }}</a>
+                    {% if race.is_multi_stage %}{% include "_multi_stage_badge.html" %}{% endif %}
                     <span class="std-pill std-pill--{{ race.standard_class }}">{{ race.standard_class|title }}</span>
                 </td>
                 <td class="program-col muted-col" data-value="{{ race.program }}">{{ race.program }}</td>
@@ -254,17 +342,15 @@
                     {% if race.overall_behind %}<span class="time-cell-gap">{{ race.overall_behind }}</span>{% endif %}
                 </td>
             </tr>
-            {% for sub in race.sub_races %}
+            {% for sub in race.sub_races | reverse %}
             <tr class="sub-race-row" data-parent="{{ race.race_id }}">
-                <td class="date-col muted-col" data-value="{{ sub.race_date }}"></td>
+                <td class="date-col muted-col sub-race-stage-col" data-value="{{ sub.race_date }}">
+                    <svg class="sub-race-corner-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
+                    <span class="sub-race-stage-label">Stage {{ loop.revindex }}</span>
+                </td>
                 <td class="race-col" data-value="{{ sub.race_title }}">
-                    <div class="sub-race-name-cell">
-                        <span class="sub-race-arrow">↳</span>
-                        <span class="sub-race-name-text">
-                            <a href="/race/{{ sub.race_id }}" class="link">{{ sub.race_title }}</a>
-                            <span class="std-pill std-pill--{{ sub.standard_class }}">{{ sub.standard_class|title }}</span>
-                        </span>
-                    </div>
+                    <a href="/race/{{ sub.race_id }}" class="link">{{ sub.race_title }}</a>
+                    <span class="std-pill std-pill--{{ sub.standard_class }}">{{ sub.standard_class|title }}</span>
                 </td>
                 <td class="program-col muted-col">{{ sub.program }}</td>
                 <td class="position-col" data-value="{{ sub.position or 9999 }}">
@@ -344,6 +430,7 @@
     </table>
 </div>
 
+{% if show_charts %}
 <div class="page-section-head" id="ratings-section-title">Rating History - Overall</div>
 <div class="collapsible-card ratings-history-section">
     <div class="ratings-main-chart">
@@ -399,11 +486,12 @@
         {% endfor %}
     </div>
 </div>
+{% endif %}{# show_charts #}
 {% endif %}{# has_ratings #}
 {% endblock %}
 
 {% block extra_js %}
-{% if has_ratings %}
+{% if show_charts %}
 <!-- Historical ratings chart -->
 <script id="ratings-chart-data" type="application/json">
     {{ ratings_chart | tojson }}

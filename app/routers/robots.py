@@ -61,6 +61,7 @@ async def sitemap_index(request: Request) -> Response:
         f'  <sitemap><loc>{base}/sitemap-static.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         f'  <sitemap><loc>{base}/sitemap-athletes.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
+        f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         '</sitemapindex>\n'
     )
     return Response(content=xml, media_type="application/xml")
@@ -75,6 +76,7 @@ async def sitemap_static(request: Request) -> Response:
         _url(f"{base}/leaderboard", today, "daily",  0.9),
         _url(f"{base}/races",       today, "daily",  0.9),
         _url(f"{base}/athletes",    today, "weekly", 0.8),
+        _url(f"{base}/countries",   today, "weekly", 0.7),
         _url(f"{base}/compare",     today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
     ]
@@ -107,6 +109,34 @@ async def sitemap_athletes(request: Request) -> Response:
         else:
             priority = 0.5
         urls.append(_url(f"{base}/athlete/{athlete_id}", changefreq="weekly", priority=priority))
+
+    return Response(content=_wrap_urlset(urls), media_type="application/xml")
+
+
+@router.get("/sitemap-countries.xml")
+async def sitemap_countries(request: Request) -> Response:
+    base = str(request.base_url).rstrip("/")
+    today = date.today().isoformat()
+    conn = db.get_conn(read_only=True)
+    rows = conn.execute("""
+        SELECT n.alpha3, COUNT(a.athlete_id) AS athlete_count
+        FROM nationalities n
+        LEFT JOIN athletes a ON a.country_full = n.country_full
+        GROUP BY n.alpha3
+        ORDER BY athlete_count DESC, n.alpha3
+    """).fetchall()
+    conn.close()
+
+    urls = []
+    for alpha3, count in rows:
+        # Countries with athletes get higher priority than empty ones.
+        priority = 0.8 if count > 50 else 0.7 if count > 0 else 0.4
+        urls.append(_url(
+            f"{base}/country/{alpha3}",
+            lastmod=today,
+            changefreq="weekly",
+            priority=priority,
+        ))
 
     return Response(content=_wrap_urlset(urls), media_type="application/xml")
 

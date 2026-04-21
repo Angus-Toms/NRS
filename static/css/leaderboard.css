@@ -70,6 +70,23 @@
 
 /* Note: .filter-group, .year-range, .range-sep, .btn-age-preset are in base.css */
 
+.leaderboard-country-chip {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+}
+.leaderboard-country-chip:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
 /* ============================================
    ATHLETE CARDS GRID
    ============================================ */

@@ -52,6 +52,14 @@ def race_category(prog_name):
     return 'ag'
 
 
+def race_sub_category(prog_name):
+    """Sub-category used for program filtering: 'elite' | 'u23' | 'junior' | 'youth' | 'ag'."""
+    first = prog_name.lower().split()[0] if prog_name else ''
+    if first in _ELITE_PROG_PREFIXES:
+        return first
+    return 'ag'
+
+
 def is_valid_program(prog_name):
     """Legacy shim - True if this program should be processed at all."""
     return race_category(prog_name) is not None
@@ -190,6 +198,24 @@ def is_short_course(event):
     return any(sid in VALID_SPEC_IDS for sid in get_spec_ids(event))
 
 
+def infer_distance(spec_ids, winner_time_s=None):
+    """Map WT spec IDs to distance enum value.
+
+    376 = sprint, 377 = standard. When both are present (mixed-distance event),
+    fall back to winner time: sub-90-min winner is sprint, else standard.
+    """
+    has_sprint = 376 in spec_ids
+    has_standard = 377 in spec_ids
+    if has_sprint and not has_standard:
+        return 'sprint'
+    if has_standard and not has_sprint:
+        return 'standard'
+    # Both present — infer from winner time when available
+    if winner_time_s:
+        return 'sprint' if winner_time_s < 5400 else 'standard'
+    return 'standard'  # conservative fallback
+
+
 class Ingester:
     def __init__(self, conn):
         self.conn = conn
@@ -207,6 +233,7 @@ class Ingester:
             pd.DataFrame(events).to_csv(f, index=False)
 
         self._ingest_events(short_events)
+        db.backfill_sub_category(self.conn)
 
     def _fetch_all_events(self):
         """Paginate through /events endpoint."""
@@ -294,7 +321,10 @@ class Ingester:
         """GET /events/{id}/programs - returns list of dicts."""
         response = _session.get(f"{BASE_URL}/events/{event_id}/programs")
         data = response.json().get('data', [])
-        return data if data else []
+        if not isinstance(data, list):
+            return []
+        # API occasionally returns non-dict items (strings, nulls); skip them.
+        return [p for p in data if isinstance(p, dict)]
 
     def _fetch_results(self, event_id, prog_id):
         """GET /events/{id}/programs/{prog_id}/results - returns list of result dicts."""
@@ -362,9 +392,9 @@ class Ingester:
 
             position_int, status = parse_position(r.get('position', ''))
 
-            # Zero out splits for non-finishers
-            if overall_s == 0:
-                swim_s = t1_s = bike_s = t2_s = run_s = 0.0
+            # Note: DNFs keep whatever splits the API returned. auto_corrections
+            # (run after ingest) handles cleanup; genuine per-leg splits then
+            # contribute to per-discipline ELO updates.
 
             result_rows.append((
                 prog_id, athlete_id, position_int, status, start_num,
@@ -373,22 +403,27 @@ class Ingester:
 
         if not result_rows:
             prog_name = str(prog.get('prog_name', ''))
-            print(f"  Skipping {prog_name} (no individual results, likely team event)")
+            race_title = str(event.get('event_title', ''))
+            print(f"  Skipping {race_title!r} — {prog_name!r} (no individual results, likely team event)")
             return False
 
         race_title = str(event.get('event_title', ''))
         location = clean_field(event.get('event_venue', ''))
         race_date = str(prog.get('prog_date', ''))
+        prog_name = str(prog.get('prog_name', ''))
+        winner_s = next((r[5] for r in result_rows if r[2] == 1 and r[5] > 0), None)
         db.insert_race(
             self.conn,
             race_id=prog_id,
             event_id=event_id,
             race_title=race_title,
-            prog_name=str(prog.get('prog_name', '')),
+            prog_name=prog_name,
             race_date=race_date,
             gender=gender,
             category=category,
+            sub_category=race_sub_category(prog_name),
             cat_ids=str(get_category_ids(event)),
+            distance=infer_distance(get_spec_ids(event), winner_s),
             race_handle=generate_race_handle(prog_id, race_title, location, race_date),
             event_spec_ids=str(get_spec_ids(event)),
         )
@@ -419,6 +454,152 @@ class Ingester:
             longitude=longitude,
             latitude=latitude
         )
+
+
+class StartListIngester:
+    """Fetches start lists for upcoming short-course races (next 90 days) and writes to DB."""
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    def run(self):
+        from datetime import date, timedelta
+        today = date.today()
+        end = today + timedelta(days=90)
+
+        print(f"Fetching upcoming events {today} → {end}...")
+        resp = _session.get(f"{BASE_URL}/events", params={
+            'start_date': today.isoformat(),
+            'end_date': end.isoformat(),
+            'per_page': 100,
+        })
+        events = resp.json().get('data', [])
+        short_events = [e for e in events if is_short_course(e)]
+        print(f"Found {len(short_events)} short course events")
+
+        self._purge_completed()
+
+        total_entries = 0
+        for event in short_events:
+            event_id = event['event_id']
+            programs = self._fetch_programs(event_id)
+            sleep(0.3)
+
+            for prog in programs:
+                prog_name = prog.get('prog_name', '')
+                category = race_category(prog_name)
+                if category is None:
+                    continue
+                gender = detect_gender(prog_name)
+                if gender is None:
+                    continue
+                # Skip if already has results (will be/is ingested as a completed race)
+                if not prog.get('is_race') or prog.get('results'):
+                    continue
+
+                prog_id = int(prog['prog_id'])
+                entries = self._fetch_entries(event_id, prog_id)
+                sleep(0.3)
+                if not entries:
+                    continue
+
+                self._upsert_upcoming_race(event, prog, gender, category)
+                count = self._upsert_entries(prog_id, entries, gender)
+                total_entries += count
+                print(f"  {prog_name} — {event['event_title']}: {count} entries")
+
+        print(f"Done. {total_entries} total start list entries")
+
+    def _fetch_programs(self, event_id):
+        resp = _session.get(f"{BASE_URL}/events/{event_id}/programs")
+        data = resp.json().get('data', [])
+        if not isinstance(data, list):
+            return []
+        return [p for p in data if isinstance(p, dict)]
+
+    def _fetch_entries(self, event_id, prog_id):
+        resp = _session.get(f"{BASE_URL}/events/{event_id}/programs/{prog_id}/entries")
+        entries = resp.json().get('data', {}).get('entries', [])
+        # Only approved entries make the start list
+        return [e for e in entries if e.get('approved', False)]
+
+    def _upsert_upcoming_race(self, event, prog, gender, category):
+        race_id = int(prog['prog_id'])
+        event_id = int(event['event_id'])
+        race_title = str(event.get('event_title', ''))
+        prog_name = str(prog.get('prog_name', ''))
+        race_date = str(prog.get('prog_date', ''))
+        location = clean_field(event.get('event_venue', ''))
+
+        # Ensure event exists in events table
+        db.insert_event(
+            self.conn,
+            event_id=event_id,
+            name=race_title,
+            venue=location,
+            country=clean_field(event.get('event_country', '')),
+            continent=clean_field(event.get('event_region_name', '')),
+            start_date=str(event.get('event_date', '')) or None,
+            end_date=str(event.get('event_finish_date', '')) or None,
+            longitude=parse_lnglat(event.get('event_longitude', 0)),
+            latitude=parse_lnglat(event.get('event_latitude', 0)),
+        )
+
+        self.conn.execute("""
+            INSERT OR REPLACE INTO upcoming_races
+                (race_id, event_id, race_title, prog_name, race_date, gender, category,
+                 cat_ids, race_handle, event_spec_ids, last_fetched)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, [
+            race_id, event_id, race_title, prog_name, race_date, gender, category,
+            str(get_category_ids(event)),
+            generate_race_handle(race_id, race_title, location, race_date),
+            str(get_spec_ids(event)),
+        ])
+
+    def _upsert_entries(self, race_id, entries, gender):
+        rows = []
+        for e in entries:
+            if 'athlete_id' not in e:
+                continue
+            athlete_id = int(e['athlete_id'])
+            name = str(e.get('athlete_title', '')).replace('"', '').replace("'", "")
+            country_name = str(e.get('athlete_country_name', ''))
+            yob = 0
+            try:
+                yob = int(float(e.get('athlete_yob', 0)))
+            except (ValueError, TypeError):
+                pass
+            profile_img = str(e.get('athlete_profile_image', '') or '')
+            start_num = 0
+            try:
+                start_num = int(e.get('start_num', 0) or 0)
+            except (ValueError, TypeError):
+                pass
+
+            db.upsert_nationality(self.conn, country_name)
+            db.upsert_athlete(self.conn, athlete_id, name, country_name, yob, profile_img, gender)
+            rows.append((race_id, athlete_id, start_num))
+
+        if rows:
+            # Full replace — handles withdrawals and bib reassignments
+            self.conn.execute("DELETE FROM start_list_entries WHERE race_id = ?", [race_id])
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO start_list_entries (race_id, athlete_id, start_num) VALUES (?, ?, ?)",
+                rows,
+            )
+        return len(rows)
+
+    def _purge_completed(self):
+        """Remove upcoming races that have since been ingested as completed races."""
+        self.conn.execute("""
+            DELETE FROM start_list_entries
+            WHERE race_id IN (SELECT race_id FROM races)
+        """)
+        self.conn.execute("""
+            DELETE FROM upcoming_races
+            WHERE race_id IN (SELECT race_id FROM races)
+        """)
 
 
 if __name__ == "__main__":

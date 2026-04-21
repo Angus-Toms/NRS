@@ -1,0 +1,425 @@
+/* ---------------------------------------------------------------------------
+   Country pages - /countries (index) and /country/{alpha3} (detail)
+
+   The detail page reuses .athlete-card / .rank-badge / .athlete-ratings from
+   leaderboard.css (loaded alongside this file), and the home-page .event-card
+   stack for the Recent Events section. Everything prefixed .country- is local.
+   ------------------------------------------------------------------------- */
+
+
+/* ============================================================
+   Detail page hero
+   ============================================================ */
+.country-hero-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+}
+
+.country-hero-copy h1 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin: 0;
+}
+
+.country-hero-name {
+    display: inline-block;
+}
+
+.country-hero-emoji {
+    font-size: 2.2rem;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+
+
+/* ============================================================
+   Layout wrappers
+   ============================================================ */
+.country-page,
+.country-index-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--spacing-lg) var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.country-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.country-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.country-section-subtitle {
+    font-weight: 500;
+    color: var(--text-light);
+    font-size: 0.88rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+
+/* ============================================================
+   Tabs (discipline + gender) - buttons, AJAX-driven
+   ============================================================ */
+.country-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm);
+}
+
+.country-tab-group {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.country-tab {
+    padding: 0.5rem 0.9rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.88rem;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.country-tab:hover:not(.country-tab--active) {
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+.country-tab--active {
+    background: var(--navy);
+    color: #fff;
+}
+
+.country-tab--pill {
+    border: 1px solid var(--border-color);
+}
+.country-tab--pill.country-tab--active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+
+/* ============================================================
+   Leaderboard AJAX wrapper (loading fade)
+   ============================================================ */
+.country-leaderboard-wrap {
+    transition: opacity 0.15s;
+}
+.country-leaderboard-wrap--loading {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.country-empty {
+    padding: var(--spacing-lg);
+    color: var(--text-light);
+    text-align: center;
+    font-size: 0.9rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+
+/* ============================================================
+   Championship medals
+   ============================================================ */
+.country-medals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.country-medal-tile {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.country-medal-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.country-medal-counts {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.country-medal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.country-medal-pip { font-size: 1.25rem; line-height: 1; }
+
+.country-medal-n {
+    font-weight: 700;
+    color: var(--text-color);
+    font-size: 1.05rem;
+}
+
+
+/* ============================================================
+   Upcoming events
+   ============================================================ */
+.country-upcoming-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.country-upcoming-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.country-upcoming-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.country-upcoming-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.country-upcoming-header,
+.country-upcoming-body {
+    position: relative;
+    z-index: 1;
+}
+
+.country-upcoming-title {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+    margin-bottom: 0.15rem;
+}
+
+.country-upcoming-meta {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.country-upcoming-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-sm);
+}
+
+.country-upcoming-race {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: 0.85rem;
+}
+
+.country-upcoming-race-title {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+.country-upcoming-race-title:hover { color: var(--primary-color); }
+
+.country-upcoming-race-meta {
+    color: var(--text-light);
+    font-size: 0.78rem;
+}
+
+.country-upcoming-more {
+    font-size: 0.78rem;
+    color: var(--text-lighter);
+    font-style: italic;
+}
+
+
+/* ============================================================
+   Map
+   ============================================================ */
+.country-map-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+#country-map {
+    width: 100%;
+    height: 360px;
+}
+
+.country-map-pin-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+}
+
+.country-map-popup .leaflet-popup-content-wrapper {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--border-radius-sm);
+    padding: 0;
+}
+.country-map-popup .leaflet-popup-content {
+    margin: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+.country-map-popup .leaflet-popup-content strong { display: block; }
+.country-map-popup .leaflet-popup-content span {
+    color: var(--text-lighter);
+    font-size: 0.75rem;
+}
+.country-map-popup .leaflet-popup-tip { background: var(--navy); }
+
+
+/* ============================================================
+   /countries index
+   ============================================================ */
+.country-index-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.country-index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.country-index-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.country-index-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.country-index-flag {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.country-index-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.country-index-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.country-index-meta {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.country-index-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+    min-width: 0;
+}
+
+.country-index-top-img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.country-index-top-name {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   Mobile
+   ============================================================ */
+@media (max-width: 600px) {
+    .country-hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .country-hero-emoji { font-size: 1.8rem; }
+}

@@ -146,27 +146,27 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 352718,142131,00:37:37,00:02:18,01:46:54,00:00:54,01:02:36,03:30:19,Milea Zdravkovic has incorrectly formatted run split; relcaulcated from other splits
 352718,142133,00:47:18,00:06:28,01:45:33,00:04:02,00:55:47,03:39:08,Diliana Markova has incorrectly formatted run split; relcaulcated from other splits
 352718,142134,00:43:28,00:03:14,01:43:04,00:01:29,01:19:58,03:51:13,Svetlana Dalovic has incorrectly formatted run split; relcaulcated from other splits
-351399,85453,00:36:21,00:10:25,00:00:00,00:00:36,00:18:39,01:07:42,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,29108,00:36:23,00:10:25,00:00:00,00:00:39,00:18:33,01:07:43,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,21487,00:35:21,00:10:30,00:00:00,00:00:41,00:18:42,01:07:53,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,39533,00:36:23,00:10:24,00:00:00,00:00:37,00:19:44,01:08:48,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,20573,00:36:11,00:10:31,00:00:00,00:00:39,00:19:51,01:09:01,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,25161,00:36:07,00:10:32,00:00:00,00:00:38,00:21:11,01:10:18,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,113127,00:38:36,00:10:51,00:00:00,00:00:40,00:20:11,01:12:01,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,93997,00:37:31,00:10:31,00:00:00,00:00:46,00:21:40,01:12:57,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,132852,00:39:04,00:10:54,00:00:00,00:00:42,00:20:54,01:13:34,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,30828,00:38:25,00:11:41,00:00:00,00:00:43,00:21:08,01:13:51,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,168259,00:38:58,00:11:12,00:00:00,00:00:52,00:21:15,01:14:07,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,30829,00:38:27,00:11:41,00:00:00,00:00:40,00:21:45,01:14:30,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,121666,00:39:06,00:10:58,00:00:00,00:00:43,00:21:58,01:14:42,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,131972,00:40:06,00:10:28,00:00:00,00:00:41,00:23:05,01:15:51,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,107632,00:40:03,00:10:23,00:00:00,00:00:48,00:24:20,01:16:50,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,112700,00:40:33,00:11:38,00:00:00,00:00:49,00:22:36,01:16:57,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,123072,00:38:10,00:11:56,00:00:00,00:00:40,00:25:52,01:18:32,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,121577,00:41:48,00:11:58,00:00:00,00:00:53,00:22:21,01:19:22,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,143473,00:46:24,00:11:39,00:00:00,00:00:51,00:22:29,01:22:42,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,123975,00:45:05,00:10:45,00:00:00,00:00:50,00:25:10,01:24:00,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
-351399,132495,00:46:57,00:12:24,00:00:00,00:00:49,00:25:14,01:27:45,Bike split has likely been measured across swim and T1. Bike split has to be removed for consistency
+351399,85453,00:36:21,00:10:25,00:00:00,00:00:36,00:18:39,01:07:42,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,29108,00:36:23,00:10:25,00:00:00,00:00:39,00:18:33,01:07:43,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,21487,00:35:21,00:10:30,00:00:00,00:00:41,00:18:42,01:07:53,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,39533,00:36:23,00:10:24,00:00:00,00:00:37,00:19:44,01:08:48,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,20573,00:36:11,00:10:31,00:00:00,00:00:39,00:19:51,01:09:01,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,25161,00:36:07,00:10:32,00:00:00,00:00:38,00:21:11,01:10:18,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,113127,00:38:36,00:10:51,00:00:00,00:00:40,00:20:11,01:12:01,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,93997,00:37:31,00:10:31,00:00:00,00:00:46,00:21:40,01:12:57,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,132852,00:39:04,00:10:54,00:00:00,00:00:42,00:20:54,01:13:34,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,30828,00:38:25,00:11:41,00:00:00,00:00:43,00:21:08,01:13:51,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,168259,00:38:58,00:11:12,00:00:00,00:00:52,00:21:15,01:14:07,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,30829,00:38:27,00:11:41,00:00:00,00:00:40,00:21:45,01:14:30,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,121666,00:39:06,00:10:58,00:00:00,00:00:43,00:21:58,01:14:42,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,131972,00:40:06,00:10:28,00:00:00,00:00:41,00:23:05,01:15:51,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,107632,00:40:03,00:10:23,00:00:00,00:00:48,00:24:20,01:16:50,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,112700,00:40:33,00:11:38,00:00:00,00:00:49,00:22:36,01:16:57,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,123072,00:38:10,00:11:56,00:00:00,00:00:40,00:25:52,01:18:32,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,121577,00:41:48,00:11:58,00:00:00,00:00:53,00:22:21,01:19:22,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,143473,00:46:24,00:11:39,00:00:00,00:00:51,00:22:29,01:22:42,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,123975,00:45:05,00:10:45,00:00:00,00:00:50,00:25:10,01:24:00,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
+351399,132495,00:46:57,00:12:24,00:00:00,00:00:49,00:25:14,01:27:45,Bike split has likely been measured across swim and T1. Bike split has been removed for consistency
 543624,142030,00:24:05,00:00:27,01:11:34,00:00:34,00:41:46,02:18:26,Inga Paplauske has incorrectly formatted bike split; recalculated from other splits
 543624,124809,00:26:59,00:01:15,01:09:37,00:00:48,00:43:20,02:21:59,Inga Aukselyte has incorrectly formatted bike split; recalculated from other splits
 543624,106299,00:24:40,00:00:41,01:12:35,00:00:54,00:44:06,02:22:56,Unė Narkūnaitė has incorrectly formatted bike split; recalculated from other splits
@@ -194,3 +194,23 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 580132,137912,00:23:35,00:01:06,01:11:25,00:01:09,00:44:40,02:21:55,Siri Ohrankämmen has incorrectly formatted bike split; recalculated from other splits
 580132,173174,00:23:10,00:00:54,01:11:10,00:01:08,00:48:12,02:24:34,Linda Brännlund has incorrectly formatted bike split; recalculated from other splits
 580132,173175,00:28:12,00:02:27,01:11:26,00:01:27,00:50:56,02:34:28,Emilia Lindström has incorrectly formatted bike split; recalculated from other splits
+677475,123682,00:09:03,00:00:55,00:27:10,00:00:24,00:15:36,00:53:08,Maciej Bruzdziak swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,141545,00:09:02,00:00:51,00:27:16,00:00:24,00:17:28,00:55:01,Mateusz Gluszkowski swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,143337,00:10:07,00:00:47,00:28:04,00:00:26,00:15:39,00:55:03,Kamil Kulik swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,180819,00:09:51,00:00:50,00:28:18,00:00:30,00:15:44,00:55:13,Jakub Suchan swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,170009,00:09:57,00:00:51,00:28:11,00:00:25,00:16:28,00:55:52,Kacper Serwiński swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,167350,00:09:54,00:00:53,00:28:14,00:00:27,00:17:15,00:56:43,Stanisław Ptaszyński swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,124408,00:09:42,00:00:52,00:29:35,00:00:25,00:16:58,00:57:32,Adrian Wilk swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,148436,00:10:09,00:00:51,00:29:36,00:00:30,00:17:10,00:58:16,Karol Janicki swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,160314,00:10:12,00:00:52,00:29:30,00:00:28,00:17:24,00:58:26,Tymon Horsten swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,181590,00:09:54,00:00:59,00:29:17,00:00:28,00:17:55,00:58:33,Jakub Maliszewski swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,182757,00:10:19,00:00:56,00:30:24,00:00:31,00:17:32,00:59:42,Igor Soborski swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,161435,00:10:10,00:00:54,00:30:22,00:00:30,00:18:16,01:00:12,Wiktor Zasada swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,187693,00:10:09,00:00:56,00:00:00,00:00:00,00:00:00,01:00:17,Łukasz Waniewski swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,13365,00:10:09,00:01:00,00:31:07,00:00:34,00:17:40,01:00:30,Bartosz Smeda swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,202162,00:10:51,00:00:59,00:30:46,00:00:26,00:17:34,01:00:36,Bartek Kantarowski swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,71748,00:10:49,00:01:01,00:30:47,00:00:25,00:17:38,01:00:40,Robert Czysz swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,178011,00:11:07,00:00:57,00:30:53,00:00:26,00:17:25,01:00:48,Mateusz Majak swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,187074,00:10:08,00:00:59,00:31:10,00:00:30,00:18:02,01:00:49,Tymoteusz Jarząb swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,194946,00:10:21,00:00:56,00:30:17,00:00:30,00:19:03,01:01:07,Patryk Mościcki-Zanchi swim parsed as HH:MM:SS instead of MM:SS; divided by 60
+677475,195922,00:11:01,00:01:00,00:30:54,00:00:27,00:18:07,01:01:29,Wiktor Jankowiak swim parsed as HH:MM:SS instead of MM:SS; divided by 60

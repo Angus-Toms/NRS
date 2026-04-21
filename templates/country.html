@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}{{ country.country_full }} - Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="{{ meta_description }}">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Triathlon in {{ country.country_full }} - Pro Tri Data">
+<meta property="og:description" content="{{ meta_description }}">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css">
+{% if map_locations %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+{% endif %}
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero country-hero">
+    <div class="page-hero-inner country-hero-inner">
+        <div class="country-hero-copy">
+            <h1>
+                <span class="country-hero-name">{{ country.country_full }}</span>
+                <span class="country-hero-emoji" aria-hidden="true">{{ country.emoji }}</span>
+            </h1>
+        </div>
+        <div class="hero-stats">
+            {% for stat in hero_stats %}
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ stat.num }}</span>
+                <span class="hero-stat-lbl">{{ stat.label }}</span>
+            </div>
+            {% if not loop.last %}<div class="hero-stat-sep"></div>{% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="country-page"
+     data-alpha3="{{ country.alpha3 }}"
+     data-discipline="{{ discipline }}"
+     data-gender="{{ gender }}"
+     data-course="{{ course }}">
+
+    <!-- ── National leaderboard ────────────────────────────────────────── -->
+    <section class="country-section">
+        <div class="page-section-head country-section-head">
+            <span class="country-section-title">
+                National Leaders ·
+                <span class="country-section-subtitle" id="country-lb-subtitle">{{ discipline_label }} · {{ gender_label }}</span>
+            </span>
+        </div>
+
+        <nav class="country-tabs" aria-label="Leaderboard filters">
+            <div class="country-tab-group" id="country-disc-tabs">
+                {% for d in discs %}
+                <button type="button"
+                        class="country-tab{% if d == discipline %} country-tab--active{% endif %}"
+                        data-discipline="{{ d }}">{{ disc_labels[d] }}</button>
+                {% endfor %}
+            </div>
+            <div class="country-tab-group country-tab-group--gender" id="country-gender-tabs">
+                {% for g, label in gender_options %}
+                <button type="button"
+                        class="country-tab country-tab--pill{% if g == gender %} country-tab--active{% endif %}"
+                        data-gender="{{ g }}">{{ label }}</button>
+                {% endfor %}
+            </div>
+            <div class="country-tab-group country-tab-group--gender" id="country-course-tabs">
+                <button type="button"
+                        class="country-tab country-tab--pill{% if course == 'short' %} country-tab--active{% endif %}"
+                        data-course="short">Short</button>
+                <button type="button"
+                        class="country-tab country-tab--pill{% if course == 'long' %} country-tab--active{% endif %}"
+                        data-course="long">Long</button>
+            </div>
+        </nav>
+
+        <div id="country-leaderboard-wrap" class="country-leaderboard-wrap">
+            {% include "partials/country_leaderboard.html" with context %}
+        </div>
+    </section>
+
+    <!-- ── Championship medals ────────────────────────────────────────── -->
+    {% if medals %}
+    <section class="country-section">
+        <div class="page-section-head">Championship Medals</div>
+        <div class="country-medals-grid">
+            {% for m in medals %}
+            <div class="country-medal-tile">
+                <div class="country-medal-label">{{ m.label }}</div>
+                <div class="country-medal-counts">
+                    <span class="country-medal country-medal--gold">
+                        <span class="country-medal-pip">🥇</span><span class="country-medal-n">{{ m.gold }}</span>
+                    </span>
+                    <span class="country-medal country-medal--silver">
+                        <span class="country-medal-pip">🥈</span><span class="country-medal-n">{{ m.silver }}</span>
+                    </span>
+                    <span class="country-medal country-medal--bronze">
+                        <span class="country-medal-pip">🥉</span><span class="country-medal-n">{{ m.bronze }}</span>
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── Upcoming events ─────────────────────────────────────────────── -->
+    {% if upcoming_events %}
+    <section class="country-section">
+        <div class="page-section-head">Upcoming Events</div>
+        <div class="country-upcoming-grid">
+            {% for event in upcoming_events %}
+            <div class="country-upcoming-card">
+                <a href="/event/{{ event.event_id }}" class="country-upcoming-overlay" aria-label="{{ event.name }}"></a>
+                <div class="country-upcoming-header">
+                    <div class="country-upcoming-title">{{ event.name }}</div>
+                    <div class="country-upcoming-meta">
+                        <span>{{ event.start_date.strftime('%-d %b %Y') }}</span>
+                        {% if event.venue %}<span>· {{ event.venue }}</span>{% endif %}
+                    </div>
+                </div>
+                <div class="country-upcoming-body">
+                    {% for race in event.races[:3] %}
+                    <div class="country-upcoming-race">
+                        <a href="/upcoming/race/{{ race.race_id }}" class="country-upcoming-race-title">{{ race.prog_name }}</a>
+                        <span class="country-upcoming-race-meta">{{ race.entry_count }} entered</span>
+                    </div>
+                    {% endfor %}
+                    {% if event.races|length > 3 %}
+                    <div class="country-upcoming-more">+ {{ event.races|length - 3 }} more races</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── Recent events ───────────────────────────────────────────────── -->
+    {% if recent_events %}
+    <section class="country-section">
+        <div class="page-section-head">Recent Events</div>
+        <div class="home-events-grid">
+            {% for event in recent_events %}
+            <div class="event-card">
+                <a href="/event/{{ event.event_id }}" class="event-card-overlay" aria-label="{{ event.name }}"></a>
+                <div class="event-card-header">
+                    <div class="event-card-title">{{ event.name }}</div>
+                </div>
+                <div class="event-card-body">
+                    <div class="event-card-info">
+                        <div class="event-meta-item">
+                            <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <span class="event-meta-text">{{ event.start_date.strftime('%-d %b %Y') }}</span>
+                        </div>
+                        {% if event.venue %}
+                        <div class="event-meta-item">
+                            <svg class="event-meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <span class="event-meta-text">{{ event.venue }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="event-races">
+                        {% for race in event.races[:2] %}
+                        <div class="event-race">
+                            <div class="event-race-header">
+                                <a href="/race/{{ race.race_id }}" class="event-race-title">{{ race.prog_name }}</a>
+                            </div>
+                            {% if race.podium %}
+                            <ol class="event-race-podium">
+                                {% for p in race.podium[:3] %}
+                                <li class="event-race-entry">
+                                    <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
+                                    <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-race-entry-img">
+                                    <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                                    {% if p.position == 1 and p.time %}
+                                        <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
+                                    {% elif p.position > 1 and p.gap %}
+                                        <span class="event-entry-time event-entry-time--diff">{{ p.gap }}</span>
+                                    {% elif p.time %}
+                                        <span class="event-entry-time event-entry-time--diff">{{ p.time }}</span>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ol>
+                            {% else %}
+                            <p class="event-race-pending">Results pending</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── Races hosted map ────────────────────────────────────────────── -->
+    {% if map_locations %}
+    <section class="country-section">
+        <div class="page-section-head">Races Hosted in {{ country.country_full }}</div>
+        <div class="country-map-card">
+            <div id="country-map"></div>
+        </div>
+    </section>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if map_locations %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(function() {
+    const locs = {{ map_locations | tojson }};
+    const map = L.map('country-map', { zoomControl: true, scrollWheelZoom: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        maxZoom: 18,
+    }).addTo(map);
+    const icon = L.divIcon({
+        className: '',
+        html: '<div class="country-map-pin-dot"></div>',
+        iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -8],
+    });
+    const bounds = [];
+    locs.forEach(loc => {
+        bounds.push([loc.lat, loc.lng]);
+        L.marker([loc.lat, loc.lng], { icon }).addTo(map)
+            .bindPopup(`<strong>${loc.label}</strong>` + (loc.year ? `<span>${loc.year}</span>` : ''), {
+                className: 'country-map-popup', closeButton: false,
+            });
+    });
+    if (bounds.length === 1) { map.setView(bounds[0], 5); }
+    else { map.fitBounds(bounds, { padding: [32, 32], maxZoom: 7 }); }
+})();
+</script>
+{% endif %}
+
+<script>
+(function() {
+    const page   = document.querySelector('.country-page');
+    const alpha3 = page.dataset.alpha3;
+    let disc     = page.dataset.discipline;
+    let gender   = page.dataset.gender;
+    let course   = page.dataset.course;
+
+    const wrap       = document.getElementById('country-leaderboard-wrap');
+    const subtitleEl = document.getElementById('country-lb-subtitle');
+    const discTabs   = document.getElementById('country-disc-tabs');
+    const genderTabs = document.getElementById('country-gender-tabs');
+    const courseTabs = document.getElementById('country-course-tabs');
+
+    const DISC_LABELS   = { overall:'Overall', swim:'Swim', bike:'Bike', run:'Run', transition:'Transition' };
+    const GENDER_LABELS = { male:'Men', female:'Women' };
+
+    function setActive(container, attr, value) {
+        container.querySelectorAll('.country-tab').forEach(btn => {
+            btn.classList.toggle('country-tab--active', btn.dataset[attr] === value);
+        });
+    }
+
+    async function refresh() {
+        wrap.classList.add('country-leaderboard-wrap--loading');
+        const url = `/country/${alpha3}/leaderboard?discipline=${disc}&gender=${gender}&course=${course}`;
+        const res = await fetch(url, { headers: { 'Accept': 'text/html' } });
+        const html = await res.text();
+        wrap.innerHTML = html;
+        wrap.classList.remove('country-leaderboard-wrap--loading');
+        subtitleEl.textContent = `${DISC_LABELS[disc]} · ${GENDER_LABELS[gender]}`;
+
+        const params = new URLSearchParams({ discipline: disc, gender, course });
+        history.replaceState(null, '', `/country/${alpha3}?${params.toString()}`);
+    }
+
+    discTabs.addEventListener('click', e => {
+        const btn = e.target.closest('.country-tab');
+        if (!btn || !btn.dataset.discipline || btn.dataset.discipline === disc) return;
+        disc = btn.dataset.discipline;
+        setActive(discTabs, 'discipline', disc);
+        refresh();
+    });
+
+    genderTabs.addEventListener('click', e => {
+        const btn = e.target.closest('.country-tab');
+        if (!btn || !btn.dataset.gender || btn.dataset.gender === gender) return;
+        gender = btn.dataset.gender;
+        setActive(genderTabs, 'gender', gender);
+        refresh();
+    });
+
+    courseTabs.addEventListener('click', e => {
+        const btn = e.target.closest('.country-tab');
+        if (!btn || !btn.dataset.course || btn.dataset.course === course) return;
+        course = btn.dataset.course;
+        setActive(courseTabs, 'course', course);
+        refresh();
+    });
+})();
+</script>
+{% endblock %}

@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
 
 from ptd_data import queries
+from ptd_data.ratings import SCALE
 from app.routers.router_utils import (
     format_time, format_time_behind, format_rating_change, format_1yr_rating_change,
 )
@@ -180,13 +181,23 @@ def _build_rankings_charts(rankings_data):
 
 
 @router.get("/athlete/{athlete_id}", response_class=HTMLResponse)
-async def get_athlete(request: Request, athlete_id: int, category: str = Query('elite')):
+async def get_athlete(request: Request, athlete_id: int,
+                      category: str = Query('elite'),
+                      course:   str = Query('short')):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         raise HTTPException(status_code=404, detail=f"Athlete {athlete_id} not found")
 
-    # Detect available categories and resolve the requested one
-    available_categories = queries.get_athlete_categories(athlete_id)
+    # Resolve course first (short vs long) — falls back to whichever the athlete has.
+    available_courses = queries.get_athlete_courses(athlete_id)
+    if available_courses:
+        if course not in available_courses:
+            course = available_courses[0]
+    else:
+        course = 'short'  # no ratings at all; pick a default for safety
+
+    # Detect available categories *within the chosen course* and resolve the requested one
+    available_categories = queries.get_athlete_categories(athlete_id, course=course)
     has_ratings = bool(available_categories)
     if has_ratings:
         if category not in available_categories:
@@ -194,18 +205,18 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
     else:
         category = 'elite'  # default for race history query; no ratings will be shown
 
-    current  = queries.get_athlete_current_ratings(athlete_id, category) if has_ratings else None
-    changes  = queries.get_athlete_1yr_changes(athlete_id, category)     if has_ratings else None
-    peaks    = queries.get_athlete_peak_ratings(athlete_id, category)    if has_ratings else None
-    best     = queries.get_athlete_best_performances(athlete_id, category) if has_ratings else None
-    stats    = queries.get_athlete_stats(athlete_id, category)
+    current  = queries.get_athlete_current_ratings(athlete_id, category, course=course) if has_ratings else None
+    changes  = queries.get_athlete_1yr_changes(athlete_id, category, course=course)     if has_ratings else None
+    peaks    = queries.get_athlete_peak_ratings(athlete_id, category, course=course)    if has_ratings else None
+    best     = queries.get_athlete_best_performances(athlete_id, category, course=course) if has_ratings else None
+    stats    = queries.get_athlete_stats(athlete_id, category, course=course)
     notable_raw     = queries.get_athlete_notable_results(athlete_id)
     ag_notable_raw  = queries.get_athlete_ag_notable_results(athlete_id)
-    race_hist    = queries.get_athlete_race_history(athlete_id, category)
-    rating_hist  = queries.get_athlete_rating_history(athlete_id, category) if has_ratings else []
-    times_data    = queries.get_athlete_times_data(athlete_id)             if has_ratings else []
-    ratings_data  = queries.get_athlete_ratings_data(athlete_id, category) if has_ratings else []
-    rankings_data = queries.get_athlete_rankings_data(athlete_id, category) if has_ratings else []
+    race_hist    = queries.get_athlete_race_history(athlete_id, category, course=course)
+    rating_hist  = queries.get_athlete_rating_history(athlete_id, category, course=course) if has_ratings else []
+    times_data    = queries.get_athlete_times_data(athlete_id)                              if has_ratings else []
+    ratings_data  = queries.get_athlete_ratings_data(athlete_id, category, course=course)  if has_ratings else []
+    rankings_data = queries.get_athlete_rankings_data(athlete_id, category, course=course) if has_ratings else []
 
     # --- current ratings card ---
     current_ratings = {}
@@ -229,7 +240,7 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
 
     current_rankings = {}
     if _active:
-        active_ranks = queries.get_athlete_active_rankings(athlete_id, category)
+        active_ranks = queries.get_athlete_active_rankings(athlete_id, category, course=course)
         if active_ranks:
             for disc in ["overall", "swim", "bike", "run", "transition"]:
                 current_rankings[f"world_{disc}"]    = _make_ranking(active_ranks.get(f"world_{disc}"))
@@ -305,7 +316,7 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
     # Build a race_id→overall_std map here so the rating history table reuses the same
     # values rather than re-querying with a different formula.
     _gender = next((r["gender"] for r in race_hist if r.get("gender")), "male")
-    _thresholds = queries.get_race_standard_thresholds(_gender)
+    _thresholds = queries.get_race_standard_thresholds(_gender, course=course)
     _std_map = {r["race_id"]: r.get("overall_std") for r in race_hist}
 
     def _std_class(std, disc="overall"):
@@ -366,7 +377,7 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
     race_history = []
     for r in _main:
         entry = _fmt_race(r)
-        entry["sub_races"] = _sub_map.get(r["race_id"], [])
+        entry["sub_races"] = list(reversed(_sub_map.get(r["race_id"], [])))
         race_history.append(entry)
 
     # --- rating history table ---
@@ -393,6 +404,70 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
         for r in rating_hist
     ]
 
+    # --- upcoming races with predictions ---
+    START_RATING = 1500
+    upcoming_raw = queries.get_athlete_upcoming_races(athlete_id)
+    upcoming_races = []
+    if upcoming_raw:
+        models = queries.get_prediction_models()
+        disc_col = {'overall': 'overall_rating', 'swim': 'swim_rating',
+                    'bike': 'bike_rating', 'run': 'run_rating'}
+        for race in upcoming_raw:
+            entries  = queries.get_upcoming_race_entries(race['race_id'])
+            distance = queries.get_upcoming_race_distance_type(race['race_id'])
+
+            # Standard pill classification
+            std_class = None
+            standards = queries.get_upcoming_race_standards(race['race_id'])
+            if standards and standards.get('overall'):
+                t = queries.get_race_standard_thresholds(race['gender'])['overall']
+                v = standards['overall']
+                if   v >= t['p95']: std_class = 'expert'
+                elif v >= t['p85']: std_class = 'advanced'
+                elif v >= t['p60']: std_class = 'intermediate'
+                elif v >= t['p30']: std_class = 'novice'
+                else:               std_class = 'beginner'
+
+            pred_pos, splits, behinds = None, {}, {}
+            if distance and models:
+                overall_ratings = {e['athlete_id']: e['overall_rating'] or START_RATING for e in entries}
+                my_overall = overall_ratings.get(athlete_id, START_RATING)
+                pred_pos   = sum(1 for r in overall_ratings.values() if r > my_overall) + 1
+
+                for disc in ['overall', 'swim', 'bike', 'run']:
+                    m = models.get((race['gender'], distance, disc))
+                    if not m:
+                        continue
+                    col = disc_col[disc]
+                    field = {e['athlete_id']: e[col] or START_RATING for e in entries}
+                    leader_rating = max(field.values())
+                    leader_time   = m['slope'] * leader_rating + m['intercept']
+                    my_rating     = field.get(athlete_id, START_RATING)
+                    my_time       = leader_time * (10 ** ((leader_rating - my_rating) / SCALE))
+                    splits[disc]  = format_time(round(my_time))
+                    diff = round(my_time) - round(leader_time)
+                    behinds[disc] = 'fastest' if diff == 0 else format_time_behind(diff)
+
+            upcoming_races.append({
+                'race_id':    race['race_id'],
+                'event_name': race['event_name'],
+                'event_id':   race['event_id'],
+                'prog_name':  race['prog_name'],
+                'race_date':  race['race_date'],
+                'country':    race['country'],
+                'pred_pos':   pred_pos,
+                'pred_overall':        splits.get('overall'),
+                'pred_overall_behind': behinds.get('overall'),
+                'pred_swim':           splits.get('swim'),
+                'pred_swim_behind':    behinds.get('swim'),
+                'pred_bike':           splits.get('bike'),
+                'pred_bike_behind':    behinds.get('bike'),
+                'pred_run':            splits.get('run'),
+                'pred_run_behind':     behinds.get('run'),
+                'has_pred':     bool(splits),
+                'std_class':    std_class,
+            })
+
     # --- charts ---
     pct_behind      = _build_pct_behind_chart(times_data) if has_ratings else None
     ratings_chart   = _build_ratings_chart(ratings_data)  if has_ratings else None
@@ -400,13 +475,43 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
         _build_rankings_charts(rankings_data) if has_ratings else ({}, {})
     )
 
+    # --- dual-course summary strip (only rendered when athlete has both courses) ---
+    # For each of {short, long}, pick the athlete's best available category
+    # (prefer elite) and surface overall rating + active-world rank.
+    course_summaries = {}
+    for c in available_courses:
+        c_cats = queries.get_athlete_categories(athlete_id, course=c)
+        if not c_cats:
+            continue
+        c_cat = 'elite' if 'elite' in c_cats else c_cats[0]
+        c_current = queries.get_athlete_current_ratings(athlete_id, c_cat, course=c)
+        if not c_current:
+            continue
+        c_hist = queries.get_athlete_race_history(athlete_id, c_cat, course=c)
+        c_last = c_hist[0]["race_date"] if c_hist else None
+        c_active = bool(c_last and c_last >= (date.today() - timedelta(days=int(18 * 30.44))))
+        c_rank = None
+        if c_active:
+            ar = queries.get_athlete_active_rankings(athlete_id, c_cat, course=c)
+            if ar:
+                c_rank = _make_ranking(ar.get("world_overall"))
+        course_summaries[c] = {
+            "overall_rating":  round(c_current["overall_rating"]),
+            "world_overall":   c_rank,  # dict {n, suffix} or None
+            "category":        c_cat,
+        }
+
     return templates.TemplateResponse("athlete.html", {
         "request":        request,
         "active_page":    "athletes",
         "athlete":        athlete_dict,
         "has_ratings":          has_ratings,
+        "show_charts":          has_ratings and race_starts > 1,
         "show_rankings":        _active,
         "category":             category,
+        "course":               course,
+        "available_courses":    available_courses,
+        "course_summaries":     course_summaries,
         "has_elite":            'elite' in available_categories,
         "has_ag":               'ag' in available_categories,
         "notable_col1":        notable_col1,
@@ -418,6 +523,7 @@ async def get_athlete(request: Request, athlete_id: int, category: str = Query('
         "rating_changes_1yr":  rating_changes_1yr,
         "rating_peaks":        rating_peaks,
         "best_performances":   best_performances,
+        "upcoming_races":      upcoming_races,
         "race_history":        race_history,
         "rating_history":      rating_history,
         "ratings_chart":           ratings_chart,

@@ -23,15 +23,26 @@ from tqdm import tqdm
 ACTIVE_WINDOW_DAYS = int(18 * 30.44)  # ~18 months
 
 from ptd_data import db
-from ptd_data.db import load_corrections
 
 SCALE = 46175.8
-K_FACTOR = 36
 CONF_THRESHOLD = 10  # races to reach full confidence
 START_RATING = 1500
 
 # Discipline indices: overall=0, swim=1, bike=2, run=3, transition=4
 N_DISCIPLINES = 5
+
+# Per-course ELO parameters. Long course gets a higher K because athletes race
+# far less frequently — fewer updates per year means each race should move the
+# rating more to keep the model responsive.
+COURSES = {
+    'short': {'distances': ('sprint', 'standard'),        'k_factor': 36},
+    'long':  {'distances': ('middle', 't100',   'long'),  'k_factor': 54},
+}
+
+
+def _in_sql(values):
+    """Build a SQL IN-clause literal from a tuple of strings."""
+    return "(" + ", ".join(f"'{v}'" for v in values) + ")"
 
 
 def _confidence(race_count):
@@ -45,14 +56,16 @@ def _self_k_mult(race_count):
 
 
 def compute_all(conn):
-    """Full recompute: reload corrections, clear computed tables, ratings, rankings."""
-    load_corrections(conn)
+    """Full recompute: clear computed tables, ratings, rankings. Manual corrections
+    from corrections.csv are NOT loaded — only auto corrections are used."""
     conn.execute("DELETE FROM rankings")
     conn.execute("DELETE FROM ratings")
     for category in ('elite', 'ag'):
-        _compute_ratings(conn, category)
+        for course in COURSES:
+            _compute_ratings(conn, category, course)
     for category in ('elite', 'ag'):
-        _compute_rankings(conn, category)
+        for course in COURSES:
+            _compute_rankings(conn, category, course)
     conn.execute("DELETE FROM prediction_models")
     _fit_prediction_models(conn)
 
@@ -61,38 +74,65 @@ def compute_all(conn):
 # Phase 1: ELO ratings
 # ---------------------------------------------------------------------------
 
-def _compute_ratings(conn, category):
-    """Process all races chronologically for one category, compute confidence-weighted pairwise ELO."""
+def _compute_ratings(conn, category, course):
+    """Process all races chronologically for one (category, course), compute confidence-weighted pairwise ELO.
+
+    Ratings are tracked independently per course: an athlete's short-course
+    trajectory does not influence their long-course trajectory (different
+    skillsets, different race densities).
+    """
     ignored = set(
         r[0] for r in conn.execute("SELECT race_id FROM ignored_races").fetchall()
     )
 
-    races = conn.execute("""
+    distances = COURSES[course]['distances']
+    k_factor = COURSES[course]['k_factor']
+
+    races = conn.execute(f"""
         SELECT race_id
         FROM races
-        WHERE category = ?
+        WHERE category = ? AND distance IN {_in_sql(distances)}
         ORDER BY race_date, race_id
     """, [category]).fetchall()
 
     current_ratings = {}   # athlete_id -> [overall, swim, bike, run, transition]
     race_counts = {}       # athlete_id -> number of races completed so far
 
-    for (race_id,) in tqdm(races, desc=f"Computing {category} ratings", unit="race"):
+    for (race_id,) in tqdm(races, desc=f"Computing {category} {course} ratings", unit="race"):
         if race_id in ignored:
             continue
 
+        # Corrections are per-discipline, long-format. Manual rows win over auto;
+        # absent rows fall through to the original result values.
         results = conn.execute("""
+            WITH corr AS (
+                SELECT race_id, athlete_id, discipline,
+                       COALESCE(MAX(value) FILTER (WHERE source='manual'),
+                                MAX(value) FILTER (WHERE source='auto')) AS value
+                FROM corrections WHERE race_id = ?
+                GROUP BY race_id, athlete_id, discipline
+            ),
+            corr_wide AS (
+                SELECT athlete_id,
+                       MAX(value) FILTER (WHERE discipline='overall') AS overall,
+                       MAX(value) FILTER (WHERE discipline='swim')    AS swim,
+                       MAX(value) FILTER (WHERE discipline='bike')    AS bike,
+                       MAX(value) FILTER (WHERE discipline='run')     AS run,
+                       MAX(value) FILTER (WHERE discipline='t1')      AS t1,
+                       MAX(value) FILTER (WHERE discipline='t2')      AS t2
+                FROM corr GROUP BY athlete_id
+            )
             SELECT res.athlete_id,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.overall ELSE res.overall_s END,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.swim    ELSE res.swim_s   END,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.bike    ELSE res.bike_s   END,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.run     ELSE res.run_s    END,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.t1      ELSE res.t1_s     END,
-                   CASE WHEN c.athlete_id IS NOT NULL THEN c.t2      ELSE res.t2_s     END
+                   COALESCE(c.overall, res.overall_s),
+                   COALESCE(c.swim,    res.swim_s),
+                   COALESCE(c.bike,    res.bike_s),
+                   COALESCE(c.run,     res.run_s),
+                   COALESCE(c.t1,      res.t1_s),
+                   COALESCE(c.t2,      res.t2_s)
             FROM results res
-            LEFT JOIN corrections c ON res.race_id = c.race_id AND res.athlete_id = c.athlete_id
+            LEFT JOIN corr_wide c ON res.athlete_id = c.athlete_id
             WHERE res.race_id = ?
-        """, [race_id]).fetchall()
+        """, [race_id, race_id]).fetchall()
 
         if len(results) < 2:
             continue
@@ -104,29 +144,20 @@ def _compute_ratings(conn, category):
                 current_ratings[athlete_id] = [float(START_RATING)] * N_DISCIPLINES
                 race_counts[athlete_id] = 0
 
-            # Sanitise splits: zero out values that are physically impossible.
-            # These arise from data entry errors (e.g. bike=60s placeholder, swim stored
-            # in wrong units).  Zeroed splits are excluded from pairwise ELO comparisons.
-            if overall_s > 0:
-                if swim_s > overall_s:               # swim longer than entire race
-                    swim_s = 0.0
-                if 0 < bike_s < 300:                 # < 5 min bike - placeholder / error
-                    bike_s = 0.0
-                if 0 < run_s < 180:                  # < 3 min run - placeholder / error
-                    run_s = 0.0
-
+            # Split sanitation (impossible values, outliers, DNF handling) is done
+            # in ptd_data.auto_corrections, applied via the corr_wide join above.
+            # A zero in any time means "skip this discipline for this athlete in
+            # this race" — _pairwise_elo drops zero-leg pairings per-discipline,
+            # so DNFs with a clean swim still update swim ELO.
             transition_s = (t1_s + t2_s) if t1_s > 0 and t2_s > 0 else 0.0
             times = [overall_s, swim_s, bike_s, run_s, transition_s]
-
-            if overall_s == 0:
-                times = [0.0] * N_DISCIPLINES
 
             athlete_data[athlete_id] = (
                 current_ratings[athlete_id][:], times, race_counts[athlete_id]
             )
 
         # Pairwise ELO with confidence weighting
-        elo_changes = _pairwise_elo(athlete_data)
+        elo_changes = _pairwise_elo(athlete_data, k_factor)
 
         # Apply changes and build rows for bulk insert
         rating_rows = []
@@ -148,13 +179,14 @@ def _compute_ratings(conn, category):
         )
 
 
-def _pairwise_elo(athlete_data):
+def _pairwise_elo(athlete_data, k_factor):
     """Compute confidence-weighted pairwise ELO changes for all athletes in a race.
 
     athlete_data: dict of athlete_id -> (ratings_list, times_list, race_count)
+    k_factor:     course-specific base K.
 
     Returns dict of athlete_id -> [delta_overall, ..., delta_transition]
-    (already scaled by K_FACTOR, self_k_mult, and opponent confidence).
+    (already scaled by k_factor, self_k_mult, and opponent confidence).
     """
     ids = list(athlete_data.keys())
     n = len(ids)
@@ -178,8 +210,8 @@ def _pairwise_elo(athlete_data):
                     continue
                 raw = _logtime_elo(ratings1[k], ratings2[k], t1, t2)
                 # Asymmetric: each side scaled by own self_k_mult × opponent's confidence
-                changes[id1][k] += raw * K_FACTOR * sk1 * conf2
-                changes[id2][k] -= raw * K_FACTOR * sk2 * conf1
+                changes[id1][k] += raw * k_factor * sk1 * conf2
+                changes[id2][k] -= raw * k_factor * sk2 * conf1
 
     return changes
 
@@ -198,20 +230,27 @@ def _logtime_elo(rating1, rating2, time1, time2):
 # Phase 2: Rankings
 # ---------------------------------------------------------------------------
 
-def _compute_rankings(conn, category):
-    """Compute world and national rankings for one category from the ratings table."""
+def _compute_rankings(conn, category, course):
+    """Compute world and national rankings for one (category, course) from the ratings table.
+
+    Rankings are course-scoped: being #1 in short course says nothing about
+    your long-course rank.
+    """
     athlete_info = {}  # athlete_id -> (gender, country_full)
     for athlete_id, gender, country in conn.execute(
         "SELECT athlete_id, gender, country_full FROM athletes"
     ).fetchall():
         athlete_info[athlete_id] = (gender, country)
 
-    entries = conn.execute("""
+    distances = COURSES[course]['distances']
+    in_sql = _in_sql(distances)
+
+    entries = conn.execute(f"""
         SELECT ra.race_id, ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
                r.race_date
         FROM ratings ra
         JOIN races r ON ra.race_id = r.race_id
-        WHERE ra.category = ?
+        WHERE ra.category = ? AND r.distance IN {in_sql}
         ORDER BY r.race_date, ra.race_id
     """, [category]).fetchall()
 
@@ -220,16 +259,18 @@ def _compute_rankings(conn, category):
         'female': _RankingState(),
     }
 
-    n_races = conn.execute(
-        "SELECT COUNT(DISTINCT race_id) FROM ratings WHERE category = ?", [category]
-    ).fetchone()[0]
+    n_races = conn.execute(f"""
+        SELECT COUNT(DISTINCT ra.race_id)
+        FROM ratings ra JOIN races r ON ra.race_id = r.race_id
+        WHERE ra.category = ? AND r.distance IN {in_sql}
+    """, [category]).fetchone()[0]
 
     ranking_rows = []
     current_race_id = None
     current_race_date = None
     race_participants = []
 
-    with tqdm(total=n_races, desc=f"Computing {category} rankings", unit="race") as pbar:
+    with tqdm(total=n_races, desc=f"Computing {category} {course} rankings", unit="race") as pbar:
         for race_id, athlete_id, overall, swim, bike, run, transition, race_date in entries:
             if race_id != current_race_id:
                 if current_race_id is not None:
@@ -248,7 +289,7 @@ def _compute_rankings(conn, category):
             _flush_rankings(current_race_id, current_race_date, race_participants, gender_state, ranking_rows, category)
             pbar.update(1)
 
-    print(f"Inserting {len(ranking_rows)} {category} ranking rows...")
+    print(f"Inserting {len(ranking_rows)} {category} {course} ranking rows...")
     if ranking_rows:
         conn.executemany(
             """
@@ -262,7 +303,7 @@ def _compute_rankings(conn, category):
             ranking_rows,
         )
 
-    print(f"{category} rankings complete: {len(ranking_rows)} athlete-race entries")
+    print(f"{category} {course} rankings complete: {len(ranking_rows)} athlete-race entries")
 
 
 class _RankingState:
@@ -378,10 +419,29 @@ def _fit_prediction_models(conn):
             'bike':    (2400,  7200),   # 40–120 min
             'run':     (1800,  5400),   # 30–90 min
         },
+        'middle': {
+            'overall': (12600, 21600),  # 3.5–6 hr
+            'swim':    ( 1200,  3600),  # 20–60 min
+            'bike':    ( 6000, 12000),  # 100–200 min
+            'run':     ( 3600,  7200),  # 60–120 min
+        },
+        't100': {
+            'overall': (12600, 21600),  # 3.5–6 hr (100km ≈ middle-distance pace)
+            'swim':    ( 1200,  3600),
+            'bike':    ( 6000, 12000),
+            'run':     ( 3600,  7200),
+        },
+        'long': {
+            'overall': (25200, 50400),  # 7–14 hr
+            'swim':    ( 2400,  6000),  # 40–100 min
+            'bike':    (12000, 25200),  # 200–420 min
+            'run':     ( 8400, 21600),  # 140–360 min
+        },
     }
 
-    # All finishers across all elite races. Use overall_s time bounds to classify
-    # distance - correctly handles events that list both 376 and 377.
+    # All finishers across all elite races. Target-race distance filter comes
+    # from the {course_in} placeholder so pre-race ratings are picked from the
+    # same course (ratings are course-scoped and shouldn't cross-pollinate).
     base_sql = """
         WITH all_finishers AS (
             SELECT res.race_id, res.athlete_id,
@@ -406,6 +466,8 @@ def _fit_prediction_models(conn):
             JOIN races r_hist ON ra.race_id = r_hist.race_id
             WHERE r_hist.race_date < r_target.race_date
               AND ra.category = 'elite'
+              AND r_target.distance IN {course_in}
+              AND r_hist.distance   IN {course_in}
             ORDER BY af.race_id, af.athlete_id, r_hist.race_date DESC, ra.race_id DESC
         )
         SELECT lp.overall_s, lp.swim_s, lp.bike_s, lp.run_s, lp.transition_s,
@@ -420,15 +482,24 @@ def _fit_prediction_models(conn):
     """
 
     distances = [
-        ('sprint',   1800,  5400),   # 30–90 min
-        ('standard', 5400, 10800),   # 90–180 min
+        ('sprint',    1800,  5400),   # 30–90 min
+        ('standard',  5400, 10800),   # 90–180 min
+        ('middle',   12600, 21600),   # 3.5–6 hr
+        ('t100',     12600, 21600),   # 100km ~ middle
+        ('long',     25200, 50400),   # 7–14 hr
     ]
     genders = ['male', 'female']
     model_rows = []
 
+    # Which course bucket a given distance belongs to (for pre-race rating scoping).
+    distance_to_course = {d: c for c, info in COURSES.items() for d in info['distances']}
+
     for gender in genders:
         for distance, overall_lo, overall_hi in distances:
-            rows = conn.execute(base_sql, [gender, overall_lo, overall_hi]).fetchall()
+            course = distance_to_course[distance]
+            course_in = _in_sql(COURSES[course]['distances'])
+            sql = base_sql.format(course_in=course_in)
+            rows = conn.execute(sql, [gender, overall_lo, overall_hi]).fetchall()
             if not rows:
                 print(f"  No data for {gender} {distance}, skipping")
                 continue
@@ -513,13 +584,14 @@ if __name__ == "__main__":
         print("Recomputing rankings only...")
         conn.execute("DELETE FROM rankings")
         for category in ('elite', 'ag'):
-            _compute_rankings(conn, category)
+            for course in COURSES:
+                _compute_rankings(conn, category, course)
     elif args.ratings_only:
         print("Recomputing ratings only...")
-        load_corrections(conn)
         conn.execute("DELETE FROM ratings")
         for category in ('elite', 'ag'):
-            _compute_ratings(conn, category)
+            for course in COURSES:
+                _compute_ratings(conn, category, course)
     else:
         print("Computing ratings and rankings...")
         compute_all(conn)

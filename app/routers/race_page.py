@@ -19,6 +19,74 @@ DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
 START_RATING  = 1500
 
 
+def _course_signal_for_race(race_id, gender, models):
+    """Compute per-discipline normalised course-condition signal for a single race.
+
+    Returns (signal, total_w, avg_pred_overall) where:
+      signal: disc -> avg(predicted - actual) / avg_predicted_overall  (dimensionless %)
+      total_w: sum of confidence weights (used to weight this race when pooling)
+      avg_pred_overall: weighted-avg predicted overall time in seconds (for display conversion)
+    Returns None if insufficient data.
+    """
+    distance = queries.get_race_distance_type(race_id)
+    if not distance:
+        return None
+
+    results     = queries.get_race_results(race_id)
+    pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
+    DISCS = ['overall', 'swim', 'bike', 'run']
+    CONF_THRESHOLD = 10
+
+    def _w(aid):
+        pr = pre_ratings.get(aid)
+        if pr is None:
+            return 0.0
+        return min(1.0, (pr.get('prior_starts', 0) or 0) / CONF_THRESHOLD)
+
+    # Compute predicted times
+    preds = {}
+    for disc in DISCS:
+        m = models.get((gender, distance, disc))
+        if not m:
+            continue
+        field = {r['athlete_id']: (pre_ratings[r['athlete_id']][disc]
+                                   if r['athlete_id'] in pre_ratings and pre_ratings[r['athlete_id']][disc]
+                                   else START_RATING)
+                 for r in results}
+        lr = max(field.values())
+        lt = m['slope'] * lr + m['intercept']
+        for aid, rating in field.items():
+            preds.setdefault(aid, {})[disc] = max(0, round(lt * (10 ** ((lr - rating) / SCALE))))
+
+    if not preds:
+        return None
+
+    finishers = [r for r in results if r['status'] not in DNF_STATUSES and r['athlete_id'] in preds]
+    pow_w = [(preds[r['athlete_id']]['overall'], _w(r['athlete_id']))
+             for r in finishers if preds[r['athlete_id']].get('overall')]
+    total_w = sum(w for _, w in pow_w)
+    if total_w == 0:
+        return None
+    avg_pred_overall = sum(p * w for p, w in pow_w) / total_w
+
+    signal = {}
+    for disc in DISCS:
+        tk = f'{disc}_s'
+        diffs = [(preds[r['athlete_id']][disc] - r[tk], _w(r['athlete_id']))
+                 for r in finishers
+                 if preds[r['athlete_id']].get(disc) and (r.get(tk) or 0) > 0
+                 and _w(r['athlete_id']) > 0]
+        if len(diffs) < 3:
+            continue
+        tdw = sum(w for _, w in diffs)
+        signal[disc] = sum(d * w for d, w in diffs) / tdw / avg_pred_overall
+
+    if not signal:
+        return None
+
+    return signal, total_w, avg_pred_overall
+
+
 def _compute_race_predictions(race_id, race, results, models):
     """Compute full-field predicted times, position diffs, and course conditions.
 
@@ -110,49 +178,50 @@ def _compute_race_predictions(race_id, race, results, models):
         if predicted is not None and actual is not None:
             pos_diffs[aid] = predicted - actual  # positive = beat prediction
 
-    # Course conditions: weighted avg(predicted - actual) per discipline for finishers.
-    # Debuts excluded entirely; athletes with <10 prior starts weighted by min(1, starts/10)
-    # to match the confidence model in ratings.py. Expressed as % of weighted avg predicted
-    # overall; positive = fast/short course.
-    # Thresholds: ±1% = normal, ±1-3% = fast/slow, >±3% = very fast/slow.
-    CONF_THRESHOLD = 10
+    # Course conditions: pool normalised signals from all elite programs in this event.
+    # Programs share the same course and race day, so combining gives a better estimate.
+    # Each race contributes a dimensionless % signal weighted by its total confidence mass.
+    # Display conversion uses this race's own avg_pred_overall as the reference.
+    event_id = race.get('event_id')
+    sibling_races = queries.get_races_by_event(event_id) if event_id else [{'race_id': race_id, 'gender': race['gender']}]
 
-    def _exp_weight(aid):
-        pr = pre_ratings.get(aid)
-        if pr is None:
-            return 0.0  # debut — exclude
-        starts = pr.get('prior_starts', 0) or 0
-        return min(1.0, starts / CONF_THRESHOLD)
+    pooled = {}          # disc -> [(pct_signal, total_w)]
+    pred_overall_refs = []  # (avg_pred_overall, total_w) across all sibling races
 
-    finishers = [r for r in results if r['status'] not in DNF_STATUSES and r['athlete_id'] in preds]
-    pred_overalls_w = [(preds[r['athlete_id']]['overall'], _exp_weight(r['athlete_id']))
-                       for r in finishers if preds[r['athlete_id']].get('overall')]
-    total_w = sum(w for _, w in pred_overalls_w)
-    avg_pred_overall = (sum(p * w for p, w in pred_overalls_w) / total_w) if total_w > 0 else None
+    for sibling in sibling_races:
+        sid = sibling['race_id']
+        if queries.get_race_category(sid) != 'elite':
+            continue
+        out = _course_signal_for_race(sid, sibling['gender'], models)
+        if not out:
+            continue
+        signal, s_total_w, s_avg_pred_overall = out
+        pred_overall_refs.append((s_avg_pred_overall, s_total_w))
+        for disc, pct in signal.items():
+            pooled.setdefault(disc, []).append((pct, s_total_w))
+
+    # Use a combined reference time so all races in the same event display identical conditions
+    combined_ref_w = sum(w for _, w in pred_overall_refs)
+    combined_avg_pred_overall = (sum(p * w for p, w in pred_overall_refs) / combined_ref_w
+                                 if combined_ref_w else None)
 
     course_conditions = {}
-    if avg_pred_overall:
+    if combined_avg_pred_overall:
         for disc in DISCS:
-            time_key = f'{disc}_s'
-            weighted_diffs = [
-                (preds[r['athlete_id']][disc] - r[time_key], _exp_weight(r['athlete_id']))
-                for r in finishers
-                if preds[r['athlete_id']].get(disc) and (r.get(time_key) or 0) > 0
-                and _exp_weight(r['athlete_id']) > 0
-            ]
-            if len(weighted_diffs) < 3:
+            race_signals = pooled.get(disc, [])
+            if not race_signals:
                 continue
-            total_dw = sum(w for _, w in weighted_diffs)
-            avg_diff  = sum(d * w for d, w in weighted_diffs) / total_dw
-            pct = avg_diff / avg_pred_overall
-            if   pct >  0.03: category = 'very_fast'
-            elif pct >  0.01: category = 'fast'
-            elif pct > -0.01: category = 'normal'
-            elif pct > -0.03: category = 'slow'
-            else:              category = 'very_slow'
-            # positive avg_diff = predicted > actual = course is fast = show -
-            sign  = '-' if avg_diff >= 0 else '+'
-            abs_s = abs(round(avg_diff))
+            combined_w = sum(w for _, w in race_signals)
+            avg_pct    = sum(p * w for p, w in race_signals) / combined_w
+            if   avg_pct >  0.03: category = 'very_fast'
+            elif avg_pct >  0.01: category = 'fast'
+            elif avg_pct > -0.01: category = 'normal'
+            elif avg_pct > -0.03: category = 'slow'
+            else:                  category = 'very_slow'
+            # Convert back to seconds using the pooled reference time for display
+            avg_diff_s = avg_pct * combined_avg_pred_overall
+            sign  = '-' if avg_diff_s >= 0 else '+'
+            abs_s = abs(round(avg_diff_s))
             mins, secs = divmod(abs_s, 60)
             course_conditions[disc] = {
                 'formatted': f"{sign}{mins:02d}:{secs:02d}",
@@ -240,17 +309,108 @@ def _build_rating_histograms(rating_values, bins=20):
     return chart_data
 
 
+def _compute_upcoming_predictions(race, entries, models):
+    """Compute predicted results for an upcoming race from current ratings.
+
+    Returns list of pred_rows sorted by predicted overall time, or None if no models available.
+    """
+    distance = queries.get_upcoming_race_distance_type(race['race_id'])
+    if not distance:
+        return None
+
+    gender = race['gender']
+    DISCS  = ['overall', 'swim', 'bike', 'run']
+
+    # Current ratings per athlete (None = debut, use START_RATING)
+    current_ratings = {
+        e['athlete_id']: {
+            'overall':    e['overall_rating']    or START_RATING,
+            'swim':       e['swim_rating']       or START_RATING,
+            'bike':       e['bike_rating']       or START_RATING,
+            'run':        e['run_rating']        or START_RATING,
+        }
+        for e in entries
+    }
+
+    preds = {}
+    for disc in DISCS:
+        m = models.get((gender, distance, disc))
+        if not m:
+            continue
+        field_ratings = {aid: cr[disc] for aid, cr in current_ratings.items()}
+        leader_id     = max(field_ratings, key=field_ratings.get)
+        leader_rating = field_ratings[leader_id]
+        leader_time   = m['slope'] * leader_rating + m['intercept']
+        for aid, rating in field_ratings.items():
+            t = leader_time * (10 ** ((leader_rating - rating) / SCALE))
+            preds.setdefault(aid, {})[disc] = max(0, round(t))
+
+    if not preds:
+        return None
+
+    pred_rows = []
+    for e in entries:
+        aid = e['athlete_id']
+        p   = preds.get(aid, {})
+        pred_rows.append({
+            'athlete_id':    aid,
+            'name':          e['name'],
+            'country_emoji': e.get('country_emoji', ''),
+            'year_of_birth': e.get('year_of_birth'),
+            'profile_img':   e.get('profile_img', ''),
+            'is_debut':      e['overall_rating'] is None,
+            '_overall_raw':  p.get('overall', 9_999_999),
+            '_swim_raw':     p.get('swim', 0),
+            '_bike_raw':     p.get('bike', 0),
+            '_run_raw':      p.get('run', 0),
+        })
+    pred_rows.sort(key=lambda x: x['_overall_raw'])
+    for i, row in enumerate(pred_rows):
+        row['predicted_position'] = i + 1
+
+    best = {}
+    for disc in DISCS:
+        vals = [r[f'_{disc}_raw'] for r in pred_rows if r.get(f'_{disc}_raw', 0) > 0]
+        best[disc] = min(vals) if vals else None
+
+    # Collect raw seconds for histogram before formatting
+    raw_times = {disc: [] for disc in DISCS}
+    for row in pred_rows:
+        for disc in DISCS:
+            v = row.get(f'_{disc}_raw', 0)
+            if v and v < 9_999_999:
+                raw_times[disc].append(v)
+
+    for row in pred_rows:
+        for disc in DISCS:
+            raw = row.pop(f'_{disc}_raw', 0)
+            key = 'overall_s' if disc == 'overall' else f'{disc}_s'
+            row[key] = format_time(raw)
+            b = best[disc]
+            if disc == 'overall':
+                row['overall_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
+            else:
+                row[f'{disc}_fastest']  = bool(raw and b and raw == b)
+                row[f'{disc}_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
+
+    return pred_rows, raw_times
+
+
 @router.get("/race/{race_id}", response_class=HTMLResponse)
 async def get_race(request: Request, race_id: int, partial: bool = False):
     race = queries.get_race_info(race_id)
     if not race:
-        raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
+        upcoming = queries.get_upcoming_race_info(race_id)
+        if not upcoming:
+            raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
+        return await _get_upcoming_race(request, upcoming, partial)
 
     ignored_info = queries.get_race_ignored_info(race_id)
-    results   = queries.get_race_results(race_id)
-    ratings   = queries.get_race_ratings(race_id)
-    standards = queries.get_race_standards(race_id)
-    best_perf = queries.get_race_best_performances(race_id)
+    results      = queries.get_race_results(race_id)
+    ratings      = queries.get_race_ratings(race_id)
+    standards    = queries.get_race_standards(race_id)
+    best_perf    = queries.get_race_best_performances(race_id)
+    raw_corrections = queries.get_race_corrections(race_id)
 
     finish_count = sum(1 for r in results if r["status"] not in DNF_STATUSES)
     dnf_count    = len(results) - finish_count
@@ -351,6 +511,35 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         and (rat := ratings_by_id.get(r["athlete_id"])) is not None
     ]
 
+    # Format corrections: flag which fields changed, format both old and new times
+    DISC_PAIRS = [("swim", "swim"), ("t1", "t1"), ("bike", "bike"), ("t2", "t2"), ("run", "run"), ("overall", "overall")]
+    corrections_data = []
+    for c in raw_corrections:
+        fields = []
+        for disc, _ in DISC_PAIRS:
+            orig = c[f"orig_{disc}"] or 0
+            corr_raw = c[f"corr_{disc}"]
+            # NULL corr means no correction for this discipline — show the original
+            # as-is rather than treating it as a change-to-zero.
+            corr = corr_raw if corr_raw is not None else orig
+            changed = corr_raw is not None and abs(orig - corr) > 0.5
+            fields.append({
+                "disc":    disc,
+                "changed": changed,
+                "orig":    format_time(orig) if orig else "",
+                "corr":    format_time(corr) if corr else "",
+            })
+        corrections_data.append({
+            "athlete_id":    c["athlete_id"],
+            "name":          c["name"],
+            "country_emoji": c["country_emoji"],
+            "position":      c["position"],
+            "status":        c["status"],
+            "notes":         c["notes"].strip(),
+            "fields":        fields,
+            "any_changed":   any(f["changed"] for f in fields),
+        })
+
     # Histograms
     time_hists   = _build_time_histograms(queries.get_race_time_values(race_id))
     rating_hists = _build_rating_histograms(queries.get_race_rating_values(race_id))
@@ -358,6 +547,21 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     event_id = race.get("event_id")
     event_races = queries.get_races_by_event(event_id) if event_id else []
     series = queries.get_series_for_race(race_id)
+
+    # Other editions at the same venue (same recurring_event), matched on program
+    program = (race.get("sub_category"), race.get("gender")) if race.get("sub_category") and race.get("gender") else None
+    other_editions = queries.get_other_editions_for_event(event_id, program=program) if event_id else []
+    for oe in other_editions:
+        oe["year"] = oe["race_date"].year
+
+    # Context pills: event + all series (race-level and event-level)
+    context_links = []
+    if event_id:
+        event_info = queries.get_event_info(event_id)
+        if event_info:
+            context_links.append({'label': event_info['name'], 'url': f"/event/{event_id}"})
+    for s in queries.get_all_series_for_race(race_id):
+        context_links.append({'label': s['name'], 'url': f"/series/{s['slug']}"})
 
     _venue = race["location"]
     race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
@@ -403,4 +607,107 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "race_distance":           race_distance,
         "course_conditions":       course_conditions if not ignored_info else None,
         "series":                  series,
+        "context_links":           context_links,
+        "corrections_data":        corrections_data,
+        "other_editions":          other_editions,
+        "is_upcoming":             False,
+    })
+
+
+async def _get_upcoming_race(request: Request, race, partial: bool):
+    from datetime import date
+    race_id    = race['race_id']
+    entries    = queries.get_upcoming_race_entries(race_id)
+    standards  = queries.get_upcoming_race_standards(race_id)
+    is_elite   = race.get('category') == 'elite'
+
+    predictions, pred_raw_times = _compute_upcoming_predictions(
+        race, entries, queries.get_prediction_models()
+    ) if is_elite else (None, {})
+
+    current_year = date.today().year
+    for e in entries:
+        e['age'] = current_year - e['year_of_birth'] if e['year_of_birth'] else None
+    if predictions:
+        for r in predictions:
+            r['age'] = current_year - r['year_of_birth'] if r['year_of_birth'] else None
+
+    # Ratings table ordered by predicted position (or start_num if no predictions)
+    pred_order = {r['athlete_id']: r['predicted_position'] for r in predictions} if predictions else {}
+    entries_by_id = {e['athlete_id']: e for e in entries}
+    upcoming_ratings_data = sorted(
+        [
+            {
+                **e,
+                'overall_rating':    format_rating(e['overall_rating']),
+                'swim_rating':       format_rating(e['swim_rating']),
+                'bike_rating':       format_rating(e['bike_rating']),
+                'run_rating':        format_rating(e['run_rating']),
+                'transition_rating': format_rating(e['transition_rating']),
+            }
+            for e in entries
+        ],
+        key=lambda e: pred_order.get(e['athlete_id'], e['start_num'] or 999),
+    )
+
+    race_standards = {d: format_rating(v) for d, v in standards.items()}
+    thresholds = queries.get_race_standard_thresholds(race['gender'])
+    def _classify(val, t):
+        if val >= t['p95']: return 'expert'
+        if val >= t['p85']: return 'advanced'
+        if val >= t['p60']: return 'intermediate'
+        if val >= t['p30']: return 'novice'
+        return 'beginner'
+    race_standard_classes = {d: _classify(standards[d], thresholds[d]) for d in standards}
+
+    time_hists   = _build_time_histograms(pred_raw_times)
+    rating_hists = _build_rating_histograms({
+        disc: [e[f'{disc}_rating'] for e in entries if e.get(f'{disc}_rating')]
+        for disc in ['overall', 'swim', 'bike', 'run', 'transition']
+    })
+
+    race_date = race['race_date']
+    days_until = (race_date - date.today()).days if hasattr(race_date, 'year') else None
+
+    _venue = race['location']
+    race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
+    race_country  = str(race['country']).replace('"', '').replace("'", "")
+
+    race['date']          = race['race_date']
+    race['athlete_count'] = len(entries)
+
+    template = "race_partial.html" if partial else "race.html"
+    return templates.TemplateResponse(template, {
+        "request":               request,
+        "active_page":           "races",
+        "race":                  race,
+        "race_location":         race_location,
+        "race_country":          race_country,
+        "event_id":              race['event_id'],
+        "event_races":           [],
+        "finish_count":          0,
+        "dnf_count":             0,
+        "ignored_info":          None,
+        "race_standards":        race_standards,
+        "race_standard_classes": race_standard_classes,
+        "splits_data":           [],
+        "predictions":           predictions,
+        "has_predictions":       predictions is not None,
+        "upcoming_ratings_data": upcoming_ratings_data,
+        "overall_time_hist":     time_hists.get("overall", {}),
+        "swim_time_hist":        time_hists.get("swim", {}),
+        "bike_time_hist":        time_hists.get("bike", {}),
+        "run_time_hist":         time_hists.get("run", {}),
+        "overall_rating_hist":   rating_hists.get("overall", {}),
+        "swim_rating_hist":      rating_hists.get("swim", {}),
+        "bike_rating_hist":      rating_hists.get("bike", {}),
+        "run_rating_hist":       rating_hists.get("run", {}),
+        "transition_rating_hist": rating_hists.get("transition", {}),
+        "race_distance":         queries.get_upcoming_race_distance_type(race_id),
+        "days_until":            days_until,
+        "entry_count":           len(entries),
+        "is_upcoming":           True,
+        "series":                None,
+        "context_links":         [],
+        "other_editions":        [],
     })

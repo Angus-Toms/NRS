@@ -33,24 +33,26 @@ def _fmt_athlete(a):
 
 
 @router.get("/athletes", response_class=HTMLResponse)
-async def athletes_landing(request: Request):
+async def athletes_landing(request: Request, course: str = "short"):
+    if course not in ("short", "long"):
+        course = "short"
     counts       = queries.get_counts()
     country_list = queries.get_country_list()
 
     # Trending: random pick from top 25 most improved (1yr), active athletes, 1 per gender
     female_trending_rows = queries.get_leaderboard(
-        "female", "overall", "hot", None, None, None, True, 0, 25)
+        "female", "overall", "hot", None, None, None, True, 0, 25, course=course)
     male_trending_rows   = queries.get_leaderboard(
-        "male",   "overall", "hot", None, None, None, True, 0, 25)
+        "male",   "overall", "hot", None, None, None, True, 0, 25, course=course)
 
     female_trending = _fmt_athlete(random.choice(female_trending_rows)) if female_trending_rows else None
     male_trending   = _fmt_athlete(random.choice(male_trending_rows))   if male_trending_rows   else None
 
     # All-time leaderboard top 5 per gender
     female_lb = [_fmt_athlete(a) for a in
-                 queries.get_leaderboard("female", "overall", "top", None, None, None, False, 0, 5)]
+                 queries.get_leaderboard("female", "overall", "top", None, None, None, False, 0, 5, course=course)]
     male_lb   = [_fmt_athlete(a) for a in
-                 queries.get_leaderboard("male",   "overall", "top", None, None, None, False, 0, 5)]
+                 queries.get_leaderboard("male",   "overall", "top", None, None, None, False, 0, 5, course=course)]
 
     return templates.TemplateResponse("athlete_search.html", {
         "request":         request,
@@ -62,6 +64,7 @@ async def athletes_landing(request: Request):
         "male_trending":   male_trending,
         "female_lb":       female_lb,
         "male_lb":         male_lb,
+        "course":          course,
     })
 
 
@@ -74,6 +77,7 @@ async def search_athletes(
     yob_start: str = "",
     yob_end: str = "",
     active_only: str = "",
+    course: str = "short",
 ):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
@@ -81,6 +85,8 @@ async def search_athletes(
         disc = "overall"
     if order not in {"top", "hot"}:
         order = "top"
+    if course not in ("short", "long"):
+        course = "short"
 
     results = queries.search_athletes_full(
         q.strip(),
@@ -90,6 +96,7 @@ async def search_athletes(
         yob_start=int(yob_start) if yob_start.isdigit() else None,
         yob_end=int(yob_end)   if yob_end.isdigit()   else None,
         active_only=active_only == "true",
+        course=course,
     )
     for r in results:
         r["overall_rating"]    = format_rating(r["overall_rating"])

@@ -52,7 +52,10 @@
     </div>
     <div class="event-race-card-body">
         <!-- Podium - left panel -->
-        <div class="event-race-podium">
+        <div class="event-race-podium event-race-podium--bordered">
+            {% if is_upcoming and race.podium %}
+            <div class="event-podium-label">Predicted Podium</div>
+            {% endif %}
             {% for p in race.podium %}
             <div class="event-podium-row">
                 <div class="event-podium-left">
@@ -93,7 +96,27 @@
 {% endmacro %}
 
 {% block content %}
+{% if course_conditions %}
+<div class="page-section-head">Course Conditions</div>
+<p class="page-section-sub" style="margin-bottom:1rem">Average difference between predicted and actual finish times. Negative (fast) times imply a fast course or conditions while positive (slow) times indicate a slow or long course and conditions.</p>
+<div class="race-stat-section">
+    <div class="race-stat-cards race-stat-cards--4">
+        {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run')] %}
+        {% set cond = course_conditions.get(disc) %}
+        {% if cond %}
+        <div class="race-stat-card">
+            <div class="race-stat-disc">{{ label }}</div>
+            <div class="race-stat-num">{{ cond.formatted }}</div>
+            <span class="cond-pill cond-pill--{{ cond.category }}">{{ cond.category.replace('_', ' ').title() }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if races %}
+<div class="page-section-head">Races</div>
 <div class="event-races-list">
     {% for race in races %}
     {{ race_card(race) }}

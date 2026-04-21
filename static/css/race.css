@@ -69,43 +69,29 @@
     color: rgba(255, 255, 255, 0.85);
 }
 
-/* Race breadcrumb nav - handles event-only, series-only, and series › event */
-.race-nav {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin-bottom: 0.6rem;
-    font-size: 0.78rem;
+/* Context pills — event + series links above race title */
+.race-context-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.race-context-pill {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.75rem;
     font-weight: 500;
-}
-
-.race-nav-chevron {
-    color: rgba(255, 255, 255, 0.5);
-    flex-shrink: 0;
-}
-
-.race-nav-crumb {
-    color: var(--primary-color);
     text-decoration: none;
-    transition: color var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.race-nav-crumb:hover {
+.race-context-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
-}
-
-/* When there's only an event crumb (no series), style it like the old back-link */
-.race-nav:not(:has(.race-nav-sep)) .race-nav-crumb {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.race-nav:not(:has(.race-nav-sep)) .race-nav-crumb:hover {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.race-nav-sep {
-    color: rgba(255, 255, 255, 0.25);
-    font-size: 0.7rem;
 }
 
 .race-hero-title {
@@ -132,9 +118,48 @@
     margin-top: 0.25rem;
 }
 
+.race-multi-stage-note {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.8rem;
+    color: var(--text-lighter);
+    font-style: italic;
+}
+
+/* Badge inside race-pill buttons: icon-only, no background box, sits on dark */
+.race-pill .multi-stage-badge {
+    background: none;
+    border: none;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 0.25rem;
+    top: 0;
+    vertical-align: middle;
+}
+.race-pill .multi-stage-badge svg {
+    display: block;
+    position: relative;
+    top: -0.5px;
+}
+.race-pill .multi-stage-badge-lbl { display: none; }
+
 .race-meta-dot {
     color: rgba(255, 255, 255, 0.3);
     user-select: none;
+}
+
+.upcoming-badge {
+    display: inline-block;
+    background: rgba(99, 179, 237, 0.25);
+    color: #90cdf4;
+    border: 1px solid rgba(99, 179, 237, 0.4);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    margin-right: 6px;
+    vertical-align: middle;
 }
 
 /* Podium - right column */
@@ -225,14 +250,10 @@
    Generic .table-section is in base.css; .race-table-section is an alias.
    ============================================ */
 .ignored-race-notice {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--text-lighter);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 2rem;
-    font-size: 0.875rem;
-    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-lighter);
+    font-style: italic;
     line-height: 1.6;
 }
 
@@ -610,3 +631,66 @@
 /* Debut row in predictions table - de-emphasised (no pre-race ratings so less reliable) */
 .debut-row td { color: var(--text-light); font-style: italic; }
 .debut-label { font-size: 0.75em; color: var(--text-lighter); font-style: italic; }
+
+/* Corrections table */
+.corrections-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.corrections-table thead th {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+.corrections-table tbody td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border-color-light, var(--border-color));
+    vertical-align: top;
+}
+.corrections-table tbody tr:last-child td { border-bottom: none; }
+
+.corr-pos-col     { width: 48px; text-align: center; }
+.corr-athlete-col { width: 160px; }
+.corr-note-col    { color: var(--text-light); font-size: 0.8rem; }
+.corr-time-col    { width: 80px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Changed cell: stack old (struck-out) above new */
+.corr-orig {
+    display: block;
+    text-decoration: line-through;
+    color: var(--error-color, #e53e3e);
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+.corr-new     { display: block; font-weight: 600; color: var(--text-color); }
+.corr-unchanged { color: var(--text-lighter); }
+
+/* ── Other editions at this venue ───────────────────────────────── */
+.other-editions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.other-edition-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--card-bg, #fff);
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+.other-edition-pill:hover { border-color: #1a1a2e; background: #f5f5f7; }
+.other-edition-year {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.other-edition-name { color: var(--text-lighter); }

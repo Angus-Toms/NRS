@@ -46,6 +46,21 @@
 
             <div class="filter-v-divider"></div>
 
+            <!-- Course -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Course</span>
+                <div class="radio-chips">
+                    <input type="radio" name="course" value="short" id="course-short"
+                        {% if course == 'short' %}checked{% endif %}>
+                    <label for="course-short">Short</label>
+                    <input type="radio" name="course" value="long" id="course-long"
+                        {% if course == 'long' %}checked{% endif %}>
+                    <label for="course-long">Long</label>
+                </div>
+            </div>
+
+            <div class="filter-v-divider"></div>
+
             <!-- Gender -->
             <div class="filter-chip-group">
                 <span class="filter-chip-label">Gender</span>
@@ -156,6 +171,10 @@
 
     </form>
 </div>
+
+{% if country_alpha3 %}
+<a class="leaderboard-country-chip" href="/country/{{ country_alpha3 }}">View {{ country }} country page →</a>
+{% endif %}
 
 <div class="leaderboard-grid">
     {% for athlete in athletes %}

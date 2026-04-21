@@ -25,7 +25,7 @@
 
 {% block hero %}{% include "_race_hero.html" %}{% endblock %}
 
-{% block content %}{% include "_race_content.html" %}{% endblock %}
+{% block content %}{% if is_upcoming %}{% include "_upcoming_race_content.html" %}{% else %}{% include "_race_content.html" %}{% endif %}{% endblock %}
 
 {% block extra_js %}
 <script src="{{ STATIC_BASE_URL }}js/utils.js"></script>

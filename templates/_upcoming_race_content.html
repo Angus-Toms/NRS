@@ -1,0 +1,180 @@
+<!-- Race Standards -->
+<div class="page-section-head">Race Standards</div>
+<div class="race-stat-section">
+    <div class="race-stat-cards">
+        {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
+        <div class="race-stat-card">
+            <div class="race-stat-disc">{{ label }}</div>
+            <div class="race-stat-num">{{ race_standards[disc] }}</div>
+            <span class="std-pill std-pill--{{ race_standard_classes[disc] }}">{{ race_standard_classes[disc]|title }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Predicted Results Table -->
+<div class="results-section-head">
+    <div class="page-section-head">Predicted Results</div>
+</div>
+{% if predictions %}
+<p class="page-section-sub" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut - their ratings have not yet converged so predictions are less reliable.</p>
+<div class="race-table-section">
+    <div>
+        <table class="sortable-table results-table">
+            <thead>
+                <tr>
+                    <th class="sortable position-col" data-sort="position">Pos</th>
+                    <th class="sortable athlete-col" data-sort="string">Athlete</th>
+                    <th class="sortable yob-col" data-sort="number">YOB</th>
+                    <th class="sortable time-col" data-sort="time">Swim</th>
+                    <th class="sortable time-col" data-sort="time">Bike</th>
+                    <th class="sortable time-col" data-sort="time">Run</th>
+                    <th class="sortable time-col" data-sort="time">Overall</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in predictions %}
+                <tr class="{{ 'debut-row' if row.is_debut else '' }}">
+                    <td class="position-col" data-value="{{ row.predicted_position }}">
+                        {% if row.predicted_position == 1 %}<span class="pos-circle gold">1</span>
+                        {% elif row.predicted_position == 2 %}<span class="pos-circle silver">2</span>
+                        {% elif row.predicted_position == 3 %}<span class="pos-circle bronze">3</span>
+                        {% else %}<span class="pos-other">{{ row.predicted_position }}</span>{% endif %}
+                    </td>
+                    <td class="athlete-col" data-value="{{ row.name }}">
+                        <a href="/athlete/{{ row.athlete_id }}" class="link">
+                            {{ row.name }} {{ row.country_emoji }}
+                        </a>{% if row.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
+                    </td>
+                    <td class="yob-col" data-value="{{ row.year_of_birth if row.year_of_birth else 0 }}">
+                        {{ "{} ({})".format(row.year_of_birth, row.age) if row.year_of_birth else "" }}
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.swim_fastest else '' }}" data-value="{{ row.swim_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.swim_fastest else '' }}">{{ row.swim_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.swim_fastest and row.swim_s else row.swim_behind_s }}</span>
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.bike_fastest else '' }}" data-value="{{ row.bike_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.bike_fastest else '' }}">{{ row.bike_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.bike_fastest and row.bike_s else row.bike_behind_s }}</span>
+                    </td>
+                    <td class="time-col{{ ' split-fastest' if row.run_fastest else '' }}" data-value="{{ row.run_s }}">
+                        <span class="time-cell-main{{ ' fastest' if row.run_fastest else '' }}">{{ row.run_s }}</span>
+                        <span class="time-cell-gap">{{ 'fastest' if row.run_fastest and row.run_s else row.run_behind_s }}</span>
+                    </td>
+                    <td class="time-col overall-col" data-value="{{ row.overall_s }}">
+                        <span class="overall-time">{{ row.overall_s }}</span>
+                        {% if row.overall_behind_s %}<span class="time-cell-gap">{{ row.overall_behind_s }}</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<p class="page-section-sub">Predictions unavailable — no model for this race format.</p>
+{% endif %}
+
+<!-- Current Ratings Table -->
+<div class="page-section-head">Current Ratings</div>
+<div class="race-table-section">
+    <div>
+        <table class="sortable-table rating-table">
+            <thead>
+                <tr>
+                    <th class="sortable position-col" data-sort="number">#</th>
+                    <th class="sortable athlete-col" data-sort="string">Athlete</th>
+                    <th class="sortable yob-col" data-sort="number">YOB</th>
+                    <th class="sortable rating-col" data-sort="rating">Overall</th>
+                    <th class="sortable rating-col" data-sort="rating">Swim</th>
+                    <th class="sortable rating-col" data-sort="rating">Bike</th>
+                    <th class="sortable rating-col" data-sort="rating">Run</th>
+                    <th class="sortable rating-col" data-sort="rating">Transition</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for athlete in upcoming_ratings_data %}
+                <tr>
+                    <td class="position-col" data-value="{{ loop.index }}">
+                        <span class="pos-other">{{ loop.index }}</span>
+                    </td>
+                    <td class="athlete-col" data-value="{{ athlete.name }}">
+                        <a href="/athlete/{{ athlete.athlete_id }}" class="link">
+                            {{ athlete.name }} {{ athlete.country_emoji }}
+                        </a>
+                    </td>
+                    <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">
+                        {{ "{} ({})".format(athlete.year_of_birth, athlete.age) if athlete.year_of_birth else "" }}
+                    </td>
+                    <td data-value="{{ athlete.overall_rating }}">{{ athlete.overall_rating }}</td>
+                    <td data-value="{{ athlete.swim_rating }}">{{ athlete.swim_rating }}</td>
+                    <td data-value="{{ athlete.bike_rating }}">{{ athlete.bike_rating }}</td>
+                    <td data-value="{{ athlete.run_rating }}">{{ athlete.run_rating }}</td>
+                    <td data-value="{{ athlete.transition_rating }}">{{ athlete.transition_rating }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Predicted Time Distributions -->
+{% if predictions %}
+<div class="page-section-head">Predicted Time Distributions</div>
+<div class="charts-grid">
+    <div class="mini-chart">
+        <h4>Overall Times</h4>
+        <div class="chart-container-compact"><canvas id="overall-times-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Swim Times</h4>
+        <div class="chart-container-compact"><canvas id="swim-times-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Bike Times</h4>
+        <div class="chart-container-compact"><canvas id="bike-times-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Run Times</h4>
+        <div class="chart-container-compact"><canvas id="run-times-canvas"></canvas></div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Rating Distributions -->
+<div class="page-section-head">Rating Distributions</div>
+<div class="charts-grid">
+    <div class="mini-chart full-width">
+        <h4>Overall Ratings</h4>
+        <div class="chart-container-compact"><canvas id="overall-ratings-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Swim Ratings</h4>
+        <div class="chart-container-compact"><canvas id="swim-ratings-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Bike Ratings</h4>
+        <div class="chart-container-compact"><canvas id="bike-ratings-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Run Ratings</h4>
+        <div class="chart-container-compact"><canvas id="run-ratings-canvas"></canvas></div>
+    </div>
+    <div class="mini-chart">
+        <h4>Transition Ratings</h4>
+        <div class="chart-container-compact"><canvas id="transition-ratings-canvas"></canvas></div>
+    </div>
+</div>
+
+<!-- Chart data (read by race.js initRaceCharts) -->
+<script id="overall-time-hist-data" type="application/json">{{ overall_time_hist | tojson }}</script>
+<script id="swim-time-hist-data" type="application/json">{{ swim_time_hist | tojson }}</script>
+<script id="bike-time-hist-data" type="application/json">{{ bike_time_hist | tojson }}</script>
+<script id="run-time-hist-data" type="application/json">{{ run_time_hist | tojson }}</script>
+<script id="t1-time-hist-data" type="application/json">{}</script>
+<script id="t2-time-hist-data" type="application/json">{}</script>
+<script id="overall-ratings-hist-data" type="application/json">{{ overall_rating_hist | tojson }}</script>
+<script id="swim-ratings-hist-data" type="application/json">{{ swim_rating_hist | tojson }}</script>
+<script id="bike-ratings-hist-data" type="application/json">{{ bike_rating_hist | tojson }}</script>
+<script id="run-ratings-hist-data" type="application/json">{{ run_rating_hist | tojson }}</script>
+<script id="transition-ratings-hist-data" type="application/json">{{ transition_rating_hist | tojson }}</script>

@@ -93,6 +93,25 @@
     color: rgba(255, 255, 255, 0.6);
 }
 
+.athlete-hero-country-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.35);
+    transition: color 0.15s, border-color 0.15s;
+}
+.athlete-hero-country-link:hover {
+    color: #fff;
+    border-bottom-color: #fff;
+}
+
+.athlete-hero-flag-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+    display: inline-block;
+}
+.athlete-hero-flag-link:hover { transform: scale(1.15); }
+
 .hero-meta-dot {
     color: rgba(255, 255, 255, 0.25);
     user-select: none;
@@ -115,6 +134,57 @@
     align-items: center;
     gap: 0.6rem;
     flex-shrink: 0;
+}
+
+.athlete-course-summary {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.course-summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0.35rem 0.7rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.65);
+    transition: background var(--transition-fast), color var(--transition-fast);
+    min-width: 6.5rem;
+    line-height: 1.15;
+}
+
+.course-summary-card.active {
+    background: #fff;
+    color: var(--navy);
+}
+
+.course-summary-card:not(.active):hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.course-summary-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+
+.course-summary-rating {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.course-summary-rank {
+    font-size: 0.65rem;
+    font-weight: 500;
+    opacity: 0.75;
 }
 
 .athlete-category-toggle {
@@ -330,6 +400,13 @@ sup.ordinal-suffix {
     transform: rotate(90deg);
 }
 
+.sub-race-count {
+    font-size: 0.72em;
+    margin-left: 0.25em;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
 /* Disable CSS nth-child striping for athlete tables - JS handles it via .stripe-even */
 .results-table tbody tr:nth-child(even) td,
 .rating-table tbody tr:nth-child(even) td {
@@ -368,22 +445,21 @@ tr.sub-race-row .link:hover {
     color: var(--primary-color);
 }
 
-/* Hanging indent: arrow stays left, name+pill wrap together */
-.sub-race-name-cell {
+.sub-race-stage-col {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.3em;
+    white-space: nowrap;
 }
 
-.sub-race-arrow {
-    color: var(--text-lighter);
-    font-size: 0.9em;
+.sub-race-corner-icon {
     flex-shrink: 0;
+    color: var(--text-lighter);
 }
 
-.sub-race-name-text {
-    flex: 1;
-    min-width: 0;
+.sub-race-stage-label {
+    font-size: 0.8em;
+    font-weight: 500;
 }
 
 /* Muted date/program columns - same visual weight as YOB in race tables */
@@ -423,6 +499,10 @@ tr.sub-race-row .link:hover {
     width: calc((100% - 500px) / 6);
     min-width: 50px;
 }
+
+/* Upcoming races table - wider pos col, 4 splits instead of 6 */
+.upcoming-races-table .position-col { width: 72px; }
+.upcoming-races-table .time-col     { width: calc((100% - 524px) / 4); min-width: 60px; }
 
 .rating-table .rating-col {
     width: calc((100% - 500px) / 5);
@@ -495,3 +575,4 @@ tr.sub-race-row .link:hover {
         gap: 0.5rem;
     }
 }
+
