@@ -54,19 +54,6 @@
 </div>
 {% endif %}
 
-<!-- Other editions at this venue -->
-{% if other_editions %}
-<div class="page-section-head">Other Years at This Venue</div>
-<div class="other-editions-row">
-    {% for oe in other_editions %}
-    <a href="/race/{{ oe.race_id }}" class="other-edition-pill">
-        <span class="other-edition-year">{{ oe.year }}</span>
-        <span class="other-edition-name">{{ oe.event_name }}</span>
-    </a>
-    {% endfor %}
-</div>
-{% endif %}
-
 <!-- Results Table -->
 <div class="results-section-head">
     <div class="page-section-head" id="results-section-title">Race Results</div>
@@ -77,14 +64,23 @@
             <button class="race-view-btn active" data-view="results">Results</button>
         </div>
         {% endif %}
-        <button id="add-prediction-btn" class="btn-add-prediction" data-gender="{{ race.gender }}">
-            + Add Athlete Prediction
+        {% set _course = 'long' if race_distance in ('middle','t100','long') else 'short' %}
+        <button id="add-prediction-btn" class="btn-add-prediction"
+                data-gender="{{ race.gender }}" data-course="{{ _course }}"
+                title="Add athlete prediction" aria-label="Add athlete prediction">
+            <svg class="lucide-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
         </button>
     </div>
 </div>
-<div id="prediction-modal" class="prediction-modal hidden" role="dialog" aria-modal="true">
+<div id="prediction-modal" class="prediction-modal hidden" role="dialog" aria-modal="true" aria-labelledby="prediction-modal-title">
     <div class="prediction-modal-backdrop"></div>
     <div class="prediction-modal-content">
+        <h2 id="prediction-modal-title" class="prediction-modal-title">Add athlete prediction</h2>
         <p class="prediction-modal-hint">
             Select a new athlete to predict where the athlete would have finished in this race based on their current rating.
             <br><br>
@@ -187,7 +183,8 @@
 </div>
 
 {% if has_predictions %}
-<p id="predictions-subtitle" class="page-section-sub hidden" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut - their ratings have not yet converged so predictions are less reliable.</p>
+{% set _dist_label = {'sprint':'sprint','standard':'standard distance','middle':'middle distance','t100':'T100','long':'long course'}.get(race_distance, race_distance) %}
+<p id="predictions-subtitle" class="page-section-sub hidden" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ _dist_label }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut - their ratings have not yet converged so predictions are less reliable.</p>
 <div id="predictions-view" class="race-view race-table-section hidden">
     <div>
         <table class="sortable-table results-table">
@@ -246,9 +243,15 @@
 <!-- Ratings Table -->
 <div class="page-section-head">Ratings &amp; Changes</div>
 {% if ignored_info %}
+{# Pick a message based on the reason. Oversized fields are almost always a
+   combined Elite + AG result table from the source data — say so explicitly
+   instead of the generic "taken from another race" line. #}
+{%- set is_oversized = ignored_info.reason and 'entries (likely combined' in ignored_info.reason -%}
 <p class="ignored-race-notice">
     {% if ignored_info.parent_is_multi_stage %}
     This race is one stage of a multi-round event. Rating changes are calculated from the combined final results.
+    {% elif is_oversized %}
+    This race had an unusually large field, typically because the source results combined the elite race with the age-group field. Rating changes are not calculated for combined fields since elite and age-group performances aren't directly comparable.
     {% else %}
     To avoid duplication, no rating changes are calculated for this race as these results were taken from another race.
     {% endif %}
@@ -415,6 +418,10 @@
     </div>
 </div>
 
+{# Rating Distribution Histograms — only meaningful when ELO ran for this
+   race. Skip the whole section for ignored / oversized / multi-stage-stage
+   rows since their rating histograms would be empty or stale. #}
+{% if not ignored_info %}
 <!-- Rating Distribution Histograms -->
 <div class="page-section-head">Rating Distributions</div>
 <div class="charts-grid">
@@ -439,6 +446,7 @@
         <div class="chart-container-compact"><canvas id="transition-ratings-canvas"></canvas></div>
     </div>
 </div>
+{% endif %}
 
 <!-- Prediction data (read by race.js initPrediction) -->
 <script id="prediction-data" type="application/json">{{ prediction_data | tojson }}</script>

@@ -75,10 +75,13 @@ def detect_all(conn):
                     ignored[rid_b] = (f"{prog_b} results are a subset of {title_a}", rid_a)
 
     # --- Oversized race detection ---
+    # AG races legitimately have huge fields (an AG world champ band can
+    # easily exceed 100 finishers), so the cap only applies to non-AG.
     oversized = conn.execute(f"""
         SELECT r.race_id, r.race_title, COUNT(*) as n
         FROM results res
         JOIN races r ON res.race_id = r.race_id
+        WHERE r.sub_category != 'ag'
         GROUP BY r.race_id, r.race_title
         HAVING n > {MAX_RACE_SIZE}
     """).fetchall()

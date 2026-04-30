@@ -35,6 +35,11 @@ VALID_SPEC_IDS = {376, 377}
 
 _MALE_KEYWORDS = {'men', 'male'}
 _FEMALE_KEYWORDS = {'women', 'female'}
+# World Triathlon recently shifted some AG events to "Female / Open"
+# categories instead of "Female / Male". For now treat "Open" as men so
+# the existing gender enum and downstream queries keep working; revisit
+# if/when we want to surface the Open wording explicitly in the UI.
+_OPEN_KEYWORDS = {'open'}
 
 _ELITE_PROG_PREFIXES = frozenset({'elite', 'u23', 'junior', 'youth'})
 
@@ -46,7 +51,7 @@ def race_category(prog_name):
         return 'elite'
     # Skip para, relay, and other non-individual formats
     if first in ('para', 'ptvi', 'pts5', 'pts4', 'pts3', 'pts2', 'ptwc', 'awad',
-                 'relay', 'mixed', 'team', 'overall', 'open'):
+                 'relay', 'mixed', 'team', 'overall'):
         return None
     # Everything else (age-group brackets, masters, etc.) is AG
     return 'ag'
@@ -66,14 +71,14 @@ def is_valid_program(prog_name):
 
 
 def detect_gender(prog_name):
-    """Detect gender from a program name by checking for Men/Male vs Women/Female keywords.
-
-    Returns 'male', 'female', or None if unrecognisable.
+    """Detect gender from a program name. "Open" is mapped to 'male' (see
+    `_OPEN_KEYWORDS` above for the rationale). Returns 'male', 'female', or
+    None if unrecognisable.
     """
     words = set(prog_name.lower().split())
     if words & _FEMALE_KEYWORDS:
         return 'female'
-    if words & _MALE_KEYWORDS:
+    if words & _MALE_KEYWORDS or words & _OPEN_KEYWORDS:
         return 'male'
     return None
 
@@ -229,11 +234,17 @@ class Ingester:
         short_events = [e for e in events if is_short_course(e)]
         print(f"Found {len(short_events)} short course events")
 
+        # Ingest oldest → newest so incremental nationality tracking builds a
+        # correct timeline (athletes.country_full and athlete_nationality_history
+        # both assume observations arrive in chronological order).
+        short_events.sort(key=lambda e: str(e.get('event_date', '') or ''))
+
         with open("all_events.csv", "w") as f:
             pd.DataFrame(events).to_csv(f, index=False)
 
         self._ingest_events(short_events)
         db.backfill_sub_category(self.conn)
+        db.reconcile_athlete_nationality(self.conn)
 
     def _fetch_all_events(self):
         """Paginate through /events endpoint."""
@@ -340,6 +351,7 @@ class Ingester:
         """
         prog_id = int(prog['prog_id'])
         event_id = int(event['event_id'])
+        race_date_str = str(prog.get('prog_date', '')) or None
 
         # Parse all results and build bulk rows
         result_rows = []
@@ -363,9 +375,11 @@ class Ingester:
             except (ValueError, TypeError):
                 pass
 
-            # Upsert nationality + athlete
+            # Upsert nationality + athlete + record this race's country observation
             db.upsert_nationality(self.conn, country_name)
             db.upsert_athlete(self.conn, athlete_id, name, country_name, yob, profile_img, gender)
+            if race_date_str:
+                db.record_athlete_nationality(self.conn, athlete_id, country_name, race_date_str)
 
             # Parse splits: [swim, t1, bike, t2, run]
             splits = r.get('splits', [])
@@ -603,8 +617,16 @@ class StartListIngester:
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start-lists", action="store_true",
+                        help="Fetch upcoming events + start lists (next 90 days) instead of the main ingest")
+    args = parser.parse_args()
+
     conn = db.get_conn(read_only=False)
-    ingester = Ingester(conn)
-    ingester.run()
+    if args.start_lists:
+        StartListIngester(conn).run()
+    else:
+        Ingester(conn).run()
     conn.close()
     print("Done.")

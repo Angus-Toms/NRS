@@ -6,8 +6,10 @@ Pipeline per result:
 
     A1. Per-split floor    split < physical floor -> zero (intrinsic, no overall needed)
     A0. Overall recompute  all main splits present and sum >> overall -> recompute
-                           (handles dropped-hour / malformed overall times; runs
-                           before MAD so a MAD-zeroed split can't mask the bug)
+                           (handles dropped-hour / malformed overall times).
+                           Skipped when any split is MAD-flagged so a single
+                           inflated split (e.g. T1 of 10h) doesn't fake a
+                           splits-sum-too-big signal.
     C.  MAD outlier        per-race median/MAD > 6x -> zero (applies to DNFs too)
     A2. Overall cross      split > (corrected) overall -> zero
     B.  Placeholder        finisher split == 0 -> flagged as missing
@@ -72,9 +74,13 @@ T_MIN, T_MAX = 5, 300
 
 
 def apply(conn):
-    """Recompute auto corrections. Returns a summary dict of counts."""
-    # Manual corrections from corrections.csv are no longer loaded — purge any
-    # rows left over from previous pipeline runs so auto is the only source.
+    """Recompute auto corrections. Returns a summary dict of counts.
+
+    Wipes all existing correction rows (manual + auto). Callers are expected to
+    reload manual rows from corrections.csv via db.load_corrections() after this
+    runs so the COALESCE(manual, auto) priority in ratings.py has something to
+    pick from.
+    """
     conn.execute("DELETE FROM corrections")
 
     summary = {
@@ -124,8 +130,7 @@ def apply(conn):
                         flagged.add(leg)
                     summary['impossible'] += 1
 
-            # Step A0 - overall sanity. Runs BEFORE MAD so a MAD-flagged split
-            # doesn't hide a broken overall. Two modes:
+            # Step A0 - overall sanity. Two modes:
             #   (a) recompute: all three main splits present and their sum is
             #       meaningfully greater than overall — reconstruct overall
             #       from splits (handles dropped-hour, mis-entered totals).
@@ -133,7 +138,15 @@ def apply(conn):
             #       we don't have enough data to recompute (splits missing) —
             #       zero overall so the A2 cross-check below doesn't destroy
             #       the good splits we do have.
-            if is_finisher and s['overall'] > 0:
+            #
+            # Skipped if any split is MAD-flagged: a single grossly-inflated
+            # split (e.g. mis-entered T1 of 10 hours) would produce a fake
+            # "splits sum >> overall" signal here. Let MAD zero the rogue
+            # split first and keep the original overall, which is almost
+            # always correct in those cases.
+            has_mad_flag = any((aid, leg) in mad_flags
+                               for leg in ('swim', 'bike', 'run', 't1', 't2'))
+            if is_finisher and s['overall'] > 0 and not has_mad_flag:
                 biggest_split = max(s['swim'], s['bike'], s['run'])
                 if s['swim'] > 0 and s['bike'] > 0 and s['run'] > 0:
                     main_sum = s['swim'] + s['bike'] + s['run'] + s['t1'] + s['t2']
@@ -307,6 +320,14 @@ def _flush(conn, rows):
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--manual-only", action="store_true",
+                        help="Skip auto detection; just reload corrections.csv manual rows.")
+    args = parser.parse_args()
+
     conn = db.get_conn(read_only=False)
-    apply(conn)
+    if not args.manual_only:
+        apply(conn)
+    db.load_corrections(conn)
     conn.close()

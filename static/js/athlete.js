@@ -1,3 +1,50 @@
+// Wrapped in an IIFE so re-executing this script (after turbo-lite partial
+// nav swaps the main content) doesn't collide with previous top-level `const`
+// bindings. Each re-run gets a fresh lexical scope; old Chart.js instances
+// whose canvases were detached become unreachable and get GC'd.
+(function() {
+// ---------- Turbo-lite partial navigation for the mode switcher -------------
+// Bound FIRST so any later init error in this file doesn't leave the pills
+// falling back to full-document navigation. Idempotent via window guard.
+if (!window._ptdAthleteNavBound) {
+    window._ptdAthleteNavBound = true;
+    document.addEventListener('click', async (e) => {
+        const link = e.target.closest('a[data-ptd-nav="athlete"]');
+        if (!link) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        const url = link.getAttribute('href');
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error(`status ${resp.status}`);
+            const html = await resp.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newHero    = doc.querySelector('#athlete-ajax-hero');
+            const newContent = doc.querySelector('#athlete-ajax-content');
+            const currHero    = document.querySelector('#athlete-ajax-hero');
+            const currContent = document.querySelector('#athlete-ajax-content');
+            if (!newHero || !newContent || !currHero || !currContent) {
+                throw new Error('ajax targets missing');
+            }
+            currHero.replaceWith(newHero);
+            currContent.replaceWith(newContent);
+            document.title = doc.title;
+            history.pushState({}, '', url);
+            const currScript = document.querySelector('script[src*="js/athlete.js"]');
+            if (currScript) {
+                const fresh = document.createElement('script');
+                for (const a of currScript.attributes) fresh.setAttribute(a.name, a.value);
+                currScript.remove();
+                document.body.appendChild(fresh);
+            }
+        } catch (err) {
+            console.warn('athlete partial nav failed, falling back to reload:', err);
+            window.location.href = url;
+        }
+    });
+    window.addEventListener('popstate', () => { window.location.reload(); });
+}
+
 // Shared constants used by both rankings and ratings charts
 const DISC_COLORS = {
     overall:    '#E87722',  // orange
@@ -19,6 +66,8 @@ let mainNatChart    = null;
 
 // One tooltip element per ranking type, same style as the ratings tooltip
 function _makeRankTooltipEl(id) {
+    const existing = document.getElementById(id);
+    if (existing) return existing;
     const el = document.createElement('div');
     el.id = id;
     Object.assign(el.style, {
@@ -252,23 +301,19 @@ function toggleNotableResults(button, targetId) {
     button.classList.toggle('open', !expanded);
 }
 
-// Add click handlers to sortable headers
-document.addEventListener('DOMContentLoaded', () => {
+// Add click handlers to sortable headers.
+// (Previously wrapped in DOMContentLoaded; runs immediately because athlete.js
+// is at end of body and we also re-run it after partial nav when DOMContent
+// is long fired.)
+(function initSortHeaders() {
     const tables = document.querySelectorAll('table.sortable-table');
     if (!tables.length) return;
-
     tables.forEach(table => {
         const headers = table.querySelectorAll('th.sortable');
-
         headers.forEach((header, index) => {
             header.addEventListener('click', () => {
-                // Toggle sort direction
                 const isAsc = header.classList.contains('asc');
-                
-                // Remove all sorting classes
                 headers.forEach(h => h.classList.remove('asc', 'desc'));
-                
-                // Add appropriate class
                 if (isAsc) {
                     header.classList.add('desc');
                     sortTable(table, index, false);
@@ -276,13 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     header.classList.add('asc');
                     sortTable(table, index, true);
                 }
-                // Re-stripe after sort so alternating rows stay correct
                 const tbody = table.querySelector('tbody');
                 if (tbody) _restripeTable(tbody);
             });
         });
     });
-});
+})();
 
 // Ratings chart ---------------------------------------------------------------
 const ratingsData = getJSON('ratings-chart-data');
@@ -322,6 +366,8 @@ const DNF_STATUSES = new Set(['DNF', 'LAP', 'NC', 'DNS', 'DQ']);
 
 // Shared HTML tooltip element - pointerEvents: auto for sticky hover
 const ratingsTooltipEl = (() => {
+    const existing = document.getElementById('ratings-chart-tooltip');
+    if (existing) return existing;
     const el = document.createElement('div');
     el.id = 'ratings-chart-tooltip';
     Object.assign(el.style, {
@@ -545,6 +591,8 @@ let activePctDisc = 'overall';
 let mainPctChart  = null;
 
 const pctTooltipEl = (() => {
+    const existing = document.getElementById('pct-behind-tooltip');
+    if (existing) return existing;
     const el = document.createElement('div');
     el.id = 'pct-behind-tooltip';
     Object.assign(el.style, {
@@ -696,10 +744,13 @@ function alignRacePills() {
 }
 alignRacePills();
 let _pillResizeTimer;
-window.addEventListener('resize', () => {
-    clearTimeout(_pillResizeTimer);
-    _pillResizeTimer = setTimeout(alignRacePills, 100);
-});
+if (!window._ptdAthleteResizeBound) {
+    window._ptdAthleteResizeBound = true;
+    window.addEventListener('resize', () => {
+        clearTimeout(_pillResizeTimer);
+        _pillResizeTimer = setTimeout(alignRacePills, 100);
+    });
+}
 
 // Init
 if (pctBehindData) {
@@ -730,3 +781,12 @@ document.querySelectorAll('.sub-race-toggle').forEach(btn => {
 
 // Initial stripe pass - also called after sort (sortTable fires on th click)
 document.querySelectorAll('.results-table tbody, .rating-table tbody').forEach(_restripeTable);
+
+// Expose functions referenced from inline HTML onclick attributes. The IIFE
+// wrap above makes these locally scoped, so we hoist them back onto window.
+window.switchRatingDisc    = switchRatingDisc;
+window.switchRankingDisc   = switchRankingDisc;
+window.switchPctBehindDisc = switchPctBehindDisc;
+window.toggleNotableResults = toggleNotableResults;
+
+})(); // end IIFE

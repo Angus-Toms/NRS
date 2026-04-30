@@ -62,6 +62,8 @@ async def sitemap_index(request: Request) -> Response:
         f'  <sitemap><loc>{base}/sitemap-athletes.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
+        f'  <sitemap><loc>{base}/sitemap-series.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
+        f'  <sitemap><loc>{base}/sitemap-recurring.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
         '</sitemapindex>\n'
     )
     return Response(content=xml, media_type="application/xml")
@@ -75,8 +77,10 @@ async def sitemap_static(request: Request) -> Response:
         _url(f"{base}/",           today, "daily",   1.0),
         _url(f"{base}/leaderboard", today, "daily",  0.9),
         _url(f"{base}/races",       today, "daily",  0.9),
+        _url(f"{base}/upcoming",    today, "daily",  0.8),
         _url(f"{base}/athletes",    today, "weekly", 0.8),
         _url(f"{base}/countries",   today, "weekly", 0.7),
+        _url(f"{base}/series",      today, "weekly", 0.7),
         _url(f"{base}/compare",     today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
     ]
@@ -177,4 +181,37 @@ async def sitemap_races(request: Request) -> Response:
             priority=priority,
         ))
 
+    return Response(content=_wrap_urlset(urls), media_type="application/xml")
+
+
+@router.get("/sitemap-series.xml")
+async def sitemap_series(request: Request) -> Response:
+    base = str(request.base_url).rstrip("/")
+    today = date.today().isoformat()
+    conn = db.get_conn(read_only=True)
+    rows = conn.execute("SELECT slug FROM series ORDER BY sort_order, name").fetchall()
+    conn.close()
+
+    urls = [_url(f"{base}/series/{quote(r[0], safe='')}", lastmod=today, changefreq="weekly", priority=0.7)
+            for r in rows]
+    return Response(content=_wrap_urlset(urls), media_type="application/xml")
+
+
+@router.get("/sitemap-recurring.xml")
+async def sitemap_recurring(request: Request) -> Response:
+    base = str(request.base_url).rstrip("/")
+    today = date.today().isoformat()
+    conn = db.get_conn(read_only=True)
+    rows = conn.execute("""
+        SELECT re.slug, MAX(e.start_date) AS last_date
+        FROM recurring_events re
+        JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
+        JOIN events e ON e.event_id = er.event_id
+        GROUP BY re.recurring_event_id, re.slug
+        ORDER BY last_date DESC
+    """).fetchall()
+    conn.close()
+
+    urls = [_url(f"{base}/recurring/{quote(slug, safe='')}", lastmod=today, changefreq="yearly", priority=0.6)
+            for slug, _ in rows]
     return Response(content=_wrap_urlset(urls), media_type="application/xml")

@@ -691,12 +691,16 @@ table td a.link:hover   { color: var(--primary-color); }
    ============================================ */
 .race-stat-cards {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* minmax(0, 1fr) lets each column shrink below its content's
+       min-width, so a single long race name in .race-stat-sub can't
+       force the whole row wider than the page. The sub already has
+       white-space:nowrap + text-overflow:ellipsis below to truncate. */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.625rem;
     margin-bottom: 2rem;
 }
 .race-stat-cards--4 {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .race-stat-card {
@@ -705,6 +709,7 @@ table td a.link:hover   { color: var(--primary-color); }
     border-radius: 8px;
     padding: 0.875rem 0.625rem;
     text-align: center;
+    min-width: 0;
 }
 
 .race-stat-disc {
@@ -1289,6 +1294,67 @@ table td a.link:hover   { color: var(--primary-color); }
 .small-link:active {
     color: var(--primary-hover);
 }
+
+/* ============================================
+   SHARED TAG BADGES
+   Course (short/long) and category (AG) pills.
+   Used across search results, comparison, country
+   cards, and anywhere a compact marker is needed.
+   ============================================ */
+.ptd-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.64rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    padding: 0.25em 0.5em;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+/* Compact single-letter variant for tight spots (e.g. after WR #N). */
+.ptd-tag--sm { font-size: 0.58rem; padding: 0.2em 0.42em; }
+
+/* Inline row of tags. Use anywhere you stack 1-N tags side by side.
+   Spacing is set on .ptd-tag itself (not via flex gap) because some call
+   sites wrap this in an element forced to `display: inline` elsewhere
+   (e.g. a `.meta-item` sibling), which would defeat flex gap. */
+.ptd-tag-row {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ptd-tag-row > .ptd-tag + .ptd-tag,
+.ptd-tag + .ptd-tag {
+    margin-left: 0.4rem;
+}
+
+/* Short course: brand orange. Warm punch, signals speed. */
+.ptd-tag--sc {
+    background: #fff1e6;
+    color: var(--primary-hover);
+    border-color: #ffd9b8;
+}
+
+/* Long course: brand navy. Cool and grounded, signals endurance. */
+.ptd-tag--lc {
+    background: #e4e5f1;
+    color: var(--navy);
+    border-color: #c8caea;
+}
+
+/* Age group: podium gold. Distinct from both courses. */
+.ptd-tag--ag {
+    background: #fff4cc;
+    color: var(--gold-text);
+    border-color: #f0d070;
+}
+
 
 /* ============================================
    SHARED FILTER COMPONENTS

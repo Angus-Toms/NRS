@@ -75,13 +75,25 @@ function renderResults(events) {
             esc(ev.event_date),
         ].filter(Boolean).join(' · ');
 
+        // Programs at an event share course length, so emit one chip next
+        // to the event name rather than repeating it on every program pill.
+        const eventCourse = races.find(r => r.course)?.course || null;
+        const eventChip = eventCourse === 'long'
+            ? '<span class="ptd-tag ptd-tag--sm ptd-tag--lc">LC</span>'
+            : eventCourse === 'short'
+                ? '<span class="ptd-tag ptd-tag--sm ptd-tag--sc">SC</span>'
+                : '';
+
         const pillsHtml = races.map(r =>
             `<a href="/race/${r.race_id}" class="race-pill">${esc(r.prog_name)}</a>`
         ).join('');
 
         return `
             <div class="rs-result-item">
-                <a href="/event/${ev.event_id}" class="rs-result-name">${esc(ev.name)}</a>
+                <div class="rs-result-name-row">
+                    <a href="/event/${ev.event_id}" class="rs-result-name">${esc(ev.name)}</a>
+                    ${eventChip}
+                </div>
                 <div class="rs-result-meta">${meta}</div>
                 ${races.length ? `<div class="rs-result-races">${pillsHtml}</div>` : ''}
             </div>

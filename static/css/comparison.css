@@ -107,8 +107,17 @@
 }
 
 .result-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
     font-size: var(--font-size-sm);
     color: var(--text-light);
+}
+
+.result-meta-sep {
+    color: var(--text-lighter);
+    opacity: 0.6;
 }
 
 .no-results {
@@ -263,9 +272,114 @@
 }
 
 /* ============================================
-    CURRENT RATINGS TABLE
+    HEAD-TO-HEAD STATS CARD
    ============================================ */
-.h2h-ratings-table th,
+.h2h-stats-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.h2h-stats-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.9rem 1.5rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.h2h-stats-header .h2h-stats-athlete:first-child { text-align: right; }
+.h2h-stats-header .h2h-stats-athlete:last-child  { text-align: left; }
+
+.h2h-stats-athlete {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.h2h-stats-vs {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-lighter);
+}
+
+.h2h-stats-group {
+    padding: 0.25rem 0;
+}
+
+.h2h-stats-group + .h2h-stats-group {
+    border-top: 1px solid var(--border-color);
+}
+
+.h2h-stat-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.7rem 1.5rem;
+}
+
+.h2h-stat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-light);
+}
+
+.h2h-stat-val {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.h2h-stat-cell.is-winner {
+    color: var(--text-color);
+}
+
+.h2h-stat-cell.is-winner .h2h-stat-val {
+    font-weight: 800;
+    color: var(--success-color);
+}
+
+.h2h-stat-cell.is-loser .h2h-stat-val {
+    color: var(--text-lighter);
+    font-weight: 500;
+}
+
+.h2h-stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    white-space: nowrap;
+    text-align: center;
+}
+
+.h2h-stat-delta {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.h2h-stat-delta .rating-change { margin-left: 0; }
+
+/* ============================================
+    H2H RACES TABLE
+   ============================================ */
 .h2h-table th {
     text-transform: none;
     letter-spacing: 0;
@@ -273,22 +387,10 @@
     font-size: 0.8rem;
 }
 
-.h2h-ratings-table td,
 .h2h-table td {
     font-variant-numeric: tabular-nums;
 }
 
-/* Discipline label column */
-.h2h-ratings-table td:first-child {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-lighter);
-}
-
-/* Zebra rows */
-.h2h-ratings-table tbody tr:nth-child(even) td,
 .h2h-table tbody tr:nth-child(even) td {
     background: #f2f4f6;
 }
@@ -296,7 +398,6 @@
 .h2h-winner {
     font-weight: 700;
     color: var(--success-color);
-    background: rgba(34, 197, 94, 0.08) !important;
 }
 
 .rating-change {
@@ -313,9 +414,36 @@
 .rating-change.negative { color: var(--error-color); }
 .rating-change.neutral  { color: var(--text-light); }
 
-/* Career stats as table rows - separator before the first one */
-.h2h-stats-row--first td {
-    border-top: 2px solid var(--border-color);
+/* Discipline picker above the h2h races table - wrapped in a white pill so the
+   grey radio-chips track is visible against the page background. */
+.h2h-disc-picker {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 1rem;
+}
+
+.h2h-disc-val {
+    display: inline-block;
+}
+
+.h2h-disc-val[hidden] {
+    display: none;
+}
+
+/* Position column hidden entirely when viewing a split discipline - prevents
+   an empty column where the overall position would sit. */
+.h2h-table[data-disc="swim"] .h2h-pos-cell,
+.h2h-table[data-disc="bike"] .h2h-pos-cell,
+.h2h-table[data-disc="run"]  .h2h-pos-cell,
+.h2h-table[data-disc="swim"] .h2h-pos-th,
+.h2h-table[data-disc="bike"] .h2h-pos-th,
+.h2h-table[data-disc="run"]  .h2h-pos-th {
+    display: none;
+}
+
+.h2h-pos-th {
+    width: 48px;
+    text-align: center !important;
 }
 
 /* ============================================
@@ -374,25 +502,17 @@
     gap: 0.25em;
 }
 
-/* ============================================
-   ALIGNMENT BUTTON
-   ============================================ */
-
-.align-starts-button {
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 0.3rem 0.9rem;
-    border: 0;
-    font-weight: 500;
-    font-size: 0.78rem;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: color var(--transition-fast), background-color var(--transition-fast);
+.align-chips {
     flex-shrink: 0;
 }
 
-.align-starts-button:hover {
-    background-color: var(--primary-hover);
+/* The default .radio-chips track uses var(--bg-color), which equals the page
+   background so the track disappears. Darken it on the comparison page so the
+   pill is visible. */
+.program-picker .radio-chips,
+.h2h-disc-picker .radio-chips,
+.align-chips {
+    background: #e4e4e0;
 }
 
 .time-cell {
@@ -483,4 +603,44 @@
     .charts-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* ── Program picker (only shown when both athletes share >1 program) ── */
+.program-picker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1.25rem 0 0.25rem;
+    animation: program-picker-in 160ms ease-out;
+}
+.program-picker[hidden] { display: none; }
+@keyframes program-picker-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.program-picker-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-lighter);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Inline hint shown under the Compare button when no shared program exists. */
+.program-picker-hint {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-lighter);
+    font-style: italic;
+    text-align: center;
+}
+.program-picker-hint[hidden] { display: none; }
+
+/* Inline tag chips in the comparison search results (right of the meta line). */
+.athlete-tags {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
 }

@@ -1,4 +1,4 @@
 {% include "_race_hero.html" %}
 <div id="race-content-swap">
-{% include "_race_content.html" %}
+{% if is_upcoming %}{% include "_upcoming_race_content.html" %}{% else %}{% include "_race_content.html" %}{% endif %}
 </div>

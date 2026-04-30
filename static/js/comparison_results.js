@@ -315,13 +315,20 @@
         });
     }
 
+    function _setSectionTitle(id, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const span = el.querySelector('span');
+        (span || el).textContent = text;
+    }
+
     function switchRatingsDisc(disc) {
         currentRatingsDisc = disc;
         document.querySelectorAll('#ratings-section .ratings-mini').forEach(el =>
             el.classList.toggle('active', el.dataset.disc === disc)
         );
-        document.getElementById('ratings-section-title').textContent =
-            `Rating History - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
+        _setSectionTitle('ratings-section-title',
+            `Rating History - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`);
         if (ratingsMainChart) ratingsMainChart.destroy();
         ratingsMainChart = buildMainChart('ratings-main-canvas', disc, 'ratings', false);
     }
@@ -342,19 +349,61 @@
         document.querySelectorAll('#rankings-section .ratings-mini').forEach(el =>
             el.classList.toggle('active', el.dataset.disc === disc)
         );
-        document.getElementById('rankings-section-title').textContent =
-            `World Rankings - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`;
+        _setSectionTitle('rankings-section-title',
+            `World Rankings - ${disc.charAt(0).toUpperCase() + disc.slice(1)}`);
         if (rankingsMainChart) rankingsMainChart.destroy();
         rankingsMainChart = buildMainChart('rankings-main-canvas', disc, 'rankings', true);
     }
 
     // --- Alignment ---
 
-    function alignChartStarts() {
-        isAligned = !isAligned;
-        document.getElementById('align-btn').textContent = isAligned ? 'Show Actual Dates' : 'Align Career Starts';
+    function setAlignMode(aligned) {
+        if (isAligned === aligned) return;
+        isAligned = aligned;
         initRatings();   // sets athleteFirstDates
         initRankings();
+    }
+
+    function wireAlignChips() {
+        const chips = document.getElementById('align-chips');
+        if (!chips) return;
+        chips.querySelectorAll('input[name="align-mode"]').forEach(r => {
+            r.addEventListener('change', () => {
+                if (r.checked) setAlignMode(r.value === 'career');
+            });
+        });
+    }
+
+    // --- H2H discipline picker (overall / swim / bike / run) ---
+
+    function switchH2hDisc(disc) {
+        const table = document.querySelector('.h2h-table');
+        if (table) {
+            table.dataset.disc = disc;
+            table.querySelectorAll('.h2h-disc-val').forEach(el => {
+                el.hidden = !el.classList.contains(`h2h-disc-${disc}`);
+            });
+        }
+        const a1El = document.querySelector('.h2h-wins-a1');
+        const a2El = document.querySelector('.h2h-wins-a2');
+        if (a1El && a2El) {
+            const n1 = parseInt(a1El.dataset[disc] || '0', 10);
+            const n2 = parseInt(a2El.dataset[disc] || '0', 10);
+            a1El.textContent = n1;
+            a2El.textContent = n2;
+            a1El.classList.toggle('h2h-wins-leader', n1 > n2);
+            a2El.classList.toggle('h2h-wins-leader', n2 > n1);
+        }
+    }
+
+    function wireH2hDiscChips() {
+        const chips = document.getElementById('h2h-disc-chips');
+        if (!chips) return;
+        chips.querySelectorAll('input[name="h2h-disc"]').forEach(r => {
+            r.addEventListener('change', () => {
+                if (r.checked) switchH2hDisc(r.value);
+            });
+        });
     }
 
     // Export to global scope for onclick handlers and comparison.js
@@ -362,10 +411,11 @@
     window.initRankings     = initRankings;
     window.switchRatingsDisc  = switchRatingsDisc;
     window.switchRankingsDisc = switchRankingsDisc;
-    window.alignChartStarts   = alignChartStarts;
 
     // Init
     initRatings();
     initRankings();
+    wireAlignChips();
+    wireH2hDiscChips();
 
 })();

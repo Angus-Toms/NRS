@@ -60,6 +60,14 @@
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
+/* Event name + course chip on one row */
+.rs-result-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 a.race-pill:hover {
     background: rgba(231, 100, 30, 0.06);
     border-color: var(--primary-color);

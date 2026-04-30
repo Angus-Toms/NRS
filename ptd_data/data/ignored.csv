@@ -1,17 +1,4 @@
 race_id,reason
-2086,"Race has 124 entries (likely combined AG/Elite), needs manual review"
-2087,"Race has 104 entries (likely combined AG/Elite), needs manual review"
-2088,"Race has 127 entries (likely combined AG/Elite), needs manual review"
-2090,"Race has 124 entries (likely combined AG/Elite), needs manual review"
-2091,"Race has 104 entries (likely combined AG/Elite), needs manual review"
-2092,"Race has 137 entries (likely combined AG/Elite), needs manual review"
-2093,"Race has 111 entries (likely combined AG/Elite), needs manual review"
-2094,"Race has 119 entries (likely combined AG/Elite), needs manual review"
-2096,"Race has 109 entries (likely combined AG/Elite), needs manual review"
-2459,"Race has 108 entries (likely combined AG/Elite), needs manual review"
-2460,"Race has 135 entries (likely combined AG/Elite), needs manual review"
-2461,"Race has 124 entries (likely combined AG/Elite), needs manual review"
-2462,"Race has 115 entries (likely combined AG/Elite), needs manual review"
 2695,"Race has 118 entries (likely combined AG/Elite), needs manual review"
 2791,"Race has 117 entries (likely combined AG/Elite), needs manual review"
 2793,"Race has 119 entries (likely combined AG/Elite), needs manual review"
@@ -19,18 +6,11 @@ race_id,reason
 2800,"Race has 130 entries (likely combined AG/Elite), needs manual review"
 2802,"Race has 115 entries (likely combined AG/Elite), needs manual review"
 3018,"Race has 106 entries (likely combined AG/Elite), needs manual review"
-3103,"Race has 110 entries (likely combined AG/Elite), needs manual review"
-3105,"Race has 118 entries (likely combined AG/Elite), needs manual review"
-3107,"Race has 122 entries (likely combined AG/Elite), needs manual review"
-3109,"Race has 110 entries (likely combined AG/Elite), needs manual review"
-3111,"Race has 132 entries (likely combined AG/Elite), needs manual review"
-3113,"Race has 118 entries (likely combined AG/Elite), needs manual review"
 3367,"Race has 106 entries (likely combined AG/Elite), needs manual review"
 3377,"Race has 102 entries (likely combined AG/Elite), needs manual review"
 3490,"Race has 107 entries (likely combined AG/Elite), needs manual review"
 3528,"Race has 135 entries (likely combined AG/Elite), needs manual review"
 3678,U23 Men results are a subset of 2008 Mazatlan PATCO Triathlon Pan-American Championship
-4245,"Race has 104 entries (likely combined AG/Elite), needs manual review"
 4308,Elite results combined with AG
 4430,Elite results combined with AG
 4443,"Race has 141 entries (likely combined AG/Elite), needs manual review"
@@ -38,37 +18,8 @@ race_id,reason
 4498,Elite results combined with AG
 4661,U23 Women results are a subset of 2009 Oklahoma PATCO Triathlon Pan-American Championships
 4662,U23 Men results are a subset of 2009 Oklahoma PATCO Triathlon Pan-American Championships
-4860,"Race has 110 entries (likely combined AG/Elite), needs manual review"
-4862,"Race has 124 entries (likely combined AG/Elite), needs manual review"
-4864,"Race has 110 entries (likely combined AG/Elite), needs manual review"
-4866,"Race has 112 entries (likely combined AG/Elite), needs manual review"
-4868,"Race has 110 entries (likely combined AG/Elite), needs manual review"
-5871,"Race has 112 entries (likely combined AG/Elite), needs manual review"
-5873,"Race has 123 entries (likely combined AG/Elite), needs manual review"
-5875,"Race has 137 entries (likely combined AG/Elite), needs manual review"
-5877,"Race has 116 entries (likely combined AG/Elite), needs manual review"
-5879,"Race has 112 entries (likely combined AG/Elite), needs manual review"
-5881,"Race has 107 entries (likely combined AG/Elite), needs manual review"
-7920,"Race has 103 entries (likely combined AG/Elite), needs manual review"
 8869,"Race has 135 entries (likely combined AG/Elite), needs manual review"
 8879,"Race has 123 entries (likely combined AG/Elite), needs manual review"
-259904,"Race has 120 entries (likely combined AG/Elite), needs manual review"
-259906,"Race has 103 entries (likely combined AG/Elite), needs manual review"
-259907,"Race has 101 entries (likely combined AG/Elite), needs manual review"
-259908,"Race has 142 entries (likely combined AG/Elite), needs manual review"
-259910,"Race has 107 entries (likely combined AG/Elite), needs manual review"
-259912,"Race has 170 entries (likely combined AG/Elite), needs manual review"
-259913,"Race has 108 entries (likely combined AG/Elite), needs manual review"
-259914,"Race has 108 entries (likely combined AG/Elite), needs manual review"
-259916,"Race has 162 entries (likely combined AG/Elite), needs manual review"
-259917,"Race has 112 entries (likely combined AG/Elite), needs manual review"
-259918,"Race has 107 entries (likely combined AG/Elite), needs manual review"
-259920,"Race has 165 entries (likely combined AG/Elite), needs manual review"
-259921,"Race has 108 entries (likely combined AG/Elite), needs manual review"
-259924,"Race has 155 entries (likely combined AG/Elite), needs manual review"
-259925,"Race has 116 entries (likely combined AG/Elite), needs manual review"
-259928,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-263838,"Race has 115 entries (likely combined AG/Elite), needs manual review"
 264261,U23 Men results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
 264262,U23 Women results are a subset of 2014 Devonport OTU Triathlon Oceania Championships
 264309,U23 Men results are a subset of 2014 Troutbeck ATU Triathlon African Championships
@@ -123,14 +74,6 @@ race_id,reason
 278576,Junior Men results are a subset of 2015 AUT Sprint Triathlon National Championships
 278986,U23 Men results are a subset of 2015 GER Triathlon National Championships
 279160,U23 Men results are a subset of 2014 DOM Triathlon National Championships
-279539,"Race has 106 entries (likely combined AG/Elite), needs manual review"
-279540,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-279541,"Race has 122 entries (likely combined AG/Elite), needs manual review"
-279544,"Race has 107 entries (likely combined AG/Elite), needs manual review"
-279545,"Race has 114 entries (likely combined AG/Elite), needs manual review"
-279546,"Race has 129 entries (likely combined AG/Elite), needs manual review"
-279547,"Race has 132 entries (likely combined AG/Elite), needs manual review"
-279548,"Race has 119 entries (likely combined AG/Elite), needs manual review"
 279927,Junior Women results are a subset of 2015 NOR Sprint Triathlon National Championships
 280398,Elite Men results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
 280399,Elite Women results are a subset of 2015 Devonport OTU Triathlon Oceania Championships
@@ -185,14 +128,8 @@ race_id,reason
 312503,U23 Men results are a subset of 2017 Devonport OTU Triathlon Oceania Championships
 312504,U23 Women results are a subset of 2017 Devonport OTU Triathlon Oceania Championships
 314890,16-19 Female AG results are a subset of 2017 Sharm El Sheikh ATU Sprint Triathlon African Cup and Pan-Arab Championships
-318956,"Race has 112 entries (likely combined AG/Elite), needs manual review"
 319750,Junior Men results are a subset of 2017 Ruse ETU Triathlon Balkan Championships
 319751,Junior Women results are a subset of 2017 Ruse ETU Triathlon Balkan Championships
-320223,"Race has 116 entries (likely combined AG/Elite), needs manual review"
-320224,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-320225,"Race has 126 entries (likely combined AG/Elite), needs manual review"
-320226,"Race has 145 entries (likely combined AG/Elite), needs manual review"
-320227,"Race has 125 entries (likely combined AG/Elite), needs manual review"
 321097,U23 Men results are a subset of 2018 Rabat ATU Triathlon African Championships and YOG Qualifier
 321098,U23 Women results are a subset of 2018 Rabat ATU Triathlon African Championships and YOG Qualifier
 321110,Junior Men results are a subset of 2017 GRE Sprint Triathlon National Championships
@@ -243,17 +180,6 @@ race_id,reason
 347144,Elite Women results are a subset of 2019 Durban ATU Triathlon Premium African Cup
 347145,Junior Men results are a subset of 2019 Durban ATU Triathlon Junior African Cup
 347146,Junior Women results are a subset of 2019 Durban ATU Triathlon Junior African Cup
-347489,"Race has 103 entries (likely combined AG/Elite), needs manual review"
-347493,"Race has 114 entries (likely combined AG/Elite), needs manual review"
-347495,"Race has 136 entries (likely combined AG/Elite), needs manual review"
-347497,"Race has 121 entries (likely combined AG/Elite), needs manual review"
-347499,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-347530,"Race has 115 entries (likely combined AG/Elite), needs manual review"
-347532,"Race has 123 entries (likely combined AG/Elite), needs manual review"
-347534,"Race has 139 entries (likely combined AG/Elite), needs manual review"
-347536,"Race has 158 entries (likely combined AG/Elite), needs manual review"
-347538,"Race has 134 entries (likely combined AG/Elite), needs manual review"
-347540,"Race has 154 entries (likely combined AG/Elite), needs manual review"
 349354,Junior Women results are a subset of 2019 IRL Sprint Triathlon National Championships
 349515,Junior Women results are a subset of 2019 ROU Sprint Triathlon National Championships
 349665,Elite Men results are a subset of 2019 Kelowna CAMTRI Sprint Triathlon American Cup
@@ -281,13 +207,7 @@ race_id,reason
 357862,U23 Women results are a subset of 2020 Devonport OTU Sprint Triathlon Oceania Cup and Oceania Championships
 378354,Elite Men results are a subset of 2020 Playa Hermosa PATCO Sprint Triathlon Panamerican Cup and Central American&Caribbean Championshi
 378355,Central American and Carribean Championships taken from within Continental Cup
-392871,"Race has 101 entries (likely combined AG/Elite), needs manual review"
 403706,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-405829,"Race has 103 entries (likely combined AG/Elite), needs manual review"
-405830,"Race has 127 entries (likely combined AG/Elite), needs manual review"
-405831,"Race has 107 entries (likely combined AG/Elite), needs manual review"
-405832,"Race has 104 entries (likely combined AG/Elite), needs manual review"
-425470,"Race has 104 entries (likely combined AG/Elite), needs manual review"
 450823,Junior Men results are a subset of 2020 BLR Sprint Triathlon National Championships
 450824,Junior Women results are a subset of 2020 BLR Sprint Triathlon National Championships
 454510,Junior Women results are a subset of 1998 Changi ASTC Triathlon Asian Championships
@@ -418,8 +338,6 @@ race_id,reason
 581515,U23 Women results are a subset of 2022 JPN Triathlon National Championships
 581901,Elite Men results are a subset of 2022 Africa Triathlon Cup Swakopmund
 581902,Elite Women results are a subset of 2022 Africa Triathlon Cup Swakopmund
-582528,"Race has 114 entries (likely combined AG/Elite), needs manual review"
-582530,"Race has 105 entries (likely combined AG/Elite), needs manual review"
 583793,Junior Women results are a subset of 2022 POR Sprint Triathlon National Championships
 584153,Elite Men results are a subset of 2022 Africa Triathlon Cup Maselspoort
 584154,Elite Women results are a subset of 2022 Africa Triathlon Cup Maselspoort
@@ -481,15 +399,6 @@ race_id,reason
 632740,Elite Women results are a subset of 2023 Asia Triathlon Cup Xiamen
 632993,Junior Men results are a subset of 2023 POR Sprint Triathlon National Championships
 632994,Junior Women results are a subset of 2023 POR Sprint Triathlon National Championships
-635405,"Race has 102 entries (likely combined AG/Elite), needs manual review"
-635407,"Race has 123 entries (likely combined AG/Elite), needs manual review"
-635408,"Race has 108 entries (likely combined AG/Elite), needs manual review"
-635409,"Race has 115 entries (likely combined AG/Elite), needs manual review"
-635410,"Race has 120 entries (likely combined AG/Elite), needs manual review"
-635438,"Race has 113 entries (likely combined AG/Elite), needs manual review"
-635439,"Race has 106 entries (likely combined AG/Elite), needs manual review"
-635440,"Race has 117 entries (likely combined AG/Elite), needs manual review"
-635443,"Race has 110 entries (likely combined AG/Elite), needs manual review"
 635540,U23 Men results are a subset of 2024 Africa Triathlon Championships Hurghada
 635541,U23 Women results are a subset of 2024 Africa Triathlon Championships Hurghada
 640185,Elite Women results are a subset of 2024 Africa Triathlon Cup Troutbeck

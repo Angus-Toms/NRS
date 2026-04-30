@@ -2,10 +2,13 @@
     <div class="race-hero-inner">
         <!-- Left: back nav + title + metadata + race switcher -->
         <div class="race-hero-left">
-            {% if context_links %}
-            <div class="race-context-pills">
-                {% for link in context_links %}
-                <a href="{{ link.url }}" class="race-context-pill">{{ link.label }}</a>
+            {% if context_pills %}
+            <div class="race-context-pills race-context-pills-series">
+                {% for pill in context_pills %}
+                <a href="{{ pill.url }}"
+                   class="race-context-pill race-context-pill-link race-context-pill--{{ pill.tier }}">
+                    {{ pill.label }}<svg class="race-context-pill-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
                 {% endfor %}
             </div>
             {% endif %}
@@ -28,17 +31,28 @@
             {% endif %}
             {% if event_races|length > 1 %}
             {%- set event_is_multi_stage = event_races | selectattr('is_multi_stage') | list | length > 0 -%}
+            {# Show up to N pills. If the active race isn't already in the
+               first N, drop the last and append the active so the user
+               always sees their current selection. #}
+            {%- set max_pills = 5 -%}
+            {%- set first_n = event_races[:max_pills] -%}
+            {%- if first_n | selectattr('race_id', 'equalto', race.race_id) | list | length == 0 -%}
+                {%- set active_race = (event_races | selectattr('race_id', 'equalto', race.race_id) | list | first) -%}
+                {%- set visible = first_n[:max_pills - 1] + ([active_race] if active_race else []) -%}
+            {%- else -%}
+                {%- set visible = first_n -%}
+            {%- endif -%}
             <div class="race-switcher">
-                {% set max_pills = 5 %}
-                {% for r in event_races[:max_pills] %}
+                {% for r in visible %}
                 <button class="race-pill{{ ' active' if r.race_id == race.race_id else '' }}"
                         onclick="switchRace({{ r.race_id }})">{{ r.prog_name }}{% if event_is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</button>
                 {% endfor %}
-                {% if event_races|length > max_pills %}
-                <a href="/event/{{ event_id }}" class="race-pill race-pill-more">+{{ event_races|length - max_pills }} more</a>
+                {% if event_races|length > visible|length %}
+                <a href="/event/{{ event_id }}" class="race-pill race-pill-more">+{{ event_races|length - visible|length }} more</a>
                 {% endif %}
             </div>
             {% endif %}
+
         </div>
 
         <!-- Right: podium (past races only) -->

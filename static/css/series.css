@@ -1,5 +1,8 @@
 /* ============================================
    SERIES INDEX
+   Per-series block: orange-bordered identity row + tabbed card
+   (Latest result · Records · Most Wins). Tier groupings act as
+   section dividers; series within a tier render as sub-sections.
    ============================================ */
 
 .series-index-page {
@@ -8,56 +11,47 @@
     gap: var(--spacing-lg);
 }
 
-.series-group {
+/* Tier grouping. The label is a small uppercase header above the
+   series in that tier; single-series tiers skip it. */
+.tier-section {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
-}
-
-/* Tighter section heading on this page — subtitle sits right beneath the title */
-.series-group .page-section-head {
-    margin-bottom: 0;
-    align-items: flex-start;
-}
-
-.series-group .page-section-sub { margin: 0.1rem 0 0; }
-
-/* Align the see-series link to the first line of the title */
-.series-group .page-section-head > .si-see-series { margin-top: 0.5rem; }
-
-/* ── Per-series block ── */
-.si-series {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-}
-
-/* Sibling series within a tier group: generous gap — the series name's own
-   underline (si-series-head border-bottom) provides the visual divider. */
-.si-series + .si-series { margin-top: calc(var(--spacing-lg) + 0.5rem); }
-
-.si-series-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.4rem;
 }
-
-.si-series-head .si-see-series { margin-top: 0.25rem; }
-
-.si-series-name {
-    font-size: 1.05rem;
+.tier-section-head {
+    margin: 0;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: var(--text-color);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-lighter);
 }
 
-.si-series-head .page-section-sub { margin: 0.1rem 0 0; font-size: 0.8rem; }
+.series-block + .series-block { margin-top: 0.65rem; }
 
-/* ── See-series chevron link (matches style of other site links) ── */
-.si-see-series {
+/* Title row: series name + see-series link, separated by an orange
+   left border so the series identity reads clearly above the card. */
+.series-name-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    border-left: 4px solid var(--primary-color);
+    padding: 0.1rem 0 0.1rem 0.75rem;
+    margin-bottom: 0.65rem;
+    flex-wrap: wrap;
+}
+.series-name-link {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.series-name-link:hover { color: var(--primary-color); }
+
+.see-series {
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
@@ -66,699 +60,843 @@
     color: var(--primary-color);
     text-decoration: none;
     white-space: nowrap;
-    letter-spacing: 0;
     transition: color var(--transition-fast);
 }
+.see-series:hover { color: var(--primary-hover); }
+.see-series .si-chev { transition: transform var(--transition-fast); margin-top: 1px; }
+.see-series:hover .si-chev { transform: translateX(2px); }
 
-.si-see-series:hover { color: var(--primary-hover); }
-
-.si-chev {
-    transition: transform var(--transition-fast);
-    margin-top: 1px;
-}
-
-.si-see-series:hover .si-chev { transform: translateX(2px); }
-
-/* page-section-head is a flex row; push see-series to the right */
-.page-section-head .si-see-series { font-size: 0.85rem; }
-
-/* ── Kicker labels (Latest Edition / Most Wins) ── */
-.si-latest-kicker,
-.si-wins-kicker {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-lighter);
-    margin-top: 0.15rem;
-}
-
-/* ── Stacked edition cards + show-earlier toggle ── */
-.si-editions-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.si-edition-card.is-hidden { display: none; }
-
-.si-show-more-editions {
-    align-self: flex-end;
-    background: none;
-    border: 0;
-    padding: 0.2rem 0;
-    margin-top: 0.15rem;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    transition: color var(--transition-fast);
-}
-
-.si-show-more-editions:hover { color: var(--primary-hover); }
-
-.si-chev-down { transition: transform var(--transition-fast); }
-.si-show-more-editions:hover .si-chev-down { transform: translateY(1px); }
-
-/* ── Series body: Latest Edition (left, wider) + Most Wins (right, open styling) ── */
-.si-series-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-    gap: 1.25rem;
-    align-items: start;
-}
-
-/* Single-column fallback when one side has no content */
-.si-series-body > *:only-child { grid-column: 1 / -1; }
-
-.si-latest-col,
-.si-wins-col {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
-}
-
-/* ── All-time leader blocks: boxed card, genders stacked with dividers ── */
-.si-leaders {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+/* Card holding the tabs + tab-pane content. Navy header + white body. */
+.series-card {
     background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--box-shadow);
     overflow: hidden;
 }
 
-.si-leader {
+.card-tabs {
+    background: var(--navy);
     display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    padding: 0.55rem 1rem 0.75rem;
-    min-width: 0;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1.1rem 0 0.4rem;
 }
-
-.si-leader > .si-leader-head { margin-bottom: -0.1rem; }
-
-.si-leader-head {
+.card-tabs-l {
+    display: flex;
+    align-items: stretch;
+    gap: 0.2rem;
+}
+.card-tabs-r {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.74rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.card-tabs-r b { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
+
+/* Tab pill - navy, orange underline when active. */
+.card-tab {
+    padding: 0.6rem 0.95rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.card-tab:hover { color: rgba(255, 255, 255, 0.85); }
+.card-tab.active { color: #fff; border-bottom-color: var(--primary-color); }
+
+.card-pane { display: none; }
+.card-pane.active { display: block; }
+.card-pane-body { padding: 0.85rem 1.1rem 1rem; }
+.pane-empty {
+    margin: 0;
     color: var(--text-lighter);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 0.8rem 0;
 }
 
-.si-leader-head::after {
-    content: '';
+/* Subhead inside the Latest pane: bold race link + date sitting above
+   the gender-pair grid. Tab already says "Latest result"; this answers
+   "the latest of what, and when?". */
+.pane-edition-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+    flex-wrap: wrap;
+}
+.pane-edition-link {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.pane-edition-link:hover { color: var(--primary-color); }
+.pane-edition-date {
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Two-column gender pair (Men / Women) with a thin vertical divider. */
+.gender-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.25rem;
+}
+.gender-pair > div + div {
+    border-left: 1px solid var(--border-color);
+    padding-left: 1.25rem;
+}
+@media (max-width: 760px) {
+    .gender-pair { grid-template-columns: 1fr; gap: 1rem; }
+    .gender-pair > div + div { border-left: none !important; padding-left: 0 !important; }
+}
+
+/* Eyebrow label running across each column with a horizontal hairline
+   trailing right of the text. Matches .si-leader-head convention. */
+.col-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}
+.col-head::after {
+    content: "";
     flex: 1;
     height: 1px;
     background: var(--border-color);
 }
 
-.si-leader-row {
+/* Podium rows in the Latest pane. No row backgrounds - the medal cue
+   comes from the pos-circle and the photo border colour. */
+.podium-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.podium-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    column-gap: 0.85rem;
-    row-gap: 0.35rem;
+    grid-template-columns: auto 30px minmax(0, 1fr) auto;
+    gap: 0.55rem;
     align-items: center;
-    min-width: 0;
 }
-
-.si-leader-body {
-    display: contents;
-    text-decoration: none;
-    color: var(--text-color);
-}
-
-.si-leader-img {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    width: 42px;
-    height: 42px;
+.podium-row img {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--border-color);
-    align-self: center;
+    border: 1.5px solid var(--border-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
-
-.si-leader-body:hover .si-leader-name { color: var(--primary-color); }
-
-.si-leader-name {
-    grid-column: 2;
-    grid-row: 1;
-    font-size: 0.95rem;
+.podium-row.gold-row   img { border-color: #d4af37; }
+.podium-row.silver-row img { border-color: #a8a9ad; }
+.podium-row.bronze-row img { border-color: #cd7f32; }
+.podium-name {
+    font-size: 0.85rem;
     font-weight: 600;
+    line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    color: var(--text-color);
+    text-decoration: none;
     transition: color var(--transition-fast);
 }
-
-.si-leader-wins {
-    grid-column: 3;
-    grid-row: 1;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.3rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.si-leader-wins-n {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--text-color);
-    letter-spacing: -0.01em;
-    line-height: 1;
-}
-
-.si-leader-wins-lbl {
-    font-size: 0.64rem;
+.podium-name:hover { color: var(--primary-color); }
+.podium-time {
+    font-size: 0.78rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-color);
+}
+/* Smaller, lighter style for the gap-to-leader on 2nd and 3rd. */
+.podium-gap {
+    font-size: 0.72rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--text-lighter);
 }
+.podium-empty { font-size: 0.85rem; color: var(--text-lighter); padding: 0.5rem 0; }
 
-.si-leader-empty { font-size: 0.9rem; color: var(--text-lighter); }
-
-.si-leader-editions {
-    grid-column: 2 / -1;
-    grid-row: 2;
+/* Card footer link: appears at the bottom of the series-card for AG-only
+   series (where the most-recent event has many programs and the +N link
+   helps users drill into bands beyond the two pinned in the podium grid). */
+.card-footer-link {
+    display: block;
+    padding: 0.55rem 1rem;
+    background: rgba(0, 0, 0, 0.025);
+    border-top: 1px solid var(--border-color);
     font-size: 0.78rem;
-    line-height: 1.7;
+    font-weight: 500;
+    color: var(--primary-color);
+    text-decoration: none;
+    text-align: right;
+    transition: background var(--transition-fast);
+}
+.card-footer-link:hover {
+    background: rgba(0, 0, 0, 0.05);
+    text-decoration: none;
+}
+
+/* Most Wins rows: same column shell as the podium but with year list
+   and an N×🥇 trailer pill instead of a time. */
+.leader-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.leader-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+}
+.leader-row img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid var(--border-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+.leader-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.leader-name:hover { color: var(--primary-color); }
+.leader-meta {
+    font-size: 0.72rem;
+    color: var(--text-lighter);
     font-variant-numeric: tabular-nums;
-    color: var(--text-light);
-    overflow-wrap: anywhere;
+    margin-top: 2px;
+    line-height: 1.5;
 }
-
-.si-edition-item {
-    white-space: nowrap;
-}
-
-.si-edition {
+/* Each label + its trailing dot wraps as a single unit, so a wrapped line
+   never starts with a leading "·". The wrapper allows wbr-style breaking
+   only between items, never between an item and its separator. */
+.leader-edition-item { white-space: nowrap; }
+.leader-edition {
     color: var(--text-light);
     text-decoration: none;
     transition: color var(--transition-fast);
 }
-
-a.si-edition:hover {
-    color: var(--primary-color);
-}
-
-.si-edition-sep {
+.leader-edition:hover { color: var(--primary-color); }
+.leader-edition-sep {
+    margin: 0 0.6rem;
     color: var(--text-lighter);
-    margin: 0 0.55rem;
 }
+/* JS marks separators that fall at the end of a wrapped line so they
+   don't dangle in the air. Display:none means no margin either, so the
+   line-end label sits flush with the right edge. */
+.leader-edition-sep.is-line-end { display: none; }
+.leader-empty { font-size: 0.85rem; color: var(--text-lighter); padding: 0.5rem 0; }
 
-.si-leader-extras {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-}
-
-.si-leader-extras.is-hidden { display: none; }
-
-.si-leader-more-btn {
-    align-self: flex-end;
+/* See-more toggle for joint winners (>3 athletes tied at the top). */
+.leader-list .leader-row--extra { display: none; }
+.leader-list.is-expanded .leader-row--extra { display: grid; }
+.show-more-leaders {
+    align-self: flex-start;
     background: none;
     border: 0;
-    padding: 0.24rem 0;
+    padding: 0.25rem 0;
+    margin-top: 0.15rem;
     font: inherit;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    line-height: 1;
     color: var(--text-light);
     cursor: pointer;
     transition: color var(--transition-fast);
 }
+.show-more-leaders:hover { color: var(--primary-color); }
 
-.si-leader-more-btn:hover { color: var(--primary-color); }
-
-/* Inline expand / collapse for the edition list */
-.si-editions-extra { display: none; }
-.si-leader-editions.is-expanded .si-editions-extra { display: inline; }
-
-.si-editions-toggle {
-    background: none;
-    border: 0;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    color: var(--text-lighter);
-    font-weight: 600;
-    cursor: pointer;
+/* Records pane: sentence-case label · big value (+ optional std-pill)
+   · meta link. Athlete records sit in a top group, field-strength
+   records in a bottom group; the bottom group gets a margin-top. */
+.record-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.record-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.85rem;
+    align-items: baseline;
+}
+.record-label {
+    font-size: 0.84rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+.record-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
     white-space: nowrap;
+}
+.record-value .std-pill {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    font-weight: 700;
+}
+.record-meta {
+    font-size: 0.72rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+    /* Cap the meta column so a long race-short like "Foz De Iguacu '24"
+       can't push past the value and crowd the category label. */
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.record-meta a {
+    color: var(--text-lighter);
+    font-weight: 500;
+    text-decoration: none;
     transition: color var(--transition-fast);
 }
-
-.si-editions-toggle:hover { color: var(--primary-color); }
-
-.si-editions-toggle::before { content: attr(data-more); }
-.si-leader-editions.is-expanded .si-editions-toggle::before { content: attr(data-less); }
-
-@media (max-width: 900px) {
-    .si-series-body { grid-template-columns: 1fr; gap: 0.9rem; }
+.record-meta a:hover { color: var(--primary-color); }
+.record-prog {
+    margin-left: 0.3rem;
+    padding: 0 0.35rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.06);
+    font-size: 0.92em;
+    font-weight: 500;
+    color: var(--text-light);
 }
-
+.record-row--gap { margin-top: 0.6rem; }
 
 /* ============================================
    SERIES DETAIL PAGE
+   Timeline + dense edition table + tabs (Most Wins / Stats / Medals /
+   Youngest-Oldest). The page is mostly rendered by JS in series.html;
+   the styles below just describe the static look.
    ============================================ */
 
 .series-page {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);
-}
-
-/* ── Most Recent Edition ── */
-.series-latest-section {
-    display: flex;
-    flex-direction: column;
     gap: var(--spacing-lg);
 }
 
-.series-latest-card {
-    position: relative;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    box-shadow: var(--box-shadow);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-.series-latest-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
-}
-
-.series-latest-header {
-    background: var(--navy);
-    padding: 0.65rem 1.25rem;
+/* ── Hero overrides ───────────────────────────────────────────────── */
+/* Series hero: title on the left, program toggle pushed to the right. */
+.series-hero-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-}
-
-.series-latest-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #fff;
-    text-decoration: none;
-    transition: color var(--transition-fast);
-}
-
-.series-latest-title:hover,
-.series-latest-card:hover .series-latest-title { color: var(--primary-color); }
-
-.series-latest-date {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    white-space: nowrap;
-}
-
-.series-latest-athletes {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.series-latest-athlete {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1.75rem 1.25rem 1.5rem;
-    gap: 0.5rem;
-    border-right: 1px solid var(--border-color);
-}
-
-.series-latest-athlete:last-child { border-right: none; }
-
-/* Gold column gets a subtle background accent */
-.series-latest-athlete--gold {
-    background: linear-gradient(180deg, rgba(212,175,55,0.07) 0%, transparent 60px);
-}
-
-.series-latest-pos {
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-}
-
-.series-latest-pos.gold   { background: rgba(212,175,55,0.15); color: #a07c10; }
-.series-latest-pos.silver { background: rgba(168,169,173,0.15); color: #6b6c70; }
-.series-latest-pos.bronze { background: rgba(205,127,50,0.15);  color: #8b4f0f; }
-
-.series-latest-athlete-img {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid var(--border-color);
-}
-
-.series-latest-athlete--gold .series-latest-athlete-img   { border-color: #d4af37; }
-.series-latest-athlete--silver .series-latest-athlete-img { border-color: #a8a9ad; }
-.series-latest-athlete--bronze .series-latest-athlete-img { border-color: #cd7f32; }
-
-.series-latest-athlete-name {
-    font-size: 0.975rem;
-    font-weight: 700;
-    color: var(--text-color);
-    text-decoration: none;
-    transition: color var(--transition-fast);
-    line-height: 1.2;
-}
-
-.series-latest-athlete-name:hover { color: var(--primary-color); }
-
-.series-latest-time {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-color);
-    font-variant-numeric: tabular-nums;
-}
-
-.series-latest-gap {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: var(--text-lighter);
-}
-
-.series-latest-splits {
-    display: flex;
-    gap: 0.3rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 0.25rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--border-color);
-    width: 100%;
 }
-
-.series-split {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.1rem;
-    min-width: 3rem;
+.series-hero-inner > h1 {
+    margin: 0;
+    min-width: 0;
 }
-
-.series-split--t { opacity: 0.7; }
-
-.series-split-label {
-    font-size: 0.58rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-lighter);
+/* Generalised program selector: dark-bg variant of the segmented chips
+   so it sits cleanly inside the navy hero. */
+.page-hero .radio-chips {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px;
 }
-
-.series-split-val {
-    font-size: 0.78rem;
+.page-hero .radio-chips label {
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+.page-hero .radio-chips label:hover { color: rgba(255, 255, 255, 0.9); }
+.page-hero .radio-chips input:checked + label {
+    background: #fff;
+    color: var(--primary-color);
     font-weight: 600;
-    color: var(--text-color);
-    font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Map section ── */
-.series-map-section {
-    display: flex;
-    flex-direction: column;
-}
-
-.series-map-card {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    box-shadow: var(--box-shadow);
-    height: 240px;
-}
-
-#series-map {
-    width: 100%;
-    height: 100%;
-}
-
-.series-map-pin-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--primary-color);
-    border: 2.5px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+/* Single program dropdown for AG-Worlds-style series with many programs.
+   Replaces the radio chips when the program count is too large to pill. */
+.program-dropdown {
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 2rem 7px 0.95rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.85)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 12px 12px;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
-
-.series-map-popup .leaflet-popup-content-wrapper {
+.program-dropdown:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+.program-dropdown:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.program-dropdown option {
     background: var(--navy);
     color: #fff;
-    border-radius: var(--border-radius);
-    padding: 0;
-    box-shadow: var(--box-shadow-hover);
-    font-family: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.series-map-popup .leaflet-popup-content {
-    margin: 0.45rem 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-}
 
-.series-map-popup .leaflet-popup-content strong {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #fff;
-    display: block;
-}
-
-.series-map-popup .leaflet-popup-content span {
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.5);
-    display: block;
-}
-
-.series-map-popup .leaflet-popup-tip { background: var(--navy); }
-
-/* ── All editions ── */
-.series-editions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-.series-race-card {
-    position: relative;
+/* ── Timeline ─────────────────────────────────────────────────────── */
+/* Layout: img / surname / year / dot / time stacked. The horizontal
+   line sits at the dot's vertical centre. */
+.timeline-wrap {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    overflow: hidden;
+    padding: 0.75rem 2.5rem 0.4rem;
     box-shadow: var(--box-shadow);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    position: relative;
 }
-
-.series-race-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
+.timeline-track {
+    position: relative;
+    padding: 0 0.25rem 0.85rem;
 }
-
-.series-race-card-overlay {
+/* Line top is the dot's vertical centre. Tweaked empirically from
+   the live page to sit dead-centre. */
+.timeline-line {
     position: absolute;
-    inset: 0;
+    left: 0.25rem;
+    right: 0.25rem;
+    top: 90px;
+    height: 2px;
+    background: var(--border-color);
     z-index: 0;
 }
-
-.series-race-header {
-    background: var(--navy);
-    padding: 0.55rem 1rem;
+.timeline-years {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
+    position: relative;
+    z-index: 2;
 }
-
-.series-race-title {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #fff;
-    margin: 0;
-    transition: color var(--transition-fast);
-}
-
-.series-race-card:hover .series-race-title { color: var(--primary-color); }
-
-.series-race-date {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.5);
-    white-space: nowrap;
-}
-
-/* Card body: fixed-width podium left, standards right */
-.series-race-card-body {
-    display: flex;
-    align-items: stretch;
-}
-
-.series-race-podium {
-    flex: 0 0 320px;
-    width: 320px;
-    border-right: 1px solid var(--border-color);
-    padding: 0.2rem 0;
-}
-
-.series-podium-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.45rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.series-podium-row:last-child { border-bottom: none; }
-
-.series-podium-left {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
+.tyear {
+    flex: 1 1 0;
     min-width: 0;
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding-top: 0.1rem;
+    position: relative;
 }
-
-.series-podium-img {
-    width: 28px;
-    height: 28px;
+.tyear-img {
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     object-fit: cover;
-    flex-shrink: 0;
+    border: 2px solid var(--border-color);
+    background: var(--bg-color);
+    transition: border-color 0.12s;
 }
-
-.series-podium-name {
-    font-size: 0.875rem;
+.tyear-name {
+    font-size: 0.7rem;
     font-weight: 600;
-    color: var(--text-color);
-    text-decoration: none;
+    color: var(--text-light);
+    margin-top: 5px;
+    /* Slightly taller line so descenders (g, p, y) aren't clipped by
+       overflow:hidden on this single-line label. */
+    line-height: 1.25;
+    padding-bottom: 1px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    position: relative;
-    z-index: 1;
-    transition: color var(--transition-fast);
+    max-width: 100%;
+    transition: color 0.12s;
 }
-
-.series-podium-name:hover { color: var(--primary-color); }
-
-.series-podium-right { flex-shrink: 0; }
-
-.series-podium-time {
-    font-size: 0.8rem;
-    font-weight: 400;
-    color: var(--text-color);
-    font-variant-numeric: tabular-nums;
-}
-
-.series-podium-time--winner { font-size: 0.875rem; font-weight: 700; }
-
-.series-podium-gap {
-    font-size: 0.72rem;
-    color: var(--text-lighter);
-    font-variant-numeric: tabular-nums;
-}
-
-/* Standards panel */
-.series-race-standards {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0.75rem 1.25rem;
-    gap: 0.5rem;
-}
-
-.series-std-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.3rem;
-}
-
-.series-std-disc {
-    font-size: 0.62rem;
+.tyear-num {
+    font-size: 0.85rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-lighter);
-}
-
-.series-std-val {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--text-color);
+    letter-spacing: -0.01em;
     line-height: 1;
+    margin-top: 5px;
+    color: var(--text-color);
+    transition: color 0.12s;
     font-variant-numeric: tabular-nums;
 }
-
-.series-std-na { font-size: 0.75rem; color: var(--text-lighter); }
-
-.series-race-standards .std-pill { margin: 0; font-size: 0.62rem; }
-
-/* ── All-time leaders ── */
-.series-leaders {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
+/* The dot's white halo masks the line so it doesn't run through the dot. */
+.tyear-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    margin-top: 7px;
+    transition: all 0.12s;
+    box-shadow: 0 0 0 3px var(--white);
 }
+.tyear-time {
+    margin-top: 0.4rem;
+    font-size: 0.68rem;
+    color: var(--text-lighter);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.tyear:hover .tyear-img  { border-color: var(--primary-color); }
+.tyear:hover .tyear-name { color: var(--primary-color); }
+.tyear:hover .tyear-dot  { border-color: var(--primary-color); }
+.tyear.active .tyear-img { border-color: var(--primary-color); }
+.tyear.active .tyear-dot { background: var(--primary-color); border-color: var(--primary-color); }
+.tyear.active .tyear-num,
+.tyear.active .tyear-name { color: var(--primary-color); }
 
-.leaders-table-card {
+/* Chevron buttons: vertically centred on the timeline line.
+   wrap padding-top 0.75rem (12px) + line top 90px. */
+.tl-arrow {
+    position: absolute;
+    top: 102px;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-light);
+    border: 1px solid var(--border-color);
+    background: var(--white);
+    border-radius: 50%;
+    padding: 0;
+    z-index: 3;
+    transition: color 0.12s, border-color 0.12s;
+}
+.tl-arrow:hover:not(:disabled) {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.tl-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+.tl-arrow--prev { left: 0.6rem; }
+.tl-arrow--next { right: 0.6rem; }
+.tl-arrow svg { width: 14px; height: 14px; display: block; }
+
+/* ── Edition panel (navy header + dense table) ────────────────────── */
+.edition-panel {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     overflow: hidden;
     box-shadow: var(--box-shadow);
 }
+.ep-empty {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--text-lighter);
+}
 
-.leaders-table {
+/* Navy header: title block · standards strip · prev/next buttons. */
+.ep-head {
+    background: var(--navy);
+    padding: 0.7rem 0.85rem 0.7rem 1.1rem;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.85rem;
+}
+.ep-head-l {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+    align-self: center;
+}
+.ep-kicker {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+.ep-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    transition: color 0.12s;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+.ep-title:hover { color: var(--primary-color); }
+.ep-meta {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+.ep-meta a { color: rgba(255, 255, 255, 0.78); transition: color 0.12s; }
+.ep-meta a:hover { color: #fff; }
+
+.ep-nav {
+    display: flex;
+    gap: 0.4rem;
+    align-self: center;
+}
+.ep-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.ep-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.18); }
+.ep-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.ep-btn svg { width: 14px; height: 14px; display: block; }
+
+/* Standards strip in the navy header. No vertical separators. */
+.ep-head-stds {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+}
+.ch-std {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 1.05rem;
+    min-width: 70px;
+}
+.ch-std-d {
+    font-size: 0.54rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 700;
+}
+.ch-std-v {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+/* The light-bg std-pill variants from base.css disappear on navy.
+   Same dark-context overrides cover both the navy header strip and any
+   pd-dark Tippy tooltip body. */
+.ep-head-stds .std-pill,
+.tippy-box[data-theme~='pd-dark'] .std-pill { font-size: 0.54rem; padding: 1px 6px; }
+.ep-head-stds .std-pill--beginner,
+.tippy-box[data-theme~='pd-dark'] .std-pill--beginner    { background: rgba(74, 222, 128, 0.18); color: #86efac; }
+.ep-head-stds .std-pill--novice,
+.tippy-box[data-theme~='pd-dark'] .std-pill--novice      { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+.ep-head-stds .std-pill--intermediate,
+.tippy-box[data-theme~='pd-dark'] .std-pill--intermediate{ background: rgba(96, 165, 250, 0.18); color: #93c5fd; }
+.ep-head-stds .std-pill--advanced,
+.tippy-box[data-theme~='pd-dark'] .std-pill--advanced    { background: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+.ep-head-stds .std-pill--expert,
+.tippy-box[data-theme~='pd-dark'] .std-pill--expert      { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+@media (max-width: 800px) {
+    .ep-head { flex-wrap: wrap; }
+    .ep-head-stds { order: 2; flex-wrap: wrap; }
+    .ep-nav { order: 1; }
+}
+
+/* ── Dense edition results table ──────────────────────────────────── */
+.w1-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 0.85rem;
 }
-
-.leaders-table th {
-    background: var(--navy);
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.7rem;
-    font-weight: 600;
+.w1-table thead th {
+    background: #fafafa;
+    font-size: 0.6rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
-    padding: 0.55rem 1rem;
+    letter-spacing: 0.06em;
+    color: var(--text-lighter);
+    padding: 0.5rem 0.55rem;
     text-align: left;
+    border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
 }
+.w1-table thead th.num { text-align: right; }
+.w1-table tbody td {
+    padding: 0.7rem 0.55rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.w1-table tbody tr:last-child td { border-bottom: none; }
+/* Light gold/silver/bronze tint on each podium row. The hover overrides
+   re-state the same colour to defeat the global `table tr:hover td`
+   highlight in base.css - we want the medal tint to persist on hover. */
+.w1-table tbody tr.gold-row   td,
+.w1-table tbody tr.gold-row:hover   td { background: rgba(245, 200, 66, 0.13) !important; }
+.w1-table tbody tr.silver-row td,
+.w1-table tbody tr.silver-row:hover td { background: rgba(168, 169, 173, 0.14) !important; }
+.w1-table tbody tr.bronze-row td,
+.w1-table tbody tr.bronze-row:hover td { background: rgba(205, 127, 50, 0.11) !important; }
 
-.leaders-table th.col-num { text-align: right; }
-.leaders-table th.col-sortable:hover { color: #fff; }
+/* Tight # column - just enough for the 24px pos circle. */
+.w1-table thead th:first-child,
+.w1-table tbody td.w1-pos {
+    width: 38px;
+    padding-left: 0.6rem;
+    padding-right: 0;
+}
+.w1-ath-cell {
+    /* Athlete cell can wrap onto multiple lines; the splits to the
+       right stay nowrap so they read as a tabular row. */
+    white-space: normal !important;
+}
+.w1-ath {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+.w1-ath img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.w1-ath.gold-img   img { border-color: #d4af37; }
+.w1-ath.silver-img img { border-color: #a8a9ad; }
+.w1-ath.bronze-img img { border-color: #cd7f32; }
+.w1-ath b {
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: -0.005em;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+}
+.w1-ath:hover { color: var(--primary-color); }
 
-.sort-arrow { font-size: 0.65rem; opacity: 0.5; margin-left: 0.15rem; }
+/* Fixed column widths (table inherits table-layout:fixed from base.css).
+   Athlete column is auto so it claims whatever's left. Order matters -
+   more-specific modifiers come after the generic .w1-num rule so they
+   override at equal specificity. */
+.w1-table td.w1-num,
+.w1-table th.num { text-align: right; width: 78px; }
+.w1-table th:first-child,
+.w1-table td.w1-pos { width: 38px; padding-left: 0.6rem; padding-right: 0; }
+.w1-table th.w1-num--t,
+.w1-table td.w1-num--t { width: 56px; padding-left: 0.3rem; padding-right: 0.3rem; }
+.w1-table th.w1-num--total,
+.w1-table td.w1-num--total { width: 92px; }
+.w1-table th:nth-child(2),
+.w1-table td.w1-ath-cell { width: auto; }
+.w1-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.1;
+}
+.w1-cell-val { font-size: 0.85rem; font-weight: 600; }
+/* Empty gap line still reserves height so rows align vertically. */
+.w1-cell-gap {
+    font-size: 0.68rem;
+    color: var(--text-lighter);
+    font-weight: 500;
+    min-height: 0.85em;
+}
+.w1-cell.is-field-fastest .w1-cell-gap {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 0.62rem;
+}
+.w1-cell--total .w1-cell-val { font-size: 0.95rem; font-weight: 700; }
 
-.col-athlete-head { width: 30%; }
-.col-podiums-head { width: 160px; white-space: nowrap; }
-.col-podiums { white-space: nowrap; padding-right: 1.25rem; }
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+.tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0;
+}
+/* The series-page parent uses spacing-lg as its flex gap. Pull tabpanels
+   up so the tab bar reads as part of the panel, not separated from it. */
+.tabpanel { margin-top: calc(var(--spacing-lg) * -1 + 0.6rem); }
+.tab {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-light);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+.tab:hover { color: var(--text-color); }
+.tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+.tabpanel { display: none; }
+.tabpanel.active { display: block; }
+
+/* ── Most Wins ────────────────────────────────────────────────────── */
+.leaders-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 0.4rem 1rem;
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+.leader-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.85rem;
+    align-items: center;
+    padding: 0.55rem 0;
+}
+.leader-row img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    object-fit: cover;
+}
+.leader-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+.leader-name:hover { color: var(--primary-color); }
+
+/* Grouped pills: "N×" + small medal circle. Used in Most Wins and Medals. */
 .podium-group {
     display: inline-flex;
     align-items: center;
@@ -767,280 +905,214 @@ a.si-edition:hover {
 }
 .podium-group:last-child { margin-right: 0; }
 .podium-n {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: var(--text-light);
     font-variant-numeric: tabular-nums;
 }
-.pos-circle--sm {
-    width: 17px;
-    height: 17px;
-    font-size: 0.6rem;
-}
-.col-editions { font-size: 0.8rem; }
-td.col-editions { font-size: 0.78rem; }
+.pos-circle--sm { width: 17px; height: 17px; font-size: 0.6rem; }
 
-.leaders-table tbody tr {
-    border-bottom: 1px solid var(--border-color);
-    transition: background var(--transition-fast);
-}
-
-.leaders-table tbody tr:last-child { border-bottom: none; }
-.leaders-table tbody tr:hover { background: var(--bg-color); }
-
-.leaders-table td {
-    padding: 0.55rem 1rem;
-    font-size: 0.875rem;
-    color: var(--text-color);
-}
-
-.leaders-table td.col-num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-light);
-}
-
-.leaders-table td.col-wins {
-    text-align: right;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-.leaders-athlete { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
-
-.leaders-athlete-img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.leaders-athlete-link {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-color);
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: color var(--transition-fast);
-}
-
-.leaders-athlete-link:hover { color: var(--primary-color); }
-
-/* ── Performance history charts ── */
-.series-chart-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-    position: relative;
-}
-
-.series-perf-card {
+/* ── Medals by Country / Youngest-Oldest tables ──────────────────── */
+.series-data-card {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--box-shadow);
-    padding: 1.25rem 1.25rem 1rem;
-    display: flex;
-    flex-direction: column;
+    overflow: hidden;
+}
+.series-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+.series-data-table thead th {
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    padding: 0.55rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+}
+.series-data-table tbody td {
+    padding: 0.55rem 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.series-data-table tbody tr:first-child td { border-top: none; }
+
+.medals-country {
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+.medals-country:hover { color: var(--primary-color); }
+.medals-flag { font-size: 1rem; vertical-align: -1px; margin-left: 0.25rem; }
+.series-empty { color: var(--text-lighter); padding: 1rem; text-align: center; }
+
+.age-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
-
-.series-perf-legend {
-    display: flex;
-    gap: 1.25rem;
-    align-items: center;
+@media (max-width: 760px) { .age-grid { grid-template-columns: 1fr; } }
+.age-head {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    font-weight: 700;
+    margin: 0 0 0.45rem;
 }
-
-.series-legend-item {
+.age-table th.age-col { width: 60px; }
+.age-table th.yr-col  { width: 110px; }
+.age-ath {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+.age-ath img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    object-fit: cover;
+}
+.age-ath:hover { color: var(--primary-color); }
+.age-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.age-yr {
+    font-variant-numeric: tabular-nums;
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+.age-yr:hover { color: var(--primary-hover); }
+
+/* ── Stats charts ─────────────────────────────────────────────────── */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+@media (max-width: 800px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.chart-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1rem;
+    box-shadow: var(--box-shadow);
+}
+.chart-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.55rem;
+    min-height: 28px;
+}
+.chart-card-head h3 { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.chart-card .radio-chips label { padding: 3px 9px; font-size: 0.72rem; }
+.chart-select {
+    padding: 3px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font: inherit;
     font-size: 0.78rem;
+    background: var(--white);
+    color: var(--text-color);
+    cursor: pointer;
+}
+.chart-select:focus { outline: none; border-color: var(--primary-color); }
+.chart-wrap { position: relative; height: 220px; }
+
+/* ── Tooltips ─────────────────────────────────────────────────────── */
+/* Custom Tippy theme: navy panel matching the navy hero/header. */
+.tippy-box[data-theme~='pd-dark'] {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--font-family);
+    font-size: 0.78rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.tippy-box[data-theme~='pd-dark'][data-placement^='top']    > .tippy-arrow::before { border-top-color: var(--navy); }
+.tippy-box[data-theme~='pd-dark'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: var(--navy); }
+.tippy-box[data-theme~='pd-dark'][data-placement^='left']   > .tippy-arrow::before { border-left-color: var(--navy); }
+.tippy-box[data-theme~='pd-dark'][data-placement~='right']  > .tippy-arrow::before { border-right-color: var(--navy); }
+.tippy-box[data-theme~='pd-dark'] .tippy-content { padding: 8px 10px; }
+
+/* Tooltip content layouts. */
+.tip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 130px;
+}
+.tip-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+.tip-row b { font-weight: 700; color: #fff; font-size: 0.78rem; }
+.tip-row span { color: rgba(255, 255, 255, 0.5); font-size: 0.7rem; font-weight: 500; }
+.tip-years {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+}
+.tip-years span {
+    color: rgba(255, 255, 255, 0.3);
     font-weight: 500;
-    color: var(--text-light);
+    margin: 0 0.4em;
 }
 
-.series-legend-item::before {
-    content: '';
-    display: inline-block;
-    width: 20px;
-    height: 2.5px;
-    border-radius: 2px;
-}
-
-.series-legend-item--winner::before { background: #1a1a2e; height: 3px; }
-.series-legend-item--p10::before    { background: #e87722; }
-.series-legend-item--p25::before    { background: #94a3b8; }
-
-.series-main-chart-wrap {
-    position: relative;
-    height: 240px;
-}
-
-/* Custom HTML tooltip */
-.series-chart-tooltip {
+/* Chart tooltip: a single navy panel reused per chart, populated by
+   Chart.js's external callback. Reuses the Tippy pd-dark look. */
+.chart-tip {
     position: absolute;
     pointer-events: none;
-    z-index: 10;
-    background: var(--navy);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: var(--border-radius);
-    padding: 0.5rem 0.75rem;
-    box-shadow: var(--box-shadow-hover);
-    min-width: 160px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 20;
+    min-width: 180px;
+    max-width: 240px;
 }
-
-.tt-year {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: rgba(255,255,255,0.45);
-    margin-bottom: 0.1rem;
+.chart-tip .tippy-content { padding: 8px 10px; }
+.ct-head {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-
-.tt-race-name {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.75);
-    margin-bottom: 0.05rem;
-}
-
-.tt-race-date {
-    font-size: 0.62rem;
-    color: rgba(255,255,255,0.35);
-    margin-bottom: 0.4rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.tt-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.78rem;
-    color: rgba(255,255,255,0.85);
-    padding: 0.1rem 0;
-}
-
-.tt-row strong { color: #fff; font-variant-numeric: tabular-nums; }
-
-.tt-diff {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #f87171;
-    font-variant-numeric: tabular-nums;
-}
-
-.tt-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-/* ── Series link in race hero ── */
-.series-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.78rem;
+.ct-title { font-weight: 700; font-size: 0.78rem; color: #fff; line-height: 1.2; }
+.ct-meta {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
     font-weight: 500;
-    color: var(--primary-color);
-    text-decoration: none;
-    margin-bottom: 0.6rem;
-    transition: color var(--transition-fast);
 }
-
-.series-link:hover { color: #fff; }
-
-@media (max-width: 700px) {
-    .series-cards-grid { grid-template-columns: 1fr; }
-
-    .series-latest-athletes { grid-template-columns: 1fr; }
-    .series-latest-athlete  { border-right: none; border-bottom: 1px solid var(--border-color); }
-    .series-latest-athlete:last-child { border-bottom: none; }
-
-    .series-race-card-body { flex-direction: column; }
-    .series-race-podium {
-        flex: unset;
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .series-race-standards { justify-content: space-between; padding: 0.875rem 1rem; }
-}
-
-/* ── Program tabs ───────────────────────────────────────────────── */
-.series-program-tabs {
+.ct-body { display: flex; flex-direction: column; gap: 3px; }
+.ct-row {
     display: flex;
-    align-self: flex-start;
-    background: var(--border-color);
-    border-radius: 6px;
-    padding: 2px;
-    gap: 1px;
-    margin: 0 0 1.5rem;
-}
-.series-program-tab {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.35rem 0.85rem;
-    border-radius: 5px;
-    color: var(--text-light);
-    text-decoration: none;
-    font-size: 0.82rem; font-weight: 500;
-    white-space: nowrap;
-    line-height: 1.4;
-    transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
-}
-.series-program-tab:hover { color: var(--text-color); }
-.series-program-tab--active {
-    background: var(--white);
-    color: var(--primary-color);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-.series-program-tab-count {
-    font-size: 0.72rem;
-    color: var(--text-lighter);
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    font-size: 0.76rem;
+    line-height: 1.3;
     font-variant-numeric: tabular-nums;
 }
-.series-program-tab--active .series-program-tab-count { color: var(--primary-color); opacity: 0.75; }
-
-/* ── Series hero program suffix ─────────────────────────────────── */
-.series-hero-program {
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.75);
-}
-
-/* ── Recurring venues ───────────────────────────────────────────── */
-.series-recurring { margin-bottom: 2rem; }
-.series-recurring-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.625rem;
-}
-.series-recurring-card {
-    padding: 0.75rem 0.875rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--card-bg, #fff);
-}
-.series-recurring-name { font-weight: 600; font-size: 0.9375rem; }
-.series-recurring-meta {
-    margin-top: 0.125rem;
-    font-size: 0.8125rem;
-    color: var(--text-lighter);
-    font-variant-numeric: tabular-nums;
-}
-
-.series-subgroup-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-lighter);
-    margin: 1rem 0 0.5rem;
-}
-.series-subgroup-label:first-child { margin-top: 0; }
+.ct-row span { color: rgba(255, 255, 255, 0.55); }
+.ct-row b { font-weight: 700; color: #fff; }

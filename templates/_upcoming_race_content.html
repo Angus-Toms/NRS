@@ -71,12 +71,15 @@
         </table>
     </div>
 </div>
+{% elif race.category == 'ag' %}
+<p class="page-section-sub" style="margin-bottom:1.5rem">We don't yet have prediction models for AG races, please stay tuned.</p>
 {% else %}
-<p class="page-section-sub">Predictions unavailable — no model for this race format.</p>
+<p class="page-section-sub" style="margin-bottom:1.5rem">Predictions unavailable — no model for this race format.</p>
 {% endif %}
 
 <!-- Current Ratings Table -->
 <div class="page-section-head">Current Ratings</div>
+<p class="page-section-sub" style="margin-bottom:0.75rem">Athletes marked italic are making their debut - they have no rating yet so are listed at the 1500 starting rating.</p>
 <div class="race-table-section">
     <div>
         <table class="sortable-table rating-table">
@@ -94,14 +97,14 @@
             </thead>
             <tbody>
                 {% for athlete in upcoming_ratings_data %}
-                <tr>
+                <tr class="{{ 'debut-row' if athlete.is_debut else '' }}">
                     <td class="position-col" data-value="{{ loop.index }}">
                         <span class="pos-other">{{ loop.index }}</span>
                     </td>
                     <td class="athlete-col" data-value="{{ athlete.name }}">
                         <a href="/athlete/{{ athlete.athlete_id }}" class="link">
                             {{ athlete.name }} {{ athlete.country_emoji }}
-                        </a>
+                        </a>{% if athlete.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
                     </td>
                     <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">
                         {{ "{} ({})".format(athlete.year_of_birth, athlete.age) if athlete.year_of_birth else "" }}

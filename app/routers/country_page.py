@@ -14,16 +14,15 @@ _DISCS         = ["overall", "swim", "bike", "run", "transition"]
 _DISC_LABELS   = {"overall": "Overall", "swim": "Swim", "bike": "Bike",
                   "run": "Run", "transition": "Transition"}
 _GENDER_LABELS = {"male": "Men", "female": "Women"}
+_LB_PAGE_SIZE  = 5
 
 # Continent display order for the index page.
 _CONTINENT_ORDER = ["Europe", "Americas", "Asia", "Oceania", "Africa", "Other"]
 
 
 @router.get("/countries", response_class=HTMLResponse)
-async def countries_index(request: Request, course: str = "short"):
-    if course not in ("short", "long"):
-        course = "short"
-    countries = queries.get_countries_with_counts(course=course)
+async def countries_index(request: Request):
+    countries = queries.get_countries_with_counts()
 
     # Group by continent, preserving athlete-count-desc order within each bucket.
     groups = {c: [] for c in _CONTINENT_ORDER}
@@ -47,20 +46,46 @@ async def countries_index(request: Request, course: str = "short"):
         "active_page":      "countries",
         "continent_blocks": continent_blocks,
         "totals":           totals,
-        "course":           course,
     })
 
 
-def _build_leaderboard(country_full, gender, discipline, limit=25, course='short'):
-    """Fetch + decorate leaderboard rows for both full-page and partial renders."""
-    rows = queries.get_country_leaderboard(country_full, gender, discipline, limit=limit, course=course)
-    for i, row in enumerate(rows, start=1):
+def _build_leaderboard(country_full, gender, discipline, limit=_LB_PAGE_SIZE, offset=0, course='short', active_only=False):
+    """Fetch a page of leaderboard rows plus a has_more flag.
+
+    Asks the DB for one extra row; if it came back, there are more rows available
+    and the trailing extra is trimmed before decorating.
+    """
+    rows = queries.get_country_leaderboard(
+        country_full, gender, discipline,
+        limit=limit + 1, offset=offset, course=course, active_only=active_only,
+    )
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    for i, row in enumerate(rows, start=offset + 1):
         row["rank"]               = i
         row["profile_img_exists"] = bool(row.get("profile_img"))
         row["win_count"]          = row.get("wins", 0)
         for d in _DISCS:
             row[f"{d}_rating"] = format_rating(row[f"{d}_rating"])
-    return rows
+    return rows, has_more
+
+
+def _filter_map_outliers(locs, lat_thresh=15.0, lng_thresh=25.0):
+    """Drop locations far from the median - catches obvious geocoding mistakes.
+
+    Uses the median as a robust centre (unaffected by the outliers we're trying
+    to remove). Thresholds are generous enough to retain legitimate spread for
+    mid-to-large countries while clearly rejecting points on the wrong continent.
+    """
+    if len(locs) < 4:
+        return locs
+    lats = sorted(l["latitude"] for l in locs)
+    lngs = sorted(l["longitude"] for l in locs)
+    mid_lat = lats[len(lats) // 2]
+    mid_lng = lngs[len(lngs) // 2]
+    return [l for l in locs
+            if abs(l["latitude"]  - mid_lat) <= lat_thresh
+            and abs(l["longitude"] - mid_lng) <= lng_thresh]
 
 
 def _resolve_defaults(country_full, discipline, gender, course='short'):
@@ -83,6 +108,7 @@ async def country_detail(
     discipline: str = "overall",
     gender: str | None = None,
     course: str = "short",
+    active_only: bool = False,
 ):
     if course not in ("short", "long"):
         course = "short"
@@ -92,8 +118,8 @@ async def country_detail(
 
     discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
 
-    leaderboard      = _build_leaderboard(country["country_full"], gender, discipline, course=course)
-    hosted_locations = queries.get_country_hosted_race_locations(country["country_full"])
+    leaderboard, has_more = _build_leaderboard(country["country_full"], gender, discipline, course=course, active_only=active_only)
+    hosted_locations = _filter_map_outliers(queries.get_country_hosted_race_locations(country["country_full"]))
     medals           = queries.get_country_championship_medals(country["country_full"])
     recent_events    = queries.get_recent_events(offset=0, limit=6, country=country["country_full"])
     upcoming_events  = queries.get_upcoming_events(country=country["country_full"])
@@ -137,6 +163,7 @@ async def country_detail(
         "disc_labels":      _DISC_LABELS,
         "gender_options":   [("male", "Men"), ("female", "Women")],
         "leaderboard":      leaderboard,
+        "has_more":         has_more,
         "map_locations":    map_locations,
         "medals":           medals,
         "recent_events":    recent_events,
@@ -144,6 +171,7 @@ async def country_detail(
         "hero_stats":       hero_stats,
         "meta_description": meta_description,
         "course":           course,
+        "active_only":      active_only,
     })
 
 
@@ -154,8 +182,9 @@ async def country_leaderboard_partial(
     discipline: str = "overall",
     gender: str | None = None,
     course: str = "short",
+    active_only: bool = False,
 ):
-    """HTML partial: just the leaderboard table. Used for AJAX filter swaps."""
+    """HTML partial: the full leaderboard grid (first page). Used for filter swaps."""
     if course not in ("short", "long"):
         course = "short"
     country = queries.get_country_by_alpha3(alpha3.upper())
@@ -163,10 +192,42 @@ async def country_leaderboard_partial(
         raise HTTPException(status_code=404, detail="Country not found")
 
     discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
-    leaderboard = _build_leaderboard(country["country_full"], gender, discipline, course=course)
+    leaderboard, has_more = _build_leaderboard(country["country_full"], gender, discipline, course=course, active_only=active_only)
 
     return templates.TemplateResponse("partials/country_leaderboard.html", {
         "request":     request,
         "athletes":    leaderboard,
         "disc":        discipline,
+        "has_more":    has_more,
     })
+
+
+@router.get("/country/{alpha3}/leaderboard/more", response_class=HTMLResponse)
+async def country_leaderboard_more(
+    request: Request,
+    alpha3: str,
+    discipline: str = "overall",
+    gender: str | None = None,
+    course: str = "short",
+    offset: int = 0,
+    active_only: bool = False,
+):
+    """HTML partial: just extra athlete-card rows, appended by the See more button."""
+    if course not in ("short", "long"):
+        course = "short"
+    country = queries.get_country_by_alpha3(alpha3.upper())
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
+    leaderboard, has_more = _build_leaderboard(
+        country["country_full"], gender, discipline, offset=offset, course=course, active_only=active_only,
+    )
+
+    response = templates.TemplateResponse("partials/country_leaderboard_rows.html", {
+        "request":  request,
+        "athletes": leaderboard,
+        "disc":     discipline,
+    })
+    response.headers["X-Has-More"] = "1" if has_more else "0"
+    return response

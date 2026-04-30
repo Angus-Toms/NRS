@@ -24,6 +24,7 @@ from ptd_data import db
 CAT_WORLD_CHAMPS      = 348   # World Championships
 CAT_CONTINENTAL_CUP   = 341   # Continental Cup
 CAT_CONTINENTAL_CHAMPS = 340  # Continental Championships (unused for now)
+CAT_AG                = 483   # Age-Group flag (paired with another tier cat_id)
 
 
 @dataclass(frozen=True)
@@ -60,9 +61,23 @@ def not_(pred):
 
 @dataclass(frozen=True)
 class SeriesRule:
-    series_slug: str
+    """Match an event into a series and/or a recurring group.
+
+    `series_slug=None` means the rule does not assign the event to any
+    series - it only groups it into a recurring_event. Useful for
+    standalone races (e.g. Collins Cup, the PTO Opens) that share a
+    distance with a wider tour but aren't part of it.
+
+    `recurring_slug` / `recurring_name` override the auto-derived
+    recurring slug+name (which would otherwise be venue_key + series_slug).
+    Recurring-only rules need these because there is no series suffix to
+    fall back on.
+    """
+    series_slug: str | None
     match: Callable
     recurring: bool = False
+    recurring_slug: str | None = None
+    recurring_name: str | None = None
 
 
 # Order matters only in that the first recurring-aware match sets
@@ -87,6 +102,16 @@ RULES = [
                                           ),
                                       ),
                                       recurring=True),
+    # Age-Group European Championships. Matches dual-tier events that host
+    # both elite and AG races (e.g. "2024 Europe Triathlon Championships
+    # Vichy"); _scope_clauses filters series-scoped queries to AG races
+    # only when the series has tier='ag-championship'.
+    SeriesRule("ag-european-champs",  all_of(
+                                          has_cat_id(CAT_CONTINENTAL_CHAMPS),
+                                          has_cat_id(CAT_AG),
+                                          name_regex(r"\beurope(an)?\b"),
+                                      ),
+                                      recurring=True),
     # World champs: cat 348, plus the "Championship Finals" name fallback for
     # 2024 Torremolinos which is missing cat 348 in source data. Excludes AG.
     SeriesRule("world-championships", all_of(
@@ -103,22 +128,94 @@ RULES = [
                                           name_regex(r"grand final"),
                                       ),
                                       recurring=True),
-    # World Cup rule must not match "World Championships"; require "cup" not followed by championships
+    # Ironman 70.3 World Championships: one event per year named exactly that.
+    # Venue isn't in the event name (it varies year-to-year), so derive from
+    # an explicit slug/name rather than venue_key.
+    SeriesRule("im-703-world-championships",
+                                      name_regex(r"ironman\s+70\.?3\s+world\s+championship"),
+                                      recurring=True,
+                                      recurring_slug="im-703-world-championships",
+                                      recurring_name="Ironman 70.3 World Championships"),
+    # Ironman (full) World Championships: historically Kona only, St George 2022,
+    # then Kona + Nice alternating genders from 2023. Names vary, so match each form.
+    SeriesRule("im-world-championships",
+                                      any_of(
+                                          name_regex(r"ironman\s+hawaii"),
+                                          name_regex(r"ironman\s+st\.?\s*george\s+world\s+championship"),
+                                          name_regex(r"ironman\s+world\s+championship.*\bnice\b"),
+                                      ),
+                                      recurring=True),
+    # T100 Triathlon World Tour. Only events explicitly branded "T100" -
+    # the predecessor PTO Opens, Collins Cup, Challenge Daytona/Miami,
+    # Clash Daytona, and Hervey Bay 100 share the 100 km distance for
+    # rating purposes (see ratings.py distance enum) but they are not
+    # part of the T100 series. Each of those gets its own recurring-only
+    # rule below so they still group across editions on the recurring
+    # detail page.
+    SeriesRule("t100",                name_regex(r"\bT100\b"),
+                                      recurring=True),
+    # Standalone 100 km / PTO-era events. series_slug=None so these do
+    # not show up under any series, only as recurring events.
+    SeriesRule(None, name_regex(r"^\s*Collins\s+Cup\s*$"),
+               recurring=True, recurring_slug="collins-cup", recurring_name="Collins Cup"),
+    SeriesRule(None, name_regex(r"^\s*PTO\s+US\s+Open\s*$"),
+               recurring=True, recurring_slug="pto-us-open", recurring_name="PTO US Open"),
+    SeriesRule(None, name_regex(r"^\s*PTO\s+Canadian\s+Open\s*$"),
+               recurring=True, recurring_slug="pto-canadian-open", recurring_name="PTO Canadian Open"),
+    SeriesRule(None, name_regex(r"^\s*PTO\s+Asian\s+Open\s*$"),
+               recurring=True, recurring_slug="pto-asian-open", recurring_name="PTO Asian Open"),
+    SeriesRule(None, name_regex(r"^\s*PTO\s+European\s+Open\s*$"),
+               recurring=True, recurring_slug="pto-european-open", recurring_name="PTO European Open"),
+    SeriesRule(None, name_regex(r"^\s*Challenge\s+Daytona\s*$"),
+               recurring=True, recurring_slug="challenge-daytona", recurring_name="Challenge Daytona"),
+    SeriesRule(None, name_regex(r"^\s*Challenge\s+Miami\s*$"),
+               recurring=True, recurring_slug="challenge-miami", recurring_name="Challenge Miami"),
+    SeriesRule(None, name_regex(r"^\s*Clash\s+Daytona\s*$"),
+               recurring=True, recurring_slug="clash-daytona", recurring_name="Clash Daytona"),
+    SeriesRule(None, name_regex(r"^\s*Hervey\s+Bay\s+100\s*$"),
+               recurring=True, recurring_slug="hervey-bay-100", recurring_name="Hervey Bay 100"),
+    # Development Regional Cup: regional development tier below the
+    # standard World Cup. Listed before world-cup; the world-cup regex
+    # requires contiguous "world (triathlon )?cup" which these names
+    # don't have, but ordering is defensive.
+    SeriesRule("dev-regional-cup",    name_regex(r"(development\s+regional|regional\s+development)\s+cup"),
+                                      recurring=True),
+    # World Cup. Matches:
+    #   - "World Cup" / "World Triathlon Cup" naming
+    #   - WTS-era "ITU World Triathlon {Venue}" (2009-2020 World Triathlon
+    #     Series rounds). These names contain no other modifier — anything
+    #     with championship/series/cup/junior/youth/u23/age/para/development/
+    #     regional/relay/grand-final is some other category and excluded.
+    # Excludes "World Championships" outright.
     SeriesRule("world-cup",           all_of(
-                                          name_regex(r"world (triathlon )?cup"),
+                                          any_of(
+                                              name_regex(r"world (triathlon )?cup"),
+                                              all_of(
+                                                  name_regex(r"world\s+triathlon\b"),
+                                                  not_(name_regex(
+                                                      r"\b(championship|championships|series|"
+                                                      r"junior|youth|u23|age[\s-]?group|para|"
+                                                      r"development|regional|relay|grand)\b"
+                                                  )),
+                                              ),
+                                          ),
                                           not_(name_regex(r"world championships")),
                                       ),
                                       recurring=True),
-    SeriesRule("european-champs",     all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), continent_is("Europe")),   recurring=True),
-    SeriesRule("african-champs",      all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), continent_is("Africa")),   recurring=True),
-    SeriesRule("americas-champs",     all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), continent_is("Americas")), recurring=True),
-    SeriesRule("asian-champs",        all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), continent_is("Asia")),     recurring=True),
-    SeriesRule("oceania-champs",      all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), continent_is("Oceania")),  recurring=True),
-    SeriesRule("european-cup",        all_of(has_cat_id(CAT_CONTINENTAL_CUP), continent_is("Europe")),   recurring=True),
-    SeriesRule("african-cup",         all_of(has_cat_id(CAT_CONTINENTAL_CUP), continent_is("Africa")),   recurring=True),
-    SeriesRule("americas-cup",        all_of(has_cat_id(CAT_CONTINENTAL_CUP), continent_is("Americas")), recurring=True),
-    SeriesRule("asian-cup",           all_of(has_cat_id(CAT_CONTINENTAL_CUP), continent_is("Asia")),     recurring=True),
-    SeriesRule("oceania-cup",         all_of(has_cat_id(CAT_CONTINENTAL_CUP), continent_is("Oceania")),  recurring=True),
+    # Continental rules key off the event *name* rather than the host's continent:
+    # continental championships occasionally cross geographies (e.g. Asia Triathlon
+    # ran its 2025 Championships in Istanbul, which lives in Europe on our map).
+    # "Panamerican" / "Pan-American" is the Americas federation's older branding.
+    SeriesRule("european-champs",     all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), name_regex(r"\beurope(an)?\b")),                     recurring=True),
+    SeriesRule("african-champs",      all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), name_regex(r"\bafrica(n)?\b")),                      recurring=True),
+    SeriesRule("americas-champs",     all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), name_regex(r"\bamerica(n|s)?\b|\bpan[\s-]?american\b")), recurring=True),
+    SeriesRule("asian-champs",        all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), name_regex(r"\basia(n)?\b")),                        recurring=True),
+    SeriesRule("oceania-champs",      all_of(has_cat_id(CAT_CONTINENTAL_CHAMPS), name_regex(r"\boceania\b")),                         recurring=True),
+    SeriesRule("european-cup",        all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\beurope(an)?\b")),                        recurring=True),
+    SeriesRule("african-cup",         all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\bafrica(n)?\b")),                         recurring=True),
+    SeriesRule("americas-cup",        all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\bamerica(n|s)?\b|\bpan[\s-]?american\b")), recurring=True),
+    SeriesRule("asian-cup",           all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\basia(n)?\b")),                           recurring=True),
+    SeriesRule("oceania-cup",         all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\boceania\b")),                            recurring=True),
 ]
 
 
@@ -132,7 +229,18 @@ _STRIP_TOKENS = re.compile(
     r'sprint|standard|middle|long|distance|olympic|games|team|relay|mixed|'
     r'u23|junior|juniors|youth|elite|paratriathlon|para|development|premium|'
     r'winter|duathlon|aquathlon|aquabike|multisport|tour|open|age|group|'
-    r'national|federation|fisu|commonwealth|university|universiade'
+    r'national|federation|fisu|commonwealth|university|universiade|regional|'
+    r'ironman|challenge|'
+    # Common sponsor / org / regional-qualifier tokens. Stripping these
+    # collapses sponsor-polluted slugs ("Hamburg BG", "AJ Bell Leeds",
+    # "Dextro Energy Beijing", "Barfoot and Thompson Auckland") onto the
+    # plain venue, and merges regional-qualifier names like "{venue} PATCO
+    # Triathlon Pan-American Central American and Caribbean Cup" down to
+    # the venue. "and" is stripped so that multi-tier names like
+    # "U23 and Youth European Championships" reduce to the venue.
+    r'aj|bell|dextro|energy|barfoot|thompson|bg|wasser|'
+    r'patco|astc|otu|panamerican|iberoamerican|'
+    r'pan|central|caribbean|yog|qualifier|and'
     r')\b',
     re.IGNORECASE,
 )
@@ -169,55 +277,84 @@ def apply(conn):
     conn.execute("DELETE FROM event_series")
     conn.execute("DELETE FROM recurring_events")
 
-    series_lookup = dict(conn.execute("SELECT slug, series_id FROM series").fetchall())
+    series_rows = conn.execute("SELECT slug, series_id, name FROM series").fetchall()
+    series_lookup = {slug: sid for slug, sid, _ in series_rows}
+    series_names  = {slug: name for slug, _, name in series_rows}
     for rule in RULES:
+        if rule.series_slug is None:
+            continue  # recurring-only rule, no series link required
         if rule.series_slug not in series_lookup:
             raise RuntimeError(
                 f"series_rules references unknown series slug '{rule.series_slug}'. "
                 "Add it to ptd_data/data/series.csv."
             )
 
-    # cat_ids / event_spec_ids are per-race; aggregate to event level.
-    # ANY_VALUE is fine since these are event-level attributes repeated on each race.
+    # cat_ids / event_spec_ids are per-race. For dual-tier events (e.g. an
+    # elite + age-group event sharing one event_id, where each tier has a
+    # different cat_id set on its races) we need the UNION across races,
+    # not ANY_VALUE — otherwise the AG cat (483) gets dropped half the
+    # time and the AG-tier rules miss the event.
     events = conn.execute("""
         SELECT e.event_id, e.name, e.country, e.continent,
-               COALESCE(ANY_VALUE(r.cat_ids), '[]'),
-               COALESCE(ANY_VALUE(r.event_spec_ids), '[]')
+               STRING_AGG(r.cat_ids,        '|') AS cat_ids_concat,
+               STRING_AGG(r.event_spec_ids, '|') AS spec_ids_concat
         FROM events e
         LEFT JOIN races r ON r.event_id = e.event_id
         GROUP BY e.event_id, e.name, e.country, e.continent
     """).fetchall()
+
+    def _union_ids(concat):
+        if not concat:
+            return frozenset()
+        out = set()
+        for piece in concat.split('|'):
+            try:
+                out.update(literal_eval(piece) if piece else [])
+            except (ValueError, SyntaxError):
+                continue
+        return frozenset(out)
 
     per_series = {}  # slug -> count
     recurring_rows = {}  # recurring_id -> (slug, name, venue_key)
     event_links = []     # (event_id, series_id)
     event_recurring = {} # event_id -> recurring_id (first recurring-aware match wins)
 
-    for event_id, name, country, continent, cat_ids_str, spec_ids_str in events:
-        try:
-            cat_ids = frozenset(literal_eval(cat_ids_str) if cat_ids_str else [])
-        except (ValueError, SyntaxError):
-            cat_ids = frozenset()
-        try:
-            spec_ids = frozenset(literal_eval(spec_ids_str) if spec_ids_str else [])
-        except (ValueError, SyntaxError):
-            spec_ids = frozenset()
+    for event_id, name, country, continent, cat_ids_concat, spec_ids_concat in events:
+        cat_ids  = _union_ids(cat_ids_concat)
+        spec_ids = _union_ids(spec_ids_concat)
 
         row = EventRow(event_id, name or '', country or '', continent or '', cat_ids, spec_ids)
 
         for rule in RULES:
             if not rule.match(row):
                 continue
-            event_links.append((event_id, series_lookup[rule.series_slug]))
-            per_series[rule.series_slug] = per_series.get(rule.series_slug, 0) + 1
+            if rule.series_slug is not None:
+                event_links.append((event_id, series_lookup[rule.series_slug]))
+                per_series[rule.series_slug] = per_series.get(rule.series_slug, 0) + 1
 
             if rule.recurring and event_id not in event_recurring:
                 vkey = venue_key(name or '')
-                rslug = f"{vkey}-{rule.series_slug}"
+                # Recurring-only rules supply explicit slug + display
+                # name; series-bound rules derive both from venue + series.
+                if rule.recurring_slug:
+                    rslug = rule.recurring_slug
+                    rname = rule.recurring_name or db._title_from_slug(rslug)
+                else:
+                    rslug = f"{vkey}-{rule.series_slug}"
+                    rname = f"{db._title_from_slug(vkey)} {series_names[rule.series_slug]}"
                 rid = db.slug_id(rslug)
-                rname = f"{db._title_from_slug(vkey)} {db._title_from_slug(rule.series_slug)}"
                 recurring_rows[rid] = (rslug, rname, vkey)
                 event_recurring[event_id] = rid
+
+    # Suppress one-off recurring rows: a "recurring" with a single edition
+    # (e.g. Vichy 2024 European Champs, Torremolinos 2024 AG Worlds) just
+    # duplicates the event page. Drop both the recurring_events row and
+    # the event_recurring assignment so the event has no recurring link.
+    from collections import Counter
+    rid_event_count = Counter(event_recurring.values())
+    keep_rids = {rid for rid, n in rid_event_count.items() if n >= 2}
+    recurring_rows  = {rid: v for rid, v in recurring_rows.items() if rid in keep_rids}
+    event_recurring = {eid: rid for eid, rid in event_recurring.items() if rid in keep_rids}
 
     # Bulk write
     if recurring_rows:
@@ -240,7 +377,10 @@ def apply(conn):
 
     for slug, count in sorted(per_series.items()):
         print(f"  {slug}: {count} events")
-    print(f"Rule-based series: {len(event_links)} mappings, {len(recurring_rows)} recurring groups")
+    recurring_only = sum(1 for r in RULES if r.series_slug is None and r.recurring)
+    print(f"Rule-based series: {len(event_links)} mappings, "
+          f"{len(recurring_rows)} recurring groups "
+          f"({recurring_only} recurring-only rules registered)")
 
 
 if __name__ == "__main__":

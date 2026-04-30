@@ -3,14 +3,19 @@ PTO ingest — scrapes stats.protriathletes.org and inserts long-course results
 into the shared DB schema alongside WT short-course data.
 
 Usage:
-    python -m ptd_data.pto_ingest                      # full 1979-present + enrichment
+    python -m ptd_data.pto_ingest                      # full 1979-present
     python -m ptd_data.pto_ingest --year 2024          # single year
-    python -m ptd_data.pto_ingest --athletes-only      # only enrich athlete profiles
+    python -m ptd_data.pto_ingest --athletes-only      # backfill athlete profiles
     python -m ptd_data.pto_ingest --athletes-only --reset-enrichment
                                                        # re-enrich every athlete from scratch
 
-Athlete enrichment is resumable: Ctrl+C exits cleanly and the next run skips
-slugs already attempted (tracked in `ptd_data/.pto_enrich_checkpoint.txt`).
+Each new PTO athlete's profile is fetched inline during race ingest so that
+yob/height/weight/nickname are available at match-time (otherwise two
+same-name same-country athletes can be conflated — the 1972 vs 1995 Thomas
+Davies bug). The per-athlete fetch is cached in memory for the run and also
+recorded in `ptd_data/.pto_enrich_checkpoint.txt`, so the `--athletes-only`
+backfill pass skips anything already fetched. Ctrl+C exits cleanly and the
+next run picks up where the last left off.
 """
 
 import argparse
@@ -26,7 +31,7 @@ from bs4 import BeautifulSoup
 from ptd_data import db
 
 BASE_URL = "https://stats.protriathletes.org"
-SCRAPE_DELAY = .1  # seconds between requests
+SCRAPE_DELAY = .3  # seconds between requests
 
 # Append-only checkpoint of athlete slugs we've attempted to enrich. Lets
 # `enrich_athletes` resume after a Ctrl+C without re-fetching profiles that
@@ -125,6 +130,19 @@ def _normalize_name(name):
     return re.sub(r"\s+", " ", ascii_name.lower().strip())
 
 
+def _name_similarity(a, b):
+    """0-1 similarity on normalised names; 1.0 == identical."""
+    from difflib import SequenceMatcher
+    return SequenceMatcher(None, _normalize_name(a), _normalize_name(b)).ratio()
+
+
+# Thresholds for fuzzy name matching during ingest. Mirrors pto_matcher.py's
+# values so behaviour is consistent whether an athlete is linked at ingest
+# time or later via overlap-race matching.
+_NAME_SIM_NICK = 0.70   # treated as a valid fuzzy match
+_NAME_SIM_GAP  = 0.10   # margin required over second-best to accept a match
+
+
 # ---------------------------------------------------------------------------
 # Main ingester
 # ---------------------------------------------------------------------------
@@ -135,17 +153,24 @@ class PTOIngester:
         # Load existing WT athletes once for matching: {norm_name -> [(id, country, yob)]}
         self._wt_athletes = self._load_wt_athletes()
         print(f"Loaded {len(self._wt_athletes)} unique normalised athlete names from WT data")
+        # Per-run in-memory cache of profile fetches so an athlete showing up
+        # in multiple races in the same run is only fetched once.
+        self._profile_cache: dict[str, dict] = {}
 
     def _load_wt_athletes(self):
-        """Build a lookup table of WT athletes for identity matching."""
+        """Build a country-keyed lookup of unmatched WT athletes for fuzzy name+yob matching.
+
+        Returns {country_full: [(athlete_id, name, yob), ...]}. Indexing by
+        country lets _match_wt scan a tiny subset per lookup rather than the
+        full roster, keeping fuzzy matching cheap.
+        """
         rows = self.conn.execute(
             "SELECT athlete_id, name, country_full, year_of_birth FROM athletes "
             "WHERE pto_slug IS NULL"  # only unmatched WT athletes
         ).fetchall()
         index = {}
         for athlete_id, name, country, yob in rows:
-            key = _normalize_name(name)
-            index.setdefault(key, []).append((athlete_id, country, yob))
+            index.setdefault(country, []).append((athlete_id, name, yob))
         return index
 
     def run(self, years=None):
@@ -189,6 +214,8 @@ class PTOIngester:
             print(f"  {n:5d}  {reason}")
 
         new_races = [r for r in all_races if r["skip_reason"] is None]
+        # Ingest oldest → newest so nationality history builds a correct timeline.
+        new_races.sort(key=lambda r: r["sort_date"])
         print(f"To ingest: {len(new_races)}")
 
         ingested = 0
@@ -210,6 +237,7 @@ class PTOIngester:
         print("=" * 60)
         print(f"DONE  ingested={ingested}  skipped={skipped}")
         print("=" * 60)
+        db.reconcile_athlete_nationality(self.conn)
 
     def _skip_reason(self, race, known_race_ids):
         """Why would we skip this race? Returns None if we'd ingest it."""
@@ -302,6 +330,11 @@ class PTOIngester:
                 m_date = re.search(r"\d{1,2}\s+[A-Za-z]{3,}", txt)
                 date_label = m_date.group(0) if m_date else ""
 
+            # Best-effort sort key: combine "12 Dec" with the race year so we
+            # can order races chronologically before ingest. Falls back to
+            # Jan 1 of the year when the date label is missing.
+            sort_date = _parse_date(f"{date_label} {race_year}") or date(race_year, 1, 1)
+
             # Placeholder event_id; per-gender race_ids minted in _ingest_race
             event_id = db.slug_id(f"{slug}-{race_year}")
             races.append({
@@ -313,6 +346,7 @@ class PTOIngester:
                 "brand": brand,
                 "tier": tier,
                 "date_label": date_label,
+                "sort_date": sort_date,
                 "prize_usd": 0,  # not on listing card; filled from race page
                 "event_id": event_id,
                 "race_id": event_id,
@@ -405,25 +439,25 @@ class PTOIngester:
                 race_id=race_id,
                 event_id=event_id,
                 race_title=race["name"],
-                prog_name=f"Pro {gender_label}",
+                prog_name="Pro Men" if gender_val == "male" else "Pro Women",
                 race_date=str(race_date),
                 gender=gender_val,
                 category="elite",
                 sub_category="elite",
                 cat_ids="[]",
                 distance=distance,
-                race_handle=f"{slug[:20]} {year % 100:02d}",
+                race_handle=_short_race_handle(race["name"], slug, year),
                 event_spec_ids="[]",
             )
 
             result_rows = []
             new_athlete_slugs = []
             for r in results:
+                country_full = _alpha2_to_country(r.get("country_alpha2", ""))
                 athlete_id, is_new = self._resolve_athlete(
                     pto_slug=r["pto_slug"],
                     name=r["name"],
-                    country_full=_alpha2_to_country(r.get("country_alpha2", "")),
-                    yob=r.get("yob", 0),
+                    country_full=country_full,
                     gender=gender_val,
                 )
                 if is_new:
@@ -435,6 +469,7 @@ class PTOIngester:
                     r["overall_s"], r["swim_s"], r["bike_s"], r["run_s"],
                     r["t1_s"], r["t2_s"], r.get("pto_points", 0.0),
                 ))
+                db.record_athlete_nationality(self.conn, athlete_id, country_full, str(race_date))
 
             insert_results_bulk(self.conn, result_rows)
             print(f"  {gender_label}: inserted {len(result_rows)} results  ({len(new_athlete_slugs)} new athletes)")
@@ -645,6 +680,30 @@ class PTOIngester:
         print(f"  Enriched: {enriched}  Failed: {failed}"
               f"{'  (interrupted)' if interrupted else ''}")
 
+    def _get_profile(self, pto_slug):
+        """Return profile meta for a PTO slug, fetching on first ask and caching.
+
+        Records the attempt in the on-disk enrichment checkpoint so a later
+        `--athletes-only` pass doesn't re-fetch empty profiles. Swallows
+        HTTP errors and returns an empty dict so one bad profile doesn't
+        abort a race ingest.
+        """
+        if pto_slug in self._profile_cache:
+            return self._profile_cache[pto_slug]
+        try:
+            meta = self._fetch_athlete_meta(pto_slug)
+        except Exception as e:
+            print(f"    [profile-fetch FAILED] {pto_slug}: {e}")
+            meta = {}
+        self._profile_cache[pto_slug] = meta
+        # Record even empty attempts so the backfill pass doesn't retry endlessly.
+        try:
+            with open(_ENRICH_CHECKPOINT, "a", buffering=1) as ckpt:
+                ckpt.write(pto_slug + "\n")
+        except OSError:
+            pass
+        return meta
+
     def _fetch_athlete_meta(self, pto_slug):
         """Scrape /athlete/<slug> and return a dict of profile fields.
 
@@ -703,13 +762,18 @@ class PTOIngester:
     # Athlete identity resolution
     # ------------------------------------------------------------------
 
-    def _resolve_athlete(self, pto_slug, name, country_full, yob, gender):
+    def _resolve_athlete(self, pto_slug, name, country_full, gender):
         """Return (athlete_id, is_new).
 
         Resolution order:
         1. pto_slug already in DB → existing match (previous ingest run)
-        2. WT match: exact normalised name + same country + yob within ±1 year
-        3. New PTO-only athlete minted from slug_id(pto_slug)
+        2. Fetch the PTO profile page so we have yob / height / weight /
+           nickname before deciding how to link. The per-athlete HTTP cost is
+           borne once per run thanks to `_profile_cache`, and we used to pay
+           the same cost in `enrich_athletes` afterward — this just shifts it
+           earlier so matching has real ages to work with.
+        3. WT match: exact normalised name + same country + yob within ±1 year.
+        4. New PTO-only athlete minted from slug_id(pto_slug).
         """
         # 1. Already in DB by slug
         existing = self.conn.execute(
@@ -718,17 +782,33 @@ class PTOIngester:
         if existing:
             return existing[0], False
 
-        # 2. WT match
+        # 2. Profile fetch (yob + enrichment fields)
+        profile    = self._get_profile(pto_slug)
+        yob        = profile.get("yob") or 0
+        height_cm  = profile.get("height_cm")
+        weight_kg  = profile.get("weight_kg")
+        nickname   = profile.get("nickname", "") or ""
+
+        # 3. WT match with real yob
         wt_id, confidence = self._match_wt(name, country_full, yob)
         if wt_id:
-            print(f"    Matched '{name}' → WT athlete {wt_id} [{confidence}]")
-            db.upsert_athlete_pto_fields(self.conn, wt_id, pto_slug, None, None, "")
-            # Remove from in-memory index so subsequent races don't re-match
-            key = _normalize_name(name)
-            self._wt_athletes.get(key, [])
+            print(f"    Matched '{name}' (yob={yob or '?'}) → WT athlete {wt_id} [{confidence}]")
+            db.upsert_athlete_pto_fields(
+                self.conn, wt_id, pto_slug, height_cm, weight_kg, nickname,
+            )
+            # If WT didn't know the yob, adopt PTO's
+            if yob > 0:
+                self.conn.execute(
+                    "UPDATE athletes SET year_of_birth=? WHERE athlete_id=? AND year_of_birth=0",
+                    [yob, wt_id],
+                )
+            # Remove from in-memory WT index so subsequent races can't
+            # re-use this athlete row against a different namesake.
+            lst = self._wt_athletes.get(country_full, [])
+            self._wt_athletes[country_full] = [c for c in lst if c[0] != wt_id]
             return wt_id, False
 
-        # 3. New athlete
+        # 4. New PTO-only athlete
         athlete_id = db.slug_id(pto_slug)
         # Collision guard: slug_id should be unique but fail loudly if not
         collider = self.conn.execute(
@@ -742,52 +822,59 @@ class PTOIngester:
 
         db.upsert_nationality(self.conn, country_full)
         db.upsert_athlete(self.conn, athlete_id, name, country_full, yob, "", gender)
-        db.upsert_athlete_pto_fields(self.conn, athlete_id, pto_slug, None, None, "")
-        print(f"    New PTO athlete: {name!r} ({pto_slug})  id={athlete_id}")
+        db.upsert_athlete_pto_fields(
+            self.conn, athlete_id, pto_slug, height_cm, weight_kg, nickname,
+        )
+        print(f"    New PTO athlete: {name!r} yob={yob or '?'} ({pto_slug})  id={athlete_id}")
         return athlete_id, True
 
     def _match_wt(self, name, country_full, yob):
-        """Try to match against a WT athlete by normalised name + country + yob.
+        """Try to match against a WT athlete by country + yob + fuzzy name.
 
         Returns (athlete_id, confidence_str) or (None, None).
 
         Rules:
-        - If PTO yob is known and matches WT yob (±1) → match (high confidence).
-        - If PTO yob is 0/missing → match on name+country alone, but only if
-          there's exactly one WT candidate in that country (no ambiguity).
-        - If PTO yob is known and WT yobs all disagree (>1 year off) → skip,
-          almost certainly a different person.
-        - Multiple same-country candidates → ambiguous, skip.
+        - Prefilter by exact country match. No country → no match (the old
+          name-alone fallback conflated namesakes like Thomas Davies GBR 1972
+          vs GBR 1995, and country is cheap and reliable).
+        - PTO yob required. Without it we can't distinguish a pro from a
+          namesake AGer; the overlap-race matcher (ptd_data.pto_matcher) is
+          the safer cross-reference path for yob-less PTO athletes.
+        - Within country+yob (±1), require name similarity ≥ 0.70 and a
+          clear margin over the runner-up (≥ _NAME_SIM_GAP). If no single
+          winner, skip — conservative by design.
         """
-        key = _normalize_name(name)
-        candidates = self._wt_athletes.get(key, [])
+        candidates = self._wt_athletes.get(country_full, [])
         if not candidates:
             return None, None
-
-        country_matches = [c for c in candidates if c[1] == country_full]
-        if not country_matches:
+        if not yob:
             return None, None
 
-        if yob:
-            yob_close = [c for c in country_matches if c[2] and abs(c[2] - yob) <= 1]
-            if len(yob_close) == 1:
-                return yob_close[0][0], "name+country+yob"
-            if not yob_close:
-                wt_yobs = sorted({c[2] for c in country_matches if c[2]})
+        yob_close = [c for c in candidates if c[2] and abs(c[2] - yob) <= 1]
+        if not yob_close:
+            wt_yobs = sorted({c[2] for c in candidates if c[2]})
+            # Only print when there were candidates at all — avoids spamming
+            # lines for PTO athletes with no WT presence in their country.
+            if wt_yobs:
                 print(f"    YOB mismatch: '{name}' country={country_full} "
-                      f"WT_yob={wt_yobs} PTO_yob={yob} — skipping auto-match")
-                return None, None
-            # Multiple candidates still match yob — ambiguous
-            print(f"    Ambiguous: '{name}' country={country_full} yob={yob} — "
-                  f"{len(yob_close)} WT candidates, skipping")
+                      f"WT_yobs={wt_yobs[:8]}{'…' if len(wt_yobs) > 8 else ''} "
+                      f"PTO_yob={yob} — skipping auto-match")
             return None, None
 
-        # PTO yob unknown — accept name+country only if unambiguous
-        if len(country_matches) == 1:
-            return country_matches[0][0], "name+country (no yob)"
-        print(f"    Ambiguous (no PTO yob): '{name}' country={country_full} — "
-              f"{len(country_matches)} WT candidates, skipping")
-        return None, None
+        scored = sorted(
+            ((c, _name_similarity(c[1], name)) for c in yob_close),
+            key=lambda x: -x[1],
+        )
+        top, top_sim = scored[0]
+        if top_sim < _NAME_SIM_NICK:
+            return None, None
+        if len(scored) > 1 and (top_sim - scored[1][1]) < _NAME_SIM_GAP:
+            print(f"    Ambiguous: '{name}' country={country_full} yob={yob} — "
+                  f"top candidates {[(c[1], f'{s:.2f}') for c, s in scored[:3]]}")
+            return None, None
+
+        confidence = "name+country+yob" if top_sim >= 0.95 else f"fuzzy(sim={top_sim:.2f})"
+        return top[0], confidence
 
 
 # ---------------------------------------------------------------------------
@@ -882,6 +969,39 @@ def _brand_from_slug_or_name(slug, name):
     if "challenge" in s:
         return "challenge"
     return "independent"
+
+
+def _short_race_handle(race_name, slug, race_year):
+    """Compact, link-friendly PTO race handle suffixed with a 2-digit year.
+
+    Ironman branding is abbreviated ("Ironman 70.3 X" -> "IM 70.3 X",
+    "Ironman X" -> "IM X"). Every other series keeps its full name so that
+    'Challenge Roth' / 'Outlaw Triathlon' / 'Apfelland Triathlon' read
+    naturally. If the listing didn't give us a name we fall back to a
+    title-cased slug.
+
+        'Ironman 70.3 Valencia'            -> 'IM 70.3 Valencia 25'
+        'Ironman Nice'                     -> 'IM Nice 25'
+        'Ironman 70.3 World Championship'  -> 'IM 70.3 World Championship 25'
+        'Challenge Roth'                   -> 'Challenge Roth 25'
+        'Vancouver T100'                   -> 'Vancouver T100 25'
+        ''  (slug='im-703-swansea')        -> 'IM 70.3 Swansea 25'
+    """
+    t = (race_name or "").strip()
+    if not t:
+        # Derive from slug. Preserve common abbreviations that .title() would
+        # otherwise down-case or that need specific spacing.
+        t = slug.replace("-", " ").title()
+        t = re.sub(r"\bIm\b",  "IM", t)
+        t = re.sub(r"\b703\b", "70.3", t)
+        t = re.sub(r"\bWt\b",  "WT", t)
+        t = re.sub(r"\bT100\b", "T100", t, flags=re.I)
+    # Ironman -> IM (the 70.3 form first so the plain rule doesn't eat the "70.3").
+    t = re.sub(r"\bIronman\s+70\.?3\b", "IM 70.3", t, flags=re.I)
+    t = re.sub(r"\bIronman\b",          "IM",       t, flags=re.I)
+    t = re.sub(r"\s+", " ", t).strip()
+    yy = race_year % 100
+    return f"{t} {yy:02d}" if t else f"Event {yy:02d}"
 
 
 _ALPHA2_OVERRIDES = {

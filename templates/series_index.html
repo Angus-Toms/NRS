@@ -11,7 +11,6 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css">
 {% endblock %}
 
@@ -25,11 +24,11 @@
 {% endblock %}
 
 {% macro chevron() -%}
-<svg class="si-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+<svg class="si-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
 {%- endmacro %}
 
 {% macro see_series(s) -%}
-<a href="/series/{{ s.slug }}" class="si-see-series">See series {{ chevron() }}</a>
+<a href="/series/{{ s.slug }}" class="see-series">See series {{ chevron() }}</a>
 {%- endmacro %}
 
 {% macro athlete_img(a, cls='') -%}
@@ -37,142 +36,213 @@
      alt="{{ a.name }}" class="{{ cls }}" loading="lazy">
 {%- endmacro %}
 
-{% macro race_podium(label, race_id, podium) -%}
-<div class="event-race">
-    <div class="event-race-header">
-        {% if race_id %}
-        <a href="/race/{{ race_id }}" class="event-race-title">{{ label }}</a>
-        {% else %}
-        <span class="event-race-title">{{ label }}</span>
-        {% endif %}
-    </div>
+{# Podium column for the Latest pane: medal-coloured pos chip, photo,
+   name link, and either the winning time (1st, bold) or gap (2nd/3rd,
+   small + light). #}
+{% macro podium_col(label, podium) -%}
+<div>
+    <div class="col-head">{{ label }}</div>
     {% if podium %}
-    <ol class="event-race-podium">
+    <div class="podium-list">
         {% for p in podium %}
-        <li class="event-race-entry">
-            <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
-            {{ athlete_img(p, 'event-race-entry-img') }}
-            <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.country_emoji }}</a>
-            {% if p.position == 1 and p.time_fmt %}
-                <span class="event-entry-time event-entry-time--winner">{{ p.time_fmt }}</span>
-            {% elif p.position > 1 and p.gap_fmt %}
-                <span class="event-entry-time event-entry-time--diff">{{ p.gap_fmt }}</span>
+        {%- set tier = 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' -%}
+        <div class="podium-row {{ tier }}-row">
+            <span class="pos-circle {{ tier }}">{{ p.position }}</span>
+            {{ athlete_img(p) }}
+            <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ p.name }} {{ p.country_emoji }}</a>
+            {% if p.position == 1 %}
+            <span class="podium-time">{{ p.time_fmt or '-' }}</span>
+            {% else %}
+            <span class="podium-gap">{{ p.gap_fmt or '-' }}</span>
             {% endif %}
-        </li>
-        {% endfor %}
-    </ol>
-    {% else %}
-    <p class="event-race-pending">No elite race</p>
-    {% endif %}
-</div>
-{%- endmacro %}
-
-{% macro leader_row(leader, max_editions=3, start_expanded=false) -%}
-{%- set n_eds = leader.editions|length -%}
-{%- set has_more = n_eds > max_editions -%}
-<div class="si-leader-row">
-    <a href="/athlete/{{ leader.athlete_id }}" class="si-leader-body">
-        {{ athlete_img(leader, 'si-leader-img') }}
-        <div class="si-leader-name">{{ leader.name }} {{ leader.country_emoji }}</div>
-        <div class="si-leader-wins"><span class="si-leader-wins-n">{{ leader.wins }}</span><span class="si-leader-wins-lbl">wins</span></div>
-    </a>
-    {%- if leader.editions %}
-    <div class="si-leader-editions{% if start_expanded and has_more %} is-expanded{% endif %}">{#-
-        #}{%- for ed in leader.editions[:max_editions] -%}
-<span class="si-edition-item"><a href="/race/{{ ed.race_id }}" class="si-edition">{{ ed.short }}</a>{%- if not loop.last or has_more %}<span class="si-edition-sep">·</span>{%- endif %}</span>{%- if not loop.last or has_more %}<wbr>{%- endif -%}
-        {%- endfor -%}
-        {%- if has_more -%}
-<span class="si-editions-extra">{#- extras: every item has trailing dot+wbr so the toggle has a separator before it -#}
-        {%- for ed in leader.editions[max_editions:] -%}
-<span class="si-edition-item"><a href="/race/{{ ed.race_id }}" class="si-edition">{{ ed.short }}</a><span class="si-edition-sep">·</span></span><wbr>
-        {%- endfor -%}
-</span><button class="si-editions-toggle" type="button" data-more="+{{ n_eds - max_editions }} more" data-less="Show less"></button>
-        {%- endif -%}
-    </div>
-    {%- endif %}
-</div>
-{%- endmacro %}
-
-{% macro leader_block(gender, leaders, other_count=0, max_leaders=3) -%}
-{%- set auto_expand = leaders|length < other_count -%}
-<div class="si-leader">
-    <div class="si-leader-head"><span>Elite {{ gender }}</span></div>
-    {% if leaders %}
-        {% for leader in leaders[:max_leaders] %}{{ leader_row(leader, start_expanded=auto_expand) }}{% endfor %}
-        {% if leaders|length > max_leaders %}
-        {%- set extras_count = leaders|length - max_leaders -%}
-        <div class="si-leader-extras is-hidden">
-            {% for leader in leaders[max_leaders:] %}{{ leader_row(leader, start_expanded=auto_expand) }}{% endfor %}
         </div>
-        <button class="si-leader-more-btn" type="button"
-                data-show="Show {{ extras_count }} more" data-hide="Hide">Show {{ extras_count }} more</button>
-        {% endif %}
+        {% endfor %}
+    </div>
     {% else %}
-    <div class="si-leader-empty">—</div>
+    <div class="podium-empty">No race</div>
     {% endif %}
 </div>
 {%- endmacro %}
 
-{% macro series_meta(s) -%}
-{% if s.race_count and s.earliest_date and s.latest_date %}
-<p class="page-section-sub">{{ s.race_count }} editions · {{ s.earliest_date.year }}–{{ s.latest_date.year }}</p>
+{# Records column for the Records pane. Athletes records on top,
+   field-strength records below (separated by extra margin on the
+   first field row). #}
+{% macro athlete_record(label, rec) -%}
+{% if rec %}
+<div class="record-row">
+    <span class="record-label">{{ label }}</span>
+    <span class="record-value">{{ rec.n }}</span>
+    <span class="record-meta"><a href="/athlete/{{ rec.athlete_id }}" title="{{ rec.name }}">{{ rec.name }}</a></span>
+</div>
 {% endif %}
 {%- endmacro %}
 
-{% macro edition_card(ed, hidden=false) -%}
-<div class="event-card si-edition-card{% if hidden %} is-hidden{% endif %}">
-    <a href="/event/{{ ed.event_id }}" class="event-card-overlay" aria-label="{{ ed.event_name }}"></a>
-    <div class="event-card-header">
-        <div class="event-card-title">{{ ed.event_name }}{% if ed.is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</div>
-        <span class="event-card-date">{{ ed.race_date.strftime('%-d %b %Y') }}</span>
+{% macro field_record(label, rec, first) -%}
+{% if rec %}
+{# AG records show the program name (e.g. "30-34 Male AG") since the band
+   is meaningful context. For elite the prog ("Elite Men") is implied by
+   the column header so we omit it to keep the line tight. #}
+{%- set band = (rec.prog_name.split(' ', 1)[0] if rec.prog_name else None) -%}
+<div class="record-row{% if first %} record-row--gap{% endif %}">
+    <span class="record-label">{{ label }}</span>
+    <span class="record-value">{{ rec.value }} <span class="std-pill std-pill--{{ rec.classification }}">{{ rec.classification|title }}</span></span>
+    <span class="record-meta">
+        <a href="/race/{{ rec.race_id }}" title="{{ rec.short }}">{{ rec.short }}</a>
+        {%- if band %} <span class="record-prog">{{ band }}</span>{% endif -%}
+    </span>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro records_col(label, r) -%}
+<div>
+    <div class="col-head">{{ label }}</div>
+    {% if r and (r.participations or r.podiums or r.top10s or r.strongest_overall or r.strongest_swim or r.strongest_bike or r.strongest_run) %}
+    <div class="record-list">
+        {{ athlete_record("Most participations", r.participations) }}
+        {{ athlete_record("Most podiums",        r.podiums) }}
+        {{ athlete_record("Most top 10s",        r.top10s) }}
+        {%- set has_athlete = r.participations or r.podiums or r.top10s -%}
+        {{ field_record("Strongest overall field", r.strongest_overall, first=has_athlete) }}
+        {{ field_record("Strongest swim field",    r.strongest_swim,    first=(not has_athlete) and (not r.strongest_overall)) }}
+        {{ field_record("Strongest bike field",    r.strongest_bike,    first=(not has_athlete) and (not r.strongest_overall) and (not r.strongest_swim)) }}
+        {{ field_record("Strongest run field",     r.strongest_run,     first=(not has_athlete) and (not r.strongest_overall) and (not r.strongest_swim) and (not r.strongest_bike)) }}
     </div>
-    <div class="event-card-body">
-        <div class="event-races">
-            {{ race_podium("Elite Men",   ed.male_race_id,   ed.male_podium) }}
-            {{ race_podium("Elite Women", ed.female_race_id, ed.female_podium) }}
-        </div>
-    </div>
+    {% else %}
+    <div class="leader-empty">—</div>
+    {% endif %}
 </div>
 {%- endmacro %}
 
-{% macro series_block(s, show_name) -%}
-<div class="si-series">
-    {% if show_name %}
-    <div class="si-series-head">
-        <div>
-            <div class="si-series-name">{{ s.name }}</div>
-            {{ series_meta(s) }}
-        </div>
-        {{ see_series(s) }}
-    </div>
-    {% endif %}
-
-    <div class="si-series-body">
-        {% if s.editions %}
-        <div class="si-latest-col">
-            <div class="si-latest-kicker">Latest edition</div>
-            <div class="si-editions-stack">
-                {% for ed in s.editions %}
-                    {{ edition_card(ed, hidden=(not loop.first)) }}
-                {% endfor %}
-            </div>
-            {% if s.editions|length > 1 %}
-            <button class="si-show-more-editions" type="button">
-                Show earlier edition
-                <svg class="si-chev-down" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-            {% endif %}
+{# One leader row in the Most Wins column. #}
+{% macro leader_row(l, extra=False) -%}
+<div class="leader-row{% if extra %} leader-row--extra{% endif %}">
+    {{ athlete_img(l) }}
+    <div>
+        <a href="/athlete/{{ l.athlete_id }}" class="leader-name">{{ l.name }} {{ l.country_emoji }}</a>
+        {% if l.editions %}
+        <div class="leader-meta">
+            {% for ed in l.editions %}
+            <span class="leader-edition-item"><a href="/race/{{ ed.race_id }}" class="leader-edition">{{ ed.short }}</a>{% if not loop.last %}<span class="leader-edition-sep">·</span>{% endif %}</span>
+            {% endfor %}
         </div>
         {% endif %}
+    </div>
+    <span class="podium-group">
+        <span class="podium-n">{{ l.wins }}×</span>
+        <span class="pos-circle pos-circle--sm gold">1</span>
+    </span>
+</div>
+{%- endmacro %}
 
-        {% if s.top_male or s.top_female %}
-        <div class="si-wins-col">
-            <div class="si-wins-kicker">Most Wins</div>
-            <div class="si-leaders">
-                {{ leader_block("Men", s.top_male, s.top_female|length) }}
-                {{ leader_block("Women", s.top_female, s.top_male|length) }}
+{# Most Wins column: top 3 athletes per gender. If more than 3 are tied
+   at the same win count, the rest are hidden behind a See-more toggle. #}
+{% macro leader_col(label, leaders) -%}
+<div>
+    <div class="col-head">{{ label }}</div>
+    {% if leaders %}
+    <div class="leader-list">
+        {% for l in leaders[:3] %}{{ leader_row(l) }}{% endfor %}
+        {%- set extras = leaders|length - 3 -%}
+        {% if extras > 0 %}
+            {% for l in leaders[3:] %}{{ leader_row(l, extra=True) }}{% endfor %}
+            <button class="show-more-leaders" type="button"
+                    data-show="See {{ extras }} more"
+                    data-hide="Hide">See {{ extras }} more</button>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="leader-empty">—</div>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{# Single-series block: identity row + tabbed card. `title` is the
+   heading rendered in the orange-bordered top row (tier label for
+   single-series tiers, series name for multi-series tiers). #}
+{% macro series_block(s, title) -%}
+<div class="series-block">
+    <div class="series-name-head">
+        <a href="/series/{{ s.slug }}" class="series-name-link">{{ title }}</a>
+        {{ see_series(s) }}
+    </div>
+
+    <div class="series-card">
+        <div class="card-tabs">
+            <div class="card-tabs-l">
+                <div class="card-tab active" data-tab="latest">Latest result</div>
+                <div class="card-tab" data-tab="records">Records</div>
+                <div class="card-tab" data-tab="leaders">Most Wins</div>
+            </div>
+            <div class="card-tabs-r">
+                {% if s.race_count and s.earliest_date %}
+                <span><b>{{ s.race_count }}</b> editions
+                    {%- if s.latest_date and s.earliest_date.year != s.latest_date.year %} · <b>{{ s.earliest_date.year }}-{{ s.latest_date.year }}</b>
+                    {%- elif s.earliest_date %} · <b>{{ s.earliest_date.year }}</b>{% endif %}
+                </span>
+                {% endif %}
             </div>
         </div>
+
+        {# Latest pane: race name + date + men/women podium grid. #}
+        <div class="card-pane active" data-pane="latest">
+            <div class="card-pane-body">
+                {% if s.editions %}
+                {%- set ed = s.editions[0] -%}
+                <div class="pane-edition-head">
+                    <a href="/event/{{ ed.event_id }}" class="pane-edition-link">{{ ed.event_name }}</a>
+                    {% if ed.race_date %}
+                    <span class="pane-edition-date">{{ ed.race_date.strftime('%-d %b %Y') }}</span>
+                    {% endif %}
+                </div>
+                <div class="gender-pair">
+                    {{ podium_col(ed.male_label   or "Men",   ed.male_podium) }}
+                    {{ podium_col(ed.female_label or "Women", ed.female_podium) }}
+                </div>
+                {% else %}
+                <p class="pane-empty">No recent editions on file.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Records pane: athlete records (most participations / podiums
+           / top 10s) + strongest swim/bike/run/overall race standards. #}
+        <div class="card-pane" data-pane="records">
+            <div class="card-pane-body">
+                {% if s.records and (s.records.male or s.records.female) %}
+                {%- set m_lbl = "AG Men"   if s.is_ag_only else "Men"   -%}
+                {%- set f_lbl = "AG Women" if s.is_ag_only else "Women" -%}
+                <div class="gender-pair">
+                    {{ records_col(m_lbl, s.records.male) }}
+                    {{ records_col(f_lbl, s.records.female) }}
+                </div>
+                {% else %}
+                <p class="pane-empty">No records yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Most Wins pane: top 3 men + top 3 women. #}
+        <div class="card-pane" data-pane="leaders">
+            <div class="card-pane-body">
+                {% if s.top_male or s.top_female %}
+                {%- set m_lbl = "AG Men"   if s.is_ag_only else "Men"   -%}
+                {%- set f_lbl = "AG Women" if s.is_ag_only else "Women" -%}
+                <div class="gender-pair">
+                    {{ leader_col(m_lbl, s.top_male) }}
+                    {{ leader_col(f_lbl, s.top_female) }}
+                </div>
+                {% else %}
+                <p class="pane-empty">No winners on record yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Card footer: for AG-only series the latest edition typically has
+           many programs (one per band/distance). Surface a link to the full
+           event page so users can drill down into bands not shown above. #}
+        {% if s.is_ag_only and s.editions and s.editions[0].race_count > 2 %}
+        <a href="/event/{{ s.editions[0].event_id }}" class="card-footer-link">+{{ s.editions[0].race_count - 2 }} other races &rsaquo;</a>
         {% endif %}
     </div>
 </div>
@@ -181,46 +251,72 @@
 {% block content %}
 <div class="series-index-page">
     {% for block in tier_blocks %}
-    <section class="series-group">
+    <section class="tier-section">
         {% if block.series|length == 1 %}
-            <div class="page-section-head">
-                <div>
-                    <span>{{ block.label }}</span>
-                    {{ series_meta(block.series[0]) }}
-                </div>
-                {{ see_series(block.series[0]) }}
-            </div>
-            {{ series_block(block.series[0], show_name=false) }}
+            {# Single-series tier: tier label is the heading; no
+               separate sub-section heading since the series IS the
+               tier (e.g. Olympic Games). #}
+            {{ series_block(block.series[0], title=block.label) }}
         {% else %}
-            <div class="page-section-head">{{ block.label }}</div>
-            {% for s in block.series %}{{ series_block(s, show_name=true) }}{% endfor %}
+            {# Multi-series tier: tier label as the section heading,
+               then each series renders its own sub-section heading
+               (e.g. Continental Cup -> European Cup, African Cup, ...). #}
+            <h2 class="tier-section-head">{{ block.label }}</h2>
+            {% for s in block.series %}{{ series_block(s, title=s.name) }}{% endfor %}
         {% endif %}
     </section>
     {% endfor %}
 </div>
+
 <script>
+// One delegated handler for tab switching + show-more on joint winners.
 document.addEventListener('click', function(e) {
-    var btn = e.target.closest('.si-editions-toggle');
-    if (btn) {
-        btn.closest('.si-leader-editions').classList.toggle('is-expanded');
+    var tab = e.target.closest('.card-tab');
+    if (tab) {
+        var card = tab.closest('.series-card');
+        if (!card) return;
+        card.querySelectorAll('.card-tab').forEach(function(x){ x.classList.remove('active'); });
+        card.querySelectorAll('.card-pane').forEach(function(x){ x.classList.remove('active'); });
+        tab.classList.add('active');
+        var pane = card.querySelector('[data-pane="' + tab.dataset.tab + '"]');
+        if (pane) pane.classList.add('active');
+        // Layout-dependent passes need to re-run after the pane becomes
+        // visible (offsetTop is 0 while display:none).
+        markLineEndSeparators();
         return;
     }
-    var moreBtn = e.target.closest('.si-leader-more-btn');
-    if (moreBtn) {
-        var extras = moreBtn.parentElement.querySelector('.si-leader-extras');
-        if (!extras) return;
-        var nowHidden = extras.classList.toggle('is-hidden');
-        moreBtn.textContent = nowHidden ? moreBtn.dataset.show : moreBtn.dataset.hide;
-        return;
-    }
-    var more = e.target.closest('.si-show-more-editions');
+    var more = e.target.closest('.show-more-leaders');
     if (more) {
-        var stack = more.parentElement.querySelector('.si-editions-stack');
-        if (!stack) return;
-        var hidden = stack.querySelector('.si-edition-card.is-hidden');
-        if (hidden) hidden.classList.remove('is-hidden');
-        if (!stack.querySelector('.si-edition-card.is-hidden')) more.remove();
+        var list = more.closest('.leader-list');
+        var expanded = list.classList.toggle('is-expanded');
+        more.textContent = expanded ? more.dataset.hide : more.dataset.show;
+        markLineEndSeparators();
+        return;
     }
 });
+
+// Hide any separator that falls at the right edge of a wrapped line. The
+// item+separator pairs are wrapped together via .leader-edition-item, so a
+// separator never starts a new line, but a line-end one would otherwise
+// dangle at the end. Compares offsetTop of the item containing the
+// separator with the next item: different rows -> end of line, hide.
+function markLineEndSeparators() {
+    document.querySelectorAll('.leader-meta').forEach(function(meta){
+        var items = meta.querySelectorAll('.leader-edition-item');
+        items.forEach(function(item, i){
+            var sep = item.querySelector('.leader-edition-sep');
+            if (!sep) return;
+            sep.classList.remove('is-line-end');
+            var next = items[i + 1];
+            if (next && Math.abs(item.offsetTop - next.offsetTop) > 1) {
+                sep.classList.add('is-line-end');
+            }
+        });
+    });
+}
+
+window.addEventListener('load',   markLineEndSeparators);
+window.addEventListener('resize', markLineEndSeparators);
+markLineEndSeparators();
 </script>
 {% endblock %}

@@ -51,6 +51,18 @@ def _get_time_behind(time1_s, time2_s):
     return [router_utils.format_time_behind(time1_s - time2_s), ""]
 
 
+# Program -> (course, category). AG is always short-course.
+_PROGRAMS = {
+    'elite-short': ('short', 'elite'),
+    'elite-long':  ('long',  'elite'),
+    'ag':          ('short', 'ag'),
+}
+
+
+def _parse_program(program: str):
+    return _PROGRAMS.get(program, _PROGRAMS['elite-short'])
+
+
 @router.get("/compare", response_class=HTMLResponse)
 async def compare_page(request: Request):
     return templates.TemplateResponse("comparison.html", {
@@ -59,10 +71,13 @@ async def compare_page(request: Request):
 
 
 @router.get("/compare/search")
-async def search_athletes_for_compare(q: str = "", gender: str = ""):
+async def search_athletes_for_compare(q: str = "", gender: str = "", programs: str = ""):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
-    results = queries.search_athletes(q.strip(), gender=gender or None)
+    require_programs = [p for p in programs.split(",") if p in _PROGRAMS] or None
+    results = queries.search_athletes(
+        q.strip(), gender=gender or None, require_programs=require_programs
+    )
     for r in results:
         r["country_name"] = r.pop("country_full")
     return JSONResponse(results)
@@ -73,8 +88,13 @@ async def get_athlete_for_compare(athlete_id: int):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         return JSONResponse({"error": "Not found"}, status_code=404)
-    ratings = queries.get_athlete_current_ratings(athlete_id)
-    stats   = queries.get_athlete_stats(athlete_id)
+    programs = queries.get_athlete_programs(athlete_id)
+    # Pick a sensible default for the selection-card stats: favour elite-short,
+    # then elite-long, then ag.
+    default_program = programs[0] if programs else 'elite-short'
+    course, category = _parse_program(default_program)
+    ratings = queries.get_athlete_current_ratings(athlete_id, category=category, course=course)
+    stats   = queries.get_athlete_stats(athlete_id, category=category, course=course)
     return JSONResponse({
         "athlete_id":     info["athlete_id"],
         "name":           info["name"],
@@ -89,55 +109,68 @@ async def get_athlete_for_compare(athlete_id: int):
         "run_rating":     int(round(ratings["run_rating"]))  if ratings and ratings.get("run_rating")  else None,
         "world_rank":     ratings["world_overall"] if (ratings and info.get("active")) else None,
         "wins":           stats["wins"] if stats else None,
+        "programs":       programs,
     })
 
 
 @router.get("/compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
-async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int):
+async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int,
+                              program: str = "elite-short"):
+    if program not in _PROGRAMS:
+        program = "elite-short"
+    course, category = _parse_program(program)
     # Direct navigation - redirect to the full compare page which auto-loads via JS
     if not request.headers.get("X-Partial"):
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=f"/compare?a1={athlete1_id}&a2={athlete2_id}", status_code=302)
+        return RedirectResponse(
+            url=f"/compare?a1={athlete1_id}&a2={athlete2_id}&program={program}",
+            status_code=302,
+        )
     info1    = queries.get_athlete_info(athlete1_id)
     info2    = queries.get_athlete_info(athlete2_id)
     if not info1:
         raise HTTPException(status_code=404, detail=f"Athlete {athlete1_id} not found")
     if not info2:
         raise HTTPException(status_code=404, detail=f"Athlete {athlete2_id} not found")
-    stats1   = queries.get_athlete_stats(athlete1_id)
-    stats2   = queries.get_athlete_stats(athlete2_id)
-    ratings1 = queries.get_athlete_current_ratings(athlete1_id)
-    ratings2 = queries.get_athlete_current_ratings(athlete2_id)
-    changes1 = queries.get_athlete_1yr_changes(athlete1_id)
-    changes2 = queries.get_athlete_1yr_changes(athlete2_id)
+    stats1   = queries.get_athlete_stats(athlete1_id, category=category, course=course)
+    stats2   = queries.get_athlete_stats(athlete2_id, category=category, course=course)
+    ratings1 = queries.get_athlete_current_ratings(athlete1_id, category=category, course=course)
+    ratings2 = queries.get_athlete_current_ratings(athlete2_id, category=category, course=course)
+    changes1 = queries.get_athlete_1yr_changes(athlete1_id, category=category, course=course)
+    changes2 = queries.get_athlete_1yr_changes(athlete2_id, category=category, course=course)
 
-    common = queries.get_common_races(athlete1_id, athlete2_id)
+    common = queries.get_common_races(athlete1_id, athlete2_id, course=course, category=category)
 
-    # Head-to-head race list
+    # Head-to-head race list (per-discipline times so the UI can swap between
+    # overall, swim, bike, run with a radio toggle)
     head_to_head = []
-    a1_wins = 0
-    a2_wins = 0
+    disc_wins = {"overall": [0, 0], "swim": [0, 0], "bike": [0, 0], "run": [0, 0]}
     for race in common:
-        t1, t2 = race["a1_overall_s"], race["a2_overall_s"]
-        a1_time, a2_time = _format_h2h_times(t1, t2)
-        a1_behind, a2_behind = _get_time_behind(t1, t2)
-        if a1_time["css_class"] == "h2h-winner":
-            a1_wins += 1
-        elif a2_time["css_class"] == "h2h-winner":
-            a2_wins += 1
+        disc_cells = {}
+        for disc in ("overall", "swim", "bike", "run"):
+            t1 = race[f"a1_{disc}_s"]
+            t2 = race[f"a2_{disc}_s"]
+            a1_time, a2_time = _format_h2h_times(t1, t2)
+            a1_behind, a2_behind = _get_time_behind(t1, t2)
+            if a1_time["css_class"] == "h2h-winner":
+                disc_wins[disc][0] += 1
+            elif a2_time["css_class"] == "h2h-winner":
+                disc_wins[disc][1] += 1
+            disc_cells[disc] = {
+                "a1_time": a1_time, "a1_behind": a1_behind,
+                "a2_time": a2_time, "a2_behind": a2_behind,
+            }
         head_to_head.append({
             "race_id":           race["race_id"],
             "race_name":         race["race_title"],
             "race_date":         race["race_date"],
             "athlete1_position": race["a1_position"],
             "athlete1_status":   race["a1_status"],
-            "athlete1_time":     a1_time,
-            "athlete1_behind":   a1_behind,
             "athlete2_position": race["a2_position"],
             "athlete2_status":   race["a2_status"],
-            "athlete2_time":     a2_time,
-            "athlete2_behind":   a2_behind,
+            "disc_cells":        disc_cells,
         })
+    a1_wins, a2_wins = disc_wins["overall"]
 
     athlete1_data = {
         "id":      info1["athlete_id"],
@@ -179,8 +212,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     ]
 
     # Rating charts - chronological data for both athletes
-    ratings_data1 = queries.get_athlete_ratings_data(athlete1_id)
-    ratings_data2 = queries.get_athlete_ratings_data(athlete2_id)
+    ratings_data1 = queries.get_athlete_ratings_data(athlete1_id, category=category, course=course)
+    ratings_data2 = queries.get_athlete_ratings_data(athlete2_id, category=category, course=course)
 
     h2h_ratings_chart = {}
     for disc in ["overall", "swim", "bike", "run", "transition"]:
@@ -214,8 +247,8 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
         }
 
     # Rankings charts - chronological world ranking data for both athletes
-    rankings_data1 = queries.get_athlete_rankings_data(athlete1_id)
-    rankings_data2 = queries.get_athlete_rankings_data(athlete2_id)
+    rankings_data1 = queries.get_athlete_rankings_data(athlete1_id, category=category, course=course)
+    rankings_data2 = queries.get_athlete_rankings_data(athlete2_id, category=category, course=course)
 
     def _with_rank_changes(rows, col):
         """Annotate each ranking row with the change from the previous ranked race."""
@@ -258,6 +291,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
         "athlete2":            athlete2_data,
         "head_to_head":        head_to_head,
         "head_to_head_ratings": head_to_head_ratings,
+        "h2h_disc_wins":       disc_wins,
         "overall_ratings_chart":    h2h_ratings_chart["overall"],
         "swim_ratings_chart":       h2h_ratings_chart["swim"],
         "bike_ratings_chart":       h2h_ratings_chart["bike"],

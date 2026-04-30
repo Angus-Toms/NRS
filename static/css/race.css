@@ -69,29 +69,102 @@
     color: rgba(255, 255, 255, 0.85);
 }
 
-/* Context pills — event + series links above race title */
+/* Context pills — series + recurring groupings the race belongs to.
+   All pills sit above the race title; tier drives the colour. */
 .race-context-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-bottom: 0.75rem;
+    margin: 0 0 0.55rem 0;
 }
 
 .race-context-pill {
-    display: inline-block;
-    padding: 0.2rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.7rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 0.75rem;
-    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
-    transition: background var(--transition-fast), color var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
 }
 
 .race-context-pill:hover {
-    background: rgba(255, 255, 255, 0.12);
     color: #fff;
+    text-decoration: none;
+    filter: brightness(1.15);
+}
+
+.race-context-pill-chev {
+    /* Inline SVG chevron - sized larger than the uppercase pill label so
+       it reads as a clear "go to" affordance. Flex parent centers it;
+       SVG has no baseline weirdness so vertical alignment is exact.
+       Color inherits from the parent pill via currentColor on the stroke,
+       so each tier gets a chevron that matches its label. */
+    display: block;
+    width: 1.2em;
+    height: 1.2em;
+    margin-right: -0.15em;  /* tighten the trailing edge inside the pill */
+    flex-shrink: 0;
+}
+
+/* --- Tier palette ------------------------------------------------------- */
+/* World / IM / IM 70.3 worlds, Olympics, Commonwealth, FISU, AG worlds:
+   gold — championship-tier prestige. */
+.race-context-pill--championship,
+.race-context-pill--im-worlds,
+.race-context-pill--im-703-worlds,
+.race-context-pill--olympic-games,
+.race-context-pill--commonwealth-games,
+.race-context-pill--fisu-games,
+.race-context-pill--ag-championship {
+    background: rgba(245, 200, 66, 0.16);
+    border-color: rgba(245, 200, 66, 0.55);
+    color: #f5d775;
+}
+
+/* T100 — magenta. */
+.race-context-pill--t100 {
+    background: rgba(217, 70, 239, 0.16);
+    border-color: rgba(217, 70, 239, 0.55);
+    color: #f0abfc;
+}
+
+/* WTCS — blue. */
+.race-context-pill--wtcs {
+    background: rgba(99, 179, 237, 0.16);
+    border-color: rgba(99, 179, 237, 0.5);
+    color: #cfe6f7;
+}
+
+/* World Cup, Continental Cup — teal/green. */
+.race-context-pill--world-cup,
+.race-context-pill--continental-cup {
+    background: rgba(52, 211, 153, 0.16);
+    border-color: rgba(52, 211, 153, 0.5);
+    color: #a7f3d0;
+}
+
+/* Continental Championships — orange. */
+.race-context-pill--continental-championship {
+    background: rgba(251, 146, 60, 0.16);
+    border-color: rgba(251, 146, 60, 0.5);
+    color: #fdba74;
+}
+
+/* Recurring (auto-grouped same venue across years) — neutral grey. */
+.race-context-pill--recurring {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .race-hero-title {
@@ -336,13 +409,19 @@
     color: #fff;
     border: none;
     border-radius: var(--border-radius);
-    padding: 0.4rem 0.9rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    font-family: inherit;
+    padding: 0.4rem;
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: background var(--transition-fast), transform var(--transition-fast);
-    white-space: nowrap;
+}
+
+.btn-add-prediction .lucide-user-plus {
+    width: 1.1rem;
+    height: 1.1rem;
 }
 
 .btn-add-prediction:hover {
@@ -374,6 +453,16 @@
     padding: 1.75rem;
     width: min(540px, 90vw);
     box-shadow: var(--box-shadow-lg);
+}
+
+.prediction-modal-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.75rem 0;
+    letter-spacing: -0.01em;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 0.75rem;
 }
 
 .prediction-modal-hint {

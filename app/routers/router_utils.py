@@ -33,7 +33,11 @@ def format_time_behind(seconds_behind: int) -> str:
     time_fmt = format_time(seconds_behind)
     return f"+{time_fmt}"
     
-def format_rating(rating: float) -> int:
+def format_rating(rating):
+    # Debut athletes (e.g. on an upcoming-race start list) have no rating yet;
+    # pass None through so templates render a blank/dash rather than crashing.
+    if rating is None:
+        return None
     return int(round(rating))
 
 def format_rating_change(change: float) -> dict:

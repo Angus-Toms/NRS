@@ -74,6 +74,45 @@
     margin: 0;
 }
 
+.home-subsection-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0 1rem;
+}
+
+.home-section-head:has(+ .home-subsection-head) {
+    margin-bottom: 0.75rem;
+}
+
+.home-subsection-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.1rem;
+    letter-spacing: -0.01em;
+}
+
+.home-subsection-sub {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+    margin: 0;
+}
+
+.home-section .home-events-grid + .home-subsection-head {
+    margin-top: 1.75rem;
+}
+
+.event-race-predicted-label {
+    font-size: 0.65rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-lighter);
+}
+.event-race-dot-sep { color: var(--text-lighter); margin: 0 0.1rem; }
+
 .home-more-link {
     font-size: 0.85rem;
     font-weight: 600;
@@ -106,6 +145,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
+}
+
+.champs-grid + .champs-grid {
+    margin-top: 1.25rem;
 }
 
 .champ-card {
@@ -495,6 +538,12 @@
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     overflow: hidden;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.home-lb-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
 }
 
 .home-lb-card-header {

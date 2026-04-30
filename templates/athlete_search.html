@@ -53,6 +53,18 @@
         <!-- Row 1: radio chips + active toggle -->
         <div class="as-filter-primary">
             <div class="filter-chip-group">
+                <span class="filter-chip-label">Course</span>
+                <div class="radio-chips">
+                    <input type="radio" id="as-course-all"   name="as-course" value="all" checked>
+                    <label for="as-course-all">All</label>
+                    <input type="radio" id="as-course-short" name="as-course" value="short">
+                    <label for="as-course-short">Short</label>
+                    <input type="radio" id="as-course-long"  name="as-course" value="long">
+                    <label for="as-course-long">Long</label>
+                </div>
+            </div>
+            <div class="filter-v-divider"></div>
+            <div class="filter-chip-group">
                 <span class="filter-chip-label">Sort by</span>
                 <div class="radio-chips">
                     <input type="radio" id="disc-overall" name="as-disc" value="overall" checked>
@@ -123,11 +135,14 @@
     </div>
 </div>
 <div class="as-champs-grid">
-    {% for athlete, label in [(female_trending, 'Women · Trending'), (male_trending, 'Men · Trending')] %}
+    {% for athlete, course, label in [
+        (female_trending, female_trending_course, 'Women · Trending'),
+        (male_trending,   male_trending_course,   'Men · Trending')
+    ] %}
     {% if athlete %}
-    <a href="/athlete/{{ athlete.athlete_id }}" class="as-champ-card">
+    <a href="/athlete/{{ athlete.athlete_id }}?course={{ course }}" class="as-champ-card">
         <div class="as-champ-header">
-            <span class="as-champ-badge">{{ label }}</span>
+            <span class="as-champ-badge">{{ label }} {{ 'Short Course' if course == 'short' else 'Long Course' }}</span>
         </div>
         <div class="as-champ-body">
             <img class="as-champ-img"
@@ -174,7 +189,12 @@
 <!-- ── All-time Leaderboards ── -->
 <div class="page-section-head">All-time Leaderboards</div>
 <div class="as-lb-grid">
-    {% for athletes, href, label in [(female_lb, '/leaderboard?gender=female', 'Women · Top Rated All-Time'), (male_lb, '/leaderboard?gender=male', 'Men · Top Rated All-Time')] %}
+    {% for athletes, href, label in [
+        (female_lb_short, '/leaderboard?gender=female&course=short', 'Women · Short Course'),
+        (male_lb_short,   '/leaderboard?gender=male&course=short',   'Men · Short Course'),
+        (female_lb_long,  '/leaderboard?gender=female&course=long',  'Women · Long Course'),
+        (male_lb_long,    '/leaderboard?gender=male&course=long',    'Men · Long Course')
+    ] %}
     <a href="{{ href }}" class="as-lb-card">
         <div class="as-lb-card-header">
             <span class="as-lb-card-title">{{ label }}</span>

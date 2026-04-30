@@ -118,14 +118,15 @@
             <!-- Active only -->
             <div class="filter-chip-group">
                 <span class="filter-chip-label">Active only</span>
-                <div class="radio-chips">
-                    <input type="radio" name="active_only" value="true" id="active-yes"
-                        {% if active_only %}checked{% endif %}>
-                    <label for="active-yes">On</label>
-                    <input type="radio" name="active_only" value="false" id="active-no"
-                        {% if not active_only %}checked{% endif %}>
-                    <label for="active-no">Off</label>
-                </div>
+                <!-- Hidden input carries the actual submitted value; checkbox is UI -->
+                <input type="hidden" name="active_only" id="active-only-input"
+                       value="{{ 'true' if active_only else 'false' }}">
+                <label class="filter-toggle">
+                    <input type="checkbox" id="active-only-cb"
+                           {% if active_only %}checked{% endif %}>
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    <span class="toggle-text" id="active-only-text">{% if active_only %}On{% else %}Off{% endif %}</span>
+                </label>
             </div>
 
             <!-- Spacer pushes actions right -->
@@ -159,10 +160,10 @@
                 <label>Birth Year</label>
                 <div class="year-range">
                     <input type="number" name="yob_start" id="yob_start"
-                        min="1950" max="2010" value="{{ yob_start }}" step="1">
+                        min="1930" max="2010" value="{{ yob_start }}" step="1">
                     <span class="range-sep">–</span>
                     <input type="number" name="yob_end" id="yob_end"
-                        min="1950" max="2010" value="{{ yob_end }}" step="1">
+                        min="1930" max="2010" value="{{ yob_end }}" step="1">
                     <button type="button" class="btn-age-preset" data-age="19">Junior</button>
                     <button type="button" class="btn-age-preset" data-age="23">U23</button>
                 </div>
@@ -171,10 +172,6 @@
 
     </form>
 </div>
-
-{% if country_alpha3 %}
-<a class="leaderboard-country-chip" href="/country/{{ country_alpha3 }}">View {{ country }} country page →</a>
-{% endif %}
 
 <div class="leaderboard-grid">
     {% for athlete in athletes %}

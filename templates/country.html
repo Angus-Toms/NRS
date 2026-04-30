@@ -13,6 +13,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css">
 {% if map_locations %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -46,44 +47,74 @@
      data-alpha3="{{ country.alpha3 }}"
      data-discipline="{{ discipline }}"
      data-gender="{{ gender }}"
-     data-course="{{ course }}">
+     data-course="{{ course }}"
+     data-active-only="{{ 'true' if active_only else 'false' }}">
 
     <!-- ── National leaderboard ────────────────────────────────────────── -->
     <section class="country-section">
         <div class="page-section-head country-section-head">
-            <span class="country-section-title">
-                National Leaders ·
-                <span class="country-section-subtitle" id="country-lb-subtitle">{{ discipline_label }} · {{ gender_label }}</span>
-            </span>
+            <span class="country-section-title">National Leaders</span>
+            <span class="country-section-subtitle" id="country-lb-subtitle">{{ discipline_label }} · {{ gender_label }}</span>
         </div>
 
-        <nav class="country-tabs" aria-label="Leaderboard filters">
-            <div class="country-tab-group" id="country-disc-tabs">
-                {% for d in discs %}
-                <button type="button"
-                        class="country-tab{% if d == discipline %} country-tab--active{% endif %}"
-                        data-discipline="{{ d }}">{{ disc_labels[d] }}</button>
-                {% endfor %}
+        <div class="filters-card">
+            <div class="filters-primary" id="country-filter-row" aria-label="Leaderboard filters">
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Discipline</span>
+                    <div class="radio-chips">
+                        {% for d in discs %}
+                        <input type="radio" name="country-discipline" value="{{ d }}" id="country-disc-{{ d }}"
+                               {% if d == discipline %}checked{% endif %}>
+                        <label for="country-disc-{{ d }}">{{ disc_labels[d] }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="filter-v-divider"></div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Course</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="country-course" value="short" id="country-course-short"
+                               {% if course == 'short' %}checked{% endif %}>
+                        <label for="country-course-short">Short</label>
+                        <input type="radio" name="country-course" value="long" id="country-course-long"
+                               {% if course == 'long' %}checked{% endif %}>
+                        <label for="country-course-long">Long</label>
+                    </div>
+                </div>
+
+                <div class="filter-v-divider"></div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Gender</span>
+                    <div class="radio-chips">
+                        {% for g, label in gender_options %}
+                        <input type="radio" name="country-gender" value="{{ g }}" id="country-gender-{{ g }}"
+                               {% if g == gender %}checked{% endif %}>
+                        <label for="country-gender-{{ g }}">{{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="filter-v-divider"></div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Active only</span>
+                    <label class="filter-toggle">
+                        <input type="checkbox" id="country-active-cb"
+                               {% if active_only %}checked{% endif %}>
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        <span class="toggle-text" id="country-active-text">{% if active_only %}On{% else %}Off{% endif %}</span>
+                    </label>
+                </div>
             </div>
-            <div class="country-tab-group country-tab-group--gender" id="country-gender-tabs">
-                {% for g, label in gender_options %}
-                <button type="button"
-                        class="country-tab country-tab--pill{% if g == gender %} country-tab--active{% endif %}"
-                        data-gender="{{ g }}">{{ label }}</button>
-                {% endfor %}
-            </div>
-            <div class="country-tab-group country-tab-group--gender" id="country-course-tabs">
-                <button type="button"
-                        class="country-tab country-tab--pill{% if course == 'short' %} country-tab--active{% endif %}"
-                        data-course="short">Short</button>
-                <button type="button"
-                        class="country-tab country-tab--pill{% if course == 'long' %} country-tab--active{% endif %}"
-                        data-course="long">Long</button>
-            </div>
-        </nav>
+        </div>
 
         <div id="country-leaderboard-wrap" class="country-leaderboard-wrap">
-            {% include "partials/country_leaderboard.html" with context %}
+            {% with athletes=leaderboard, disc=discipline, has_more=has_more %}
+                {% include "partials/country_leaderboard.html" %}
+            {% endwith %}
         </div>
     </section>
 
@@ -96,15 +127,9 @@
             <div class="country-medal-tile">
                 <div class="country-medal-label">{{ m.label }}</div>
                 <div class="country-medal-counts">
-                    <span class="country-medal country-medal--gold">
-                        <span class="country-medal-pip">🥇</span><span class="country-medal-n">{{ m.gold }}</span>
-                    </span>
-                    <span class="country-medal country-medal--silver">
-                        <span class="country-medal-pip">🥈</span><span class="country-medal-n">{{ m.silver }}</span>
-                    </span>
-                    <span class="country-medal country-medal--bronze">
-                        <span class="country-medal-pip">🥉</span><span class="country-medal-n">{{ m.bronze }}</span>
-                    </span>
+                    {% if m.gold %}<span class="podium-group"><span class="podium-n">{{ m.gold }}×</span><span class="pos-circle pos-circle--sm gold">1</span></span>{% endif %}
+                    {% if m.silver %}<span class="podium-group"><span class="podium-n">{{ m.silver }}×</span><span class="pos-circle pos-circle--sm silver">2</span></span>{% endif %}
+                    {% if m.bronze %}<span class="podium-group"><span class="podium-n">{{ m.bronze }}×</span><span class="pos-circle pos-circle--sm bronze">3</span></span>{% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -251,60 +276,72 @@
 (function() {
     const page   = document.querySelector('.country-page');
     const alpha3 = page.dataset.alpha3;
-    let disc     = page.dataset.discipline;
-    let gender   = page.dataset.gender;
-    let course   = page.dataset.course;
+    const PAGE_SIZE = 5;
+    let disc        = page.dataset.discipline;
+    let gender      = page.dataset.gender;
+    let course      = page.dataset.course;
+    let activeOnly  = page.dataset.activeOnly !== 'false';
+    let rowCount    = document.querySelectorAll('#country-leaderboard-grid .athlete-card').length;
 
     const wrap       = document.getElementById('country-leaderboard-wrap');
     const subtitleEl = document.getElementById('country-lb-subtitle');
-    const discTabs   = document.getElementById('country-disc-tabs');
-    const genderTabs = document.getElementById('country-gender-tabs');
-    const courseTabs = document.getElementById('country-course-tabs');
+    const row        = document.getElementById('country-filter-row');
 
     const DISC_LABELS   = { overall:'Overall', swim:'Swim', bike:'Bike', run:'Run', transition:'Transition' };
     const GENDER_LABELS = { male:'Men', female:'Women' };
 
-    function setActive(container, attr, value) {
-        container.querySelectorAll('.country-tab').forEach(btn => {
-            btn.classList.toggle('country-tab--active', btn.dataset[attr] === value);
+    function buildParams(extra) {
+        const p = new URLSearchParams({
+            discipline: disc, gender, course, active_only: activeOnly ? 'true' : 'false',
         });
+        for (const k in (extra || {})) p.set(k, extra[k]);
+        return p;
     }
 
     async function refresh() {
         wrap.classList.add('country-leaderboard-wrap--loading');
-        const url = `/country/${alpha3}/leaderboard?discipline=${disc}&gender=${gender}&course=${course}`;
-        const res = await fetch(url, { headers: { 'Accept': 'text/html' } });
+        const res = await fetch(`/country/${alpha3}/leaderboard?${buildParams()}`, { headers: { 'Accept': 'text/html' } });
         const html = await res.text();
         wrap.innerHTML = html;
         wrap.classList.remove('country-leaderboard-wrap--loading');
+        rowCount = document.querySelectorAll('#country-leaderboard-grid .athlete-card').length;
         subtitleEl.textContent = `${DISC_LABELS[disc]} · ${GENDER_LABELS[gender]}`;
-
-        const params = new URLSearchParams({ discipline: disc, gender, course });
-        history.replaceState(null, '', `/country/${alpha3}?${params.toString()}`);
+        history.replaceState(null, '', `/country/${alpha3}?${buildParams()}`);
     }
 
-    discTabs.addEventListener('click', e => {
-        const btn = e.target.closest('.country-tab');
-        if (!btn || !btn.dataset.discipline || btn.dataset.discipline === disc) return;
-        disc = btn.dataset.discipline;
-        setActive(discTabs, 'discipline', disc);
+    async function loadMore(btn) {
+        btn.disabled = true;
+        const res  = await fetch(`/country/${alpha3}/leaderboard/more?${buildParams({ offset: rowCount })}`,
+                                 { headers: { 'Accept': 'text/html' } });
+        const html = await res.text();
+        const grid = document.getElementById('country-leaderboard-grid');
+        if (grid) grid.insertAdjacentHTML('beforeend', html);
+        rowCount = document.querySelectorAll('#country-leaderboard-grid .athlete-card').length;
+        if (res.headers.get('X-Has-More') === '1') {
+            btn.disabled = false;
+        } else {
+            btn.closest('.country-more-wrap').remove();
+        }
+    }
+
+    const activeText = document.getElementById('country-active-text');
+
+    row.addEventListener('change', e => {
+        const inp = e.target;
+        if (inp.name === 'country-discipline')    disc       = inp.value;
+        else if (inp.name === 'country-gender')   gender     = inp.value;
+        else if (inp.name === 'country-course')   course     = inp.value;
+        else if (inp.id   === 'country-active-cb') {
+            activeOnly = inp.checked;
+            if (activeText) activeText.textContent = inp.checked ? 'On' : 'Off';
+        }
+        else return;
         refresh();
     });
 
-    genderTabs.addEventListener('click', e => {
-        const btn = e.target.closest('.country-tab');
-        if (!btn || !btn.dataset.gender || btn.dataset.gender === gender) return;
-        gender = btn.dataset.gender;
-        setActive(genderTabs, 'gender', gender);
-        refresh();
-    });
-
-    courseTabs.addEventListener('click', e => {
-        const btn = e.target.closest('.country-tab');
-        if (!btn || !btn.dataset.course || btn.dataset.course === course) return;
-        course = btn.dataset.course;
-        setActive(courseTabs, 'course', course);
-        refresh();
+    wrap.addEventListener('click', e => {
+        const btn = e.target.closest('#country-more-btn');
+        if (btn) loadMore(btn);
     });
 })();
 </script>

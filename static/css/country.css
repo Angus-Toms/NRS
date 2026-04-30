@@ -52,77 +52,27 @@
 .country-section {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
+/* Stack title + small subtitle so the heading reads cleanly without trying
+   to inline-mix two type sizes. Override .page-section-head's row layout. */
 .country-section-head {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.1rem;
+    margin-bottom: 0;
 }
 
 .country-section-subtitle {
     font-weight: 500;
     color: var(--text-light);
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     text-transform: none;
     letter-spacing: 0;
-}
-
-
-/* ============================================================
-   Tabs (discipline + gender) - buttons, AJAX-driven
-   ============================================================ */
-.country-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-sm);
-}
-
-.country-tab-group {
-    display: flex;
-    gap: var(--spacing-xs);
-    flex-wrap: wrap;
-}
-
-.country-tab {
-    padding: 0.5rem 0.9rem;
-    border: none;
-    background: transparent;
-    border-radius: var(--border-radius-sm);
-    font-size: 0.88rem;
-    font-weight: 500;
-    font-family: inherit;
-    color: var(--text-light);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-}
-
-.country-tab:hover:not(.country-tab--active) {
-    background: var(--bg-color);
-    color: var(--text-color);
-}
-
-.country-tab--active {
-    background: var(--navy);
-    color: #fff;
-}
-
-.country-tab--pill {
-    border: 1px solid var(--border-color);
-}
-.country-tab--pill.country-tab--active {
-    background: var(--primary-color);
-    color: #fff;
-    border-color: var(--primary-color);
+    line-height: 1.2;
 }
 
 
@@ -145,6 +95,35 @@
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
+}
+
+.country-more-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-sm);
+}
+
+.btn-country-more {
+    padding: 0.5rem 1.25rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.btn-country-more:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-country-more:disabled {
+    opacity: 0.6;
+    cursor: wait;
 }
 
 
@@ -179,21 +158,26 @@
     display: flex;
     gap: var(--spacing-md);
     align-items: center;
+    flex-wrap: wrap;
 }
 
-.country-medal {
+.country-medal-counts .podium-group {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    font-variant-numeric: tabular-nums;
+    gap: 0.35rem;
 }
 
-.country-medal-pip { font-size: 1.25rem; line-height: 1; }
-
-.country-medal-n {
+.country-medal-counts .podium-n {
     font-weight: 700;
     color: var(--text-color);
     font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.country-medal-counts .pos-circle--sm {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
 }
 
 
@@ -338,41 +322,61 @@
 
 .country-index-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-md);
 }
 
 .country-index-card {
-    display: flex;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     padding: var(--spacing-md);
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    text-decoration: none;
     color: inherit;
-    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.country-index-card--single {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 2fr);
 }
 
 .country-index-card:hover {
-    transform: translateY(-2px);
     border-color: var(--primary-color);
     box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-.country-index-flag {
-    font-size: 2.2rem;
-    line-height: 1;
-    flex-shrink: 0;
+.country-index-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
 }
 
-.country-index-body {
+.country-index-left {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.15rem;
     min-width: 0;
-    flex: 1;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.country-index-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.country-index-flag {
+    font-size: 1.6rem;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .country-index-name {
@@ -381,35 +385,71 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.country-index-meta {
-    font-size: 0.8rem;
-    color: var(--text-light);
-}
-
-.country-index-top {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-top: 0.3rem;
+    font-size: 0.92rem;
     min-width: 0;
 }
 
+.country-index-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-light);
+    line-height: 1.3;
+}
+
+.country-index-top-card {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+}
+
 .country-index-top-img {
-    width: 22px;
-    height: 22px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.country-index-top-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .country-index-top-name {
-    font-size: 0.78rem;
-    color: var(--text-light);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    text-decoration: none;
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+}
+
+.country-index-top-name:hover { color: var(--primary-color); }
+
+.country-index-top-rank {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+    .country-index-grid { grid-template-columns: 1fr; }
 }
 
 

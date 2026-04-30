@@ -64,11 +64,11 @@
                     <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
                 </div>
                 <div class="event-podium-right">
-                    {% if p.position == 1 %}
+                    {% if p.position == 1 and p.time %}
                         <span class="event-podium-time event-podium-time--winner">{{ p.time }}</span>
                     {% elif p.gap %}
                         <span class="event-podium-gap">{{ p.gap }}</span>
-                    {% else %}
+                    {% elif p.time %}
                         <span class="event-podium-time">{{ p.time }}</span>
                     {% endif %}
                 </div>

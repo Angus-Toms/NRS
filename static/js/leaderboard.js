@@ -29,7 +29,7 @@ function initAdvancedFilters() {
     const params = new URLSearchParams(window.location.search);
     const hasActive =
         (params.get("country") ?? "all") !== "all" ||
-        parseInt(params.get("yob_start") ?? "1950") !== 1950 ||
+        parseInt(params.get("yob_start") ?? "1930") !== 1930 ||
         parseInt(params.get("yob_end")   ?? "2010") !== 2010;
 
     if (hasActive) {
@@ -73,6 +73,19 @@ function initAgePresets() {
     });
 }
 
+function initActiveOnlyToggle() {
+    const cb     = document.getElementById("active-only-cb");
+    const hidden = document.getElementById("active-only-input");
+    const text   = document.getElementById("active-only-text");
+    if (!cb || !hidden || !text) return;
+
+    cb.addEventListener("change", () => {
+        hidden.value     = cb.checked ? "true" : "false";
+        text.textContent = cb.checked ? "On" : "Off";
+    });
+}
+
 initLoadMore();
 initAdvancedFilters();
 initAgePresets();
+initActiveOnlyToggle();

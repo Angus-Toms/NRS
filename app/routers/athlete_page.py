@@ -8,6 +8,7 @@ from config import STATIC_BASE_URL
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
+from app.routers.race_page import _anchor_time
 from app.routers.router_utils import (
     format_time, format_time_behind, format_rating_change, format_1yr_rating_change,
 )
@@ -17,12 +18,41 @@ templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 router = APIRouter()
 
 _TIER_LABELS = {
-    "olympic":          "Olympic",
-    "world_champs":     "World Championships",
-    "ag_world_champs":  "AG World Championships",
-    "wtcs":             "WTCS",
-    "world_cup":        "World Cup",
-    "continental_cup":  "Continental Cup",
+    "olympic":               "Olympic",
+    "world_champs":          "World Championships",
+    "ag_world_champs":       "AG World Championships",
+    "ag_continental_champs": "AG Continental Championships",
+    "ag_continental_champs": "AG Continental Championships",
+    "wtcs":                  "WTCS",
+    "world_cup":             "World Cup",
+    "continental_cup":       "Continental Cup",
+    # Long-course tiers
+    "im_world_champs":       "Ironman World Championships",
+    "im_703_world_champs":   "Ironman 70.3 World Championships",
+    "im":                    "Ironman",
+    "t100":                  "T100",
+    "im_703":                "Ironman 70.3",
+    "challenge":             "Challenge",
+}
+
+# Worst finish position that still qualifies for palmares display. Tiers not
+# listed are uncapped. The four "worlds"-tier categories (world_champs,
+# ag_world_champs, im_world_champs, im_703_world_champs) are capped at 30
+# so a 31st-place at Worlds doesn't crowd out higher-finishes elsewhere.
+_TIER_POS_CAPS = {
+    "olympic":               40,
+    "world_champs":          30,
+    "ag_world_champs":       30,
+    "ag_continental_champs": 15,
+    "im_world_champs":       30,
+    "im_703_world_champs":   30,
+    "wtcs":                  25,
+    "world_cup":             20,
+    "continental_cup":       15,
+    "im":                    20,
+    "t100":                  20,
+    "im_703":                20,
+    "challenge":             15,
 }
 
 
@@ -61,6 +91,20 @@ def _format_position(tier, pos, age_group=None):
         if pos == 2: return "AG World Championship Silver"
         if pos == 3: return "AG World Championship Bronze"
         return f"AG World Championships, {format_ordinal(pos)}"
+    if tier == "ag_continental_champs":
+        if pos == 1: return "AG Continental Champion"
+        if pos == 2: return "AG Continental Silver"
+        if pos == 3: return "AG Continental Bronze"
+        return f"AG Continental Championships, {format_ordinal(pos)}"
+    # Long-course worlds mirror the short-course worlds formatting with an
+    # explicit "Ironman" / "Ironman 70.3" prefix so "Ironman World Champion"
+    # reads naturally.
+    if tier in ("im_world_champs", "im_703_world_champs"):
+        prefix = "Ironman 70.3 " if tier == "im_703_world_champs" else "Ironman "
+        if pos == 1: return f"{prefix}World Champion"
+        if pos == 2: return f"{prefix}World Championship Silver"
+        if pos == 3: return f"{prefix}World Championship Bronze"
+        return f"{prefix}World Championships, {format_ordinal(pos)}"
     if pos == 1: return f"{label} Win"
     if pos == 2: return f"{label} Silver"
     if pos == 3: return f"{label} Bronze"
@@ -68,13 +112,20 @@ def _format_position(tier, pos, age_group=None):
 
 
 def _build_notable_results(notable_raw, tier_order=None):
-    """Group notable results by description, collapse multiples, cap per tier."""
+    """Group notable results by description, collapse multiples, cap per tier.
+
+    Position caps come from `_TIER_POS_CAPS`: tiers listed there require a
+    finish at or above the given position to qualify (e.g. Olympics top 40,
+    WTCS top 25). Tiers without an entry are uncapped.
+    """
     if tier_order is None:
         tier_order = ["olympic", "world_champs", "wtcs", "world_cup", "continental_cup"]
     formatted = []
 
     for tier in tier_order:
-        tier_results = [r for r in notable_raw if r["tier"] == tier]
+        cap = _TIER_POS_CAPS.get(tier)
+        tier_results = [r for r in notable_raw
+                        if r["tier"] == tier and (cap is None or r["position"] <= cap)]
         grouped = OrderedDict()
         for r in sorted(tier_results, key=lambda x: x["position"]):
             desc = _format_position(tier, r["position"], r.get("age_group"))
@@ -83,7 +134,7 @@ def _build_notable_results(notable_raw, tier_order=None):
             entry["count"] += 1
 
         for i, entry in enumerate(grouped.values()):
-            if i >= 3:
+            if i >= 2:
                 break
             desc = entry["description"]
             if entry["count"] > 1:
@@ -183,18 +234,34 @@ def _build_rankings_charts(rankings_data):
 @router.get("/athlete/{athlete_id}", response_class=HTMLResponse)
 async def get_athlete(request: Request, athlete_id: int,
                       category: str = Query('elite'),
-                      course:   str = Query('short')):
+                      course:   str | None = Query(None)):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         raise HTTPException(status_code=404, detail=f"Athlete {athlete_id} not found")
 
-    # Resolve course first (short vs long) — falls back to whichever the athlete has.
+    # Resolve course (short vs long).
+    # - Explicit `course=` from the user wins, with a fallback if the athlete
+    #   has no data for that course.
+    # - Otherwise pick the athlete's most recently active course: whichever has
+    #   a race within 18 months wins; ties broken by most-recent-race date.
+    #   Falls through to the first available course or 'short' if no data.
     available_courses = queries.get_athlete_courses(athlete_id)
-    if available_courses:
-        if course not in available_courses:
+    if course is not None:
+        if available_courses and course not in available_courses:
             course = available_courses[0]
+        elif not available_courses:
+            course = 'short'
     else:
-        course = 'short'  # no ratings at all; pick a default for safety
+        last_per = queries.get_athlete_last_race_per_course(athlete_id)
+        cutoff = date.today() - timedelta(days=int(18 * 30.44))
+        active = {c: d for c, d in last_per.items() if d and d >= cutoff}
+        candidates = active or last_per
+        if candidates:
+            course = max(candidates, key=lambda c: candidates[c])
+        elif available_courses:
+            course = available_courses[0]
+        else:
+            course = 'short'
 
     # Detect available categories *within the chosen course* and resolve the requested one
     available_categories = queries.get_athlete_categories(athlete_id, course=course)
@@ -210,8 +277,9 @@ async def get_athlete(request: Request, athlete_id: int,
     peaks    = queries.get_athlete_peak_ratings(athlete_id, category, course=course)    if has_ratings else None
     best     = queries.get_athlete_best_performances(athlete_id, category, course=course) if has_ratings else None
     stats    = queries.get_athlete_stats(athlete_id, category, course=course)
-    notable_raw     = queries.get_athlete_notable_results(athlete_id)
-    ag_notable_raw  = queries.get_athlete_ag_notable_results(athlete_id)
+    notable_raw        = queries.get_athlete_notable_results(athlete_id)
+    ag_notable_raw     = queries.get_athlete_ag_notable_results(athlete_id)
+    long_notable_raw   = queries.get_athlete_long_course_notable_results(athlete_id)
     race_hist    = queries.get_athlete_race_history(athlete_id, category, course=course)
     rating_hist  = queries.get_athlete_rating_history(athlete_id, category, course=course) if has_ratings else []
     times_data    = queries.get_athlete_times_data(athlete_id)                              if has_ratings else []
@@ -291,9 +359,14 @@ async def get_athlete(request: Request, athlete_id: int,
             athlete_dict[f"max_{disc}_race_id"]       = peaks[f"max_{disc}_race_id"]
             athlete_dict[f"{disc}_increase_race_id"]  = best[f"{disc}_race_id"] or 0
 
-    # --- notable results (elite) and AG palmares ---
-    notable_results    = _build_notable_results(notable_raw)
-    ag_notable_results = _build_notable_results(ag_notable_raw, tier_order=["ag_world_champs"])
+    # --- notable results: three parallel streams (short-course elite, AG, long-course) ---
+    notable_results      = _build_notable_results(notable_raw)
+    ag_notable_results   = _build_notable_results(ag_notable_raw, tier_order=["ag_world_champs", "ag_continental_champs"])
+    long_notable_results = _build_notable_results(
+        long_notable_raw,
+        tier_order=["im_world_champs", "im_703_world_champs",
+                    "im", "t100", "im_703", "challenge"],
+    )
 
     def _split_columns(results):
         # Split into two display columns balanced by visual height.
@@ -308,8 +381,9 @@ async def get_athlete(request: Request, athlete_id: int,
                 best_split = i + 1
         return results[:best_split], results[best_split:]
 
-    notable_col1,    notable_col2    = _split_columns(notable_results)
-    ag_notable_col1, ag_notable_col2 = _split_columns(ag_notable_results)
+    notable_col1,      notable_col2      = _split_columns(notable_results)
+    ag_notable_col1,   ag_notable_col2   = _split_columns(ag_notable_results)
+    long_notable_col1, long_notable_col2 = _split_columns(long_notable_results)
 
     # --- race history table ---
     # Fetch percentile thresholds once for this athlete's gender (cached per process).
@@ -332,6 +406,8 @@ async def get_athlete(request: Request, athlete_id: int,
     def _fmt_race(r):
         return {
             "race_id":        r["race_id"],
+            "event_id":       r["event_id"],
+            "is_multi_stage": bool(r.get("is_multi_stage")),
             "race_title":     r["race_title"],
             "race_date":      r["race_date"],
             "program":        r["program"],
@@ -377,7 +453,21 @@ async def get_athlete(request: Request, athlete_id: int,
     race_history = []
     for r in _main:
         entry = _fmt_race(r)
-        entry["sub_races"] = list(reversed(_sub_map.get(r["race_id"], [])))
+        subs = list(reversed(_sub_map.get(r["race_id"], [])))
+        # A sub-race is a true stage (semifinal/final/heat/...) only when its
+        # parent is a multi-stage rollup row. Subset sub-events bundled in
+        # under a parent (e.g. national champs results extracted from a
+        # continental cup, or AG results pulled from a combined elite+AG
+        # field) shouldn't be numbered "Stage N".
+        stage_counter = 0
+        parent_is_multi_stage = bool(entry.get("is_multi_stage"))
+        for sub in subs:
+            is_stage = parent_is_multi_stage
+            sub["is_stage"] = is_stage
+            if is_stage:
+                stage_counter += 1
+                sub["stage_num"] = stage_counter
+        entry["sub_races"] = subs
         race_history.append(entry)
 
     # --- rating history table ---
@@ -434,6 +524,11 @@ async def get_athlete(request: Request, athlete_id: int,
                 my_overall = overall_ratings.get(athlete_id, START_RATING)
                 pred_pos   = sum(1 for r in overall_ratings.values() if r > my_overall) + 1
 
+                # Use the same anchor logic as the race page so predictions on
+                # an athlete's profile match those on /race/<id>. Previously
+                # this recomputed inline with plain slope*rating+intercept and
+                # drifted from the race page's pool-anchor+year-term version.
+                target_year = race['race_date'].year if race.get('race_date') else None
                 for disc in ['overall', 'swim', 'bike', 'run']:
                     m = models.get((race['gender'], distance, disc))
                     if not m:
@@ -441,9 +536,11 @@ async def get_athlete(request: Request, athlete_id: int,
                     col = disc_col[disc]
                     field = {e['athlete_id']: e[col] or START_RATING for e in entries}
                     leader_rating = max(field.values())
-                    leader_time   = m['slope'] * leader_rating + m['intercept']
+                    anchor        = _anchor_time(field, leader_rating, distance, disc, m,
+                                                 target_year=target_year)
                     my_rating     = field.get(athlete_id, START_RATING)
-                    my_time       = leader_time * (10 ** ((leader_rating - my_rating) / SCALE))
+                    my_time       = anchor * (10 ** ((leader_rating - my_rating) / SCALE))
+                    leader_time   = anchor  # at leader rating, ELO factor = 1
                     splits[disc]  = format_time(round(my_time))
                     diff = round(my_time) - round(leader_time)
                     behinds[disc] = 'fastest' if diff == 0 else format_time_behind(diff)
@@ -475,31 +572,60 @@ async def get_athlete(request: Request, athlete_id: int,
         _build_rankings_charts(rankings_data) if has_ratings else ({}, {})
     )
 
-    # --- dual-course summary strip (only rendered when athlete has both courses) ---
-    # For each of {short, long}, pick the athlete's best available category
-    # (prefer elite) and surface overall rating + active-world rank.
-    course_summaries = {}
-    for c in available_courses:
-        c_cats = queries.get_athlete_categories(athlete_id, course=c)
-        if not c_cats:
-            continue
-        c_cat = 'elite' if 'elite' in c_cats else c_cats[0]
-        c_current = queries.get_athlete_current_ratings(athlete_id, c_cat, course=c)
-        if not c_current:
-            continue
-        c_hist = queries.get_athlete_race_history(athlete_id, c_cat, course=c)
-        c_last = c_hist[0]["race_date"] if c_hist else None
-        c_active = bool(c_last and c_last >= (date.today() - timedelta(days=int(18 * 30.44))))
-        c_rank = None
-        if c_active:
-            ar = queries.get_athlete_active_rankings(athlete_id, c_cat, course=c)
+    # --- mode switcher summaries: elite-short | elite-long | ag -------------
+    # Each entry: {label, course, category, overall_rating, world_overall, key}
+    # key is the URL-safe identifier used by the switcher (matches active_mode).
+    mode_summaries = []
+    active_mode = None
+    cutoff_active = date.today() - timedelta(days=int(18 * 30.44))
+
+    def _summary(c, cat, label, key):
+        cr = queries.get_athlete_current_ratings(athlete_id, cat, course=c)
+        if not cr:
+            return None
+        h = queries.get_athlete_race_history(athlete_id, cat, course=c)
+        last = h[0]["race_date"] if h else None
+        rank = None
+        if last and last >= cutoff_active:
+            ar = queries.get_athlete_active_rankings(athlete_id, cat, course=c)
             if ar:
-                c_rank = _make_ranking(ar.get("world_overall"))
-        course_summaries[c] = {
-            "overall_rating":  round(c_current["overall_rating"]),
-            "world_overall":   c_rank,  # dict {n, suffix} or None
-            "category":        c_cat,
+                rank = _make_ranking(ar.get("world_overall"))
+        return {
+            "key":            key,
+            "label":          label,
+            "course":         c,
+            "category":       cat,
+            "overall_rating": round(cr["overall_rating"]),
+            "world_overall":  rank,
         }
+
+    # Elite entries for each course the athlete has ratings in
+    for c, lbl in (('short', 'Short Course'), ('long', 'Long Course')):
+        if c not in available_courses:
+            continue
+        c_cats = queries.get_athlete_categories(athlete_id, course=c)
+        if 'elite' not in c_cats:
+            continue
+        s = _summary(c, 'elite', lbl, f'elite-{c}')
+        if s:
+            mode_summaries.append(s)
+
+    # AG entry: pick whichever course has AG results (prefer current course, else short, else long)
+    ag_course = None
+    for c in (course, 'short', 'long'):
+        if c in available_courses and 'ag' in queries.get_athlete_categories(athlete_id, course=c):
+            ag_course = c
+            break
+    if ag_course:
+        s = _summary(ag_course, 'ag', 'Age Group', 'ag')
+        if s:
+            mode_summaries.append(s)
+
+    # Resolve active_mode from current (category, course)
+    if category == 'ag':
+        active_mode = 'ag'
+    else:
+        active_mode = f'elite-{course}'
 
     return templates.TemplateResponse("athlete.html", {
         "request":        request,
@@ -511,18 +637,22 @@ async def get_athlete(request: Request, athlete_id: int,
         "category":             category,
         "course":               course,
         "available_courses":    available_courses,
-        "course_summaries":     course_summaries,
+        "mode_summaries":       mode_summaries,
+        "active_mode":          active_mode,
         "has_elite":            'elite' in available_categories,
         "has_ag":               'ag' in available_categories,
         "notable_col1":        notable_col1,
         "notable_col2":        notable_col2,
         "ag_notable_col1":     ag_notable_col1,
         "ag_notable_col2":     ag_notable_col2,
+        "long_notable_col1":   long_notable_col1,
+        "long_notable_col2":   long_notable_col2,
         "current_ratings":     current_ratings,
         "current_rankings":    current_rankings,
         "rating_changes_1yr":  rating_changes_1yr,
         "rating_peaks":        rating_peaks,
         "best_performances":   best_performances,
+        "nationality_history": queries.get_athlete_nationality_history(athlete_id),
         "upcoming_races":      upcoming_races,
         "race_history":        race_history,
         "rating_history":      rating_history,

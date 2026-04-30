@@ -33,38 +33,46 @@ def _fmt_athlete(a):
 
 
 @router.get("/athletes", response_class=HTMLResponse)
-async def athletes_landing(request: Request, course: str = "short"):
-    if course not in ("short", "long"):
-        course = "short"
+async def athletes_landing(request: Request):
     counts       = queries.get_counts()
     country_list = queries.get_country_list()
 
-    # Trending: random pick from top 25 most improved (1yr), active athletes, 1 per gender
-    female_trending_rows = queries.get_leaderboard(
-        "female", "overall", "hot", None, None, None, True, 0, 25, course=course)
-    male_trending_rows   = queries.get_leaderboard(
-        "male",   "overall", "hot", None, None, None, True, 0, 25, course=course)
+    # Trending: per gender, pick a random course then a random athlete from
+    # that course's top 25 most improved (1yr, active only). Falling back to
+    # the other course if one is empty keeps the cards populated for niche
+    # sports like long-course women.
+    def pick_trending(gender):
+        course = random.choice(("short", "long"))
+        rows = queries.get_leaderboard(
+            gender, "overall", "hot", None, None, None, True, 0, 25, course=course)
+        if not rows:
+            course = "long" if course == "short" else "short"
+            rows = queries.get_leaderboard(
+                gender, "overall", "hot", None, None, None, True, 0, 25, course=course)
+        return (_fmt_athlete(random.choice(rows)), course) if rows else (None, course)
 
-    female_trending = _fmt_athlete(random.choice(female_trending_rows)) if female_trending_rows else None
-    male_trending   = _fmt_athlete(random.choice(male_trending_rows))   if male_trending_rows   else None
+    female_trending, female_trending_course = pick_trending("female")
+    male_trending,   male_trending_course   = pick_trending("male")
 
-    # All-time leaderboard top 5 per gender
-    female_lb = [_fmt_athlete(a) for a in
-                 queries.get_leaderboard("female", "overall", "top", None, None, None, False, 0, 5, course=course)]
-    male_lb   = [_fmt_athlete(a) for a in
-                 queries.get_leaderboard("male",   "overall", "top", None, None, None, False, 0, 5, course=course)]
+    # All-time top 5 per gender per course (4 cards total)
+    def top5(gender, course):
+        return [_fmt_athlete(a) for a in queries.get_leaderboard(
+            gender, "overall", "top", None, None, None, False, 0, 5, course=course)]
 
     return templates.TemplateResponse("athlete_search.html", {
-        "request":         request,
-        "active_page":     "athletes",
-        "total_athletes":  counts["athletes"],
-        "total_countries": len(country_list),
-        "country_list":    country_list,
-        "female_trending": female_trending,
-        "male_trending":   male_trending,
-        "female_lb":       female_lb,
-        "male_lb":         male_lb,
-        "course":          course,
+        "request":                request,
+        "active_page":            "athletes",
+        "total_athletes":         counts["athletes"],
+        "total_countries":        len(country_list),
+        "country_list":           country_list,
+        "female_trending":        female_trending,
+        "female_trending_course": female_trending_course,
+        "male_trending":          male_trending,
+        "male_trending_course":   male_trending_course,
+        "female_lb_short":        top5("female", "short"),
+        "female_lb_long":         top5("female", "long"),
+        "male_lb_short":          top5("male",   "short"),
+        "male_lb_long":           top5("male",   "long"),
     })
 
 
@@ -77,7 +85,7 @@ async def search_athletes(
     yob_start: str = "",
     yob_end: str = "",
     active_only: str = "",
-    course: str = "short",
+    course: str = "all",
 ):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
@@ -85,8 +93,8 @@ async def search_athletes(
         disc = "overall"
     if order not in {"top", "hot"}:
         order = "top"
-    if course not in ("short", "long"):
-        course = "short"
+    if course not in ("all", "short", "long"):
+        course = "all"
 
     results = queries.search_athletes_full(
         q.strip(),

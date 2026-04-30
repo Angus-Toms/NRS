@@ -20,3 +20,7 @@ This is a solo project. Write code as a competent human would - LEAN and DIRECT.
 ## Code style
 
 - Avoid em-dashes and emojis at all times, unless otherwise stated.
+
+## UI conventions
+
+- When men's and women's results sit side by side (race programs in an event, champion cards on the home page, leaderboard pairs, etc.) men go on the left, women on the right. Same convention for SQL ordering: in `queries.py` use `CASE WHEN gender = 'male' THEN 0 ELSE 1 END` so the male row sorts first.

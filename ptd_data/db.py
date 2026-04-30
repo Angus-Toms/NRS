@@ -1,4 +1,5 @@
 import csv
+import datetime as _dt
 import pathlib
 import zlib
 
@@ -49,6 +50,9 @@ def create_schema(conn):
         CREATE TABLE IF NOT EXISTS athletes (
             athlete_id      INTEGER PRIMARY KEY,
             name            VARCHAR NOT NULL,
+            -- Current country snapshot (matches the NULL end_date row in
+            -- athlete_nationality_history). Kept as a cache so hot queries
+            -- like result lists don't need a join for every row.
             country_full    VARCHAR NOT NULL REFERENCES nationalities(country_full),
             year_of_birth   INTEGER NOT NULL DEFAULT 0,
             profile_img     VARCHAR NOT NULL DEFAULT '',
@@ -125,7 +129,11 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS results (
             race_id         INTEGER NOT NULL REFERENCES races(race_id),
-            athlete_id      INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            -- athlete_id intentionally NOT FK-constrained: DuckDB rejects any
+            -- UPDATE on a parent row that's FK-referenced (even if the PK
+            -- isn't changing), which blocks updating cached fields like
+            -- athletes.country_full. Application code maintains integrity.
+            athlete_id      INTEGER NOT NULL,
             position        INTEGER,
             status          result_status_enum NOT NULL,
             start_num       INTEGER NOT NULL DEFAULT 0,
@@ -163,7 +171,7 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS ratings (
             race_id             INTEGER NOT NULL REFERENCES races(race_id),
-            athlete_id          INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            athlete_id          INTEGER NOT NULL,  -- see results.athlete_id note
             category            category_enum NOT NULL,
             overall             DOUBLE NOT NULL DEFAULT 0,
             swim                DOUBLE NOT NULL DEFAULT 0,
@@ -182,7 +190,7 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS rankings (
             race_id                 INTEGER NOT NULL REFERENCES races(race_id),
-            athlete_id              INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            athlete_id              INTEGER NOT NULL,  -- see results.athlete_id note
             category                category_enum NOT NULL,
             world_overall           INTEGER NOT NULL,
             world_swim              INTEGER NOT NULL,
@@ -211,9 +219,17 @@ def create_schema(conn):
             slope       DOUBLE NOT NULL,
             intercept   DOUBLE NOT NULL,
             n_samples   INTEGER NOT NULL,
+            year_coef   DOUBLE NOT NULL DEFAULT 0,   -- seconds/year era drift for long course
             PRIMARY KEY (gender, distance, discipline)
         )
     """)
+    # Drop rating_cap if it exists on older DBs — empirically useless in the
+    # residual sweep and replaced by per-athlete history anchoring.
+    conn.execute("ALTER TABLE prediction_models DROP COLUMN IF EXISTS rating_cap")
+    # Idempotent migration for DBs created before year_coef existed. Nullable
+    # because DuckDB ALTER can't add NOT NULL + DEFAULT in one step; readers
+    # COALESCE to 0 so pre-migration rows act as "no year term".
+    conn.execute("ALTER TABLE prediction_models ADD COLUMN IF NOT EXISTS year_coef DOUBLE")
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS upcoming_races (
@@ -234,9 +250,23 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS start_list_entries (
             race_id         INTEGER NOT NULL REFERENCES upcoming_races(race_id),
-            athlete_id      INTEGER NOT NULL REFERENCES athletes(athlete_id),
+            athlete_id      INTEGER NOT NULL,  -- see results.athlete_id note
             start_num       INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (race_id, athlete_id)
+        )
+    """)
+
+    # Nationality history: one row per contiguous period the athlete
+    # represented a country. end_date IS NULL for the country currently
+    # represented. Maintained incrementally during ingest (see
+    # record_athlete_nationality below).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS athlete_nationality_history (
+            athlete_id    INTEGER NOT NULL,  -- see results.athlete_id note
+            country_full  VARCHAR NOT NULL REFERENCES nationalities(country_full),
+            start_date    DATE NOT NULL,
+            end_date      DATE,
+            PRIMARY KEY (athlete_id, country_full, start_date)
         )
     """)
 
@@ -254,6 +284,8 @@ def create_schema(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_event_id ON races(event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_races_race_date ON races(race_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_athletes_country_full ON athletes(country_full)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_anh_athlete_id ON athlete_nationality_history(athlete_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_anh_country ON athlete_nationality_history(country_full)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_results_athlete_id ON results(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_athlete_id ON ratings(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rankings_athlete_id ON rankings(athlete_id)")
@@ -291,6 +323,8 @@ _COUNTRY_SPECIAL_CASES = {
     "Myanmar (Burma)":                 ("MMR", "🇲🇲"),
     "Cote d'Ivoire":                   ("CIV", "🇨🇮"),
     "Vietnam":                         ("VNM", "🇻🇳"),
+    "United Republic of Tanzania":     ("TZA", "🇹🇿"),
+    "The Gambia":                      ("GMB", "🇬🇲"),
     "Palestine":                       ("PSE", "🇵🇸"),
     "Democratic People's Republic of Korea": ("PRK", "🇰🇵"),
     # Federation / neutral banner
@@ -387,6 +421,197 @@ def upsert_athlete_pto_fields(conn, athlete_id, pto_slug, height_cm, weight_kg, 
         """,
         [pto_slug, height_cm, weight_kg, nickname, athlete_id],
     )
+
+
+def _coerce_date(v):
+    """Accept a date or ISO-8601 string; return a datetime.date."""
+    if isinstance(v, _dt.date):
+        return v
+    return _dt.date.fromisoformat(str(v)[:10])
+
+
+def record_athlete_nationality(conn, athlete_id, country_full, race_date):
+    """Maintain athlete_nationality_history incrementally from an ingest observation.
+
+    Assumes ingest is roughly chronological (which it is: WT paginates newest-
+    first over completed events, PTO iterates years). Three cases:
+
+      - No prior history: open the first range.
+      - Latest range already matches this country: no-op (and roll start_date
+        back if we're observing a race older than the range we've opened).
+      - Country differs AND this race is newer than the open range: close
+        the open range at race_date and open a new range under the new country.
+        Races older than the current open range are ignored to avoid corrupting
+        an established timeline.
+    """
+    race_date = _coerce_date(race_date)
+    row = conn.execute("""
+        SELECT country_full, start_date
+        FROM athlete_nationality_history
+        WHERE athlete_id = ?
+        ORDER BY start_date DESC
+        LIMIT 1
+    """, [athlete_id]).fetchone()
+
+    if row is None:
+        conn.execute("""
+            INSERT INTO athlete_nationality_history
+                (athlete_id, country_full, start_date, end_date)
+            VALUES (?, ?, ?, NULL)
+        """, [athlete_id, country_full, race_date])
+        return
+
+    latest_country, latest_start = row
+    if country_full == latest_country:
+        if race_date < latest_start:
+            conn.execute("""
+                UPDATE athlete_nationality_history
+                SET start_date = ?
+                WHERE athlete_id = ? AND start_date = ?
+            """, [race_date, athlete_id, latest_start])
+        return
+
+    if race_date <= latest_start:
+        # Out-of-order older race under a different country — skip.
+        return
+
+    conn.execute("""
+        UPDATE athlete_nationality_history
+        SET end_date = ?
+        WHERE athlete_id = ? AND end_date IS NULL
+    """, [race_date, athlete_id])
+    conn.execute("""
+        INSERT INTO athlete_nationality_history
+            (athlete_id, country_full, start_date, end_date)
+        VALUES (?, ?, ?, NULL)
+    """, [athlete_id, country_full, race_date])
+
+
+def apply_athlete_merges(conn):
+    """Apply manual athlete merges from data/athlete_merges.csv.
+
+    Used when WT and PTO emit two separate athlete rows for the same person and
+    the overlap-race auto matcher (ptd_data.pto_matcher) can't bridge them
+    (e.g. an athlete who only ever raced short course on one platform and long
+    course on the other shares no finisher times). Each row says: collapse
+    `merge_athlete_id` into `keep_athlete_id`.
+
+    Per pair we:
+      1. Fill missing PTO-only fields (pto_slug/height/weight/nickname) on keep.
+      2. Re-point all athlete-keyed FK rows from merge to keep, dropping any
+         rows that would collide on the keep's primary key.
+      3. Delete the merge athlete row.
+
+    Idempotent: re-running after the merge row has been deleted is a no-op.
+    """
+    path = _DATA_DIR / 'athlete_merges.csv'
+    if not path.exists():
+        return
+
+    pairs = []
+    with open(path, newline='', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            try:
+                pairs.append((int(row['keep_athlete_id']), int(row['merge_athlete_id'])))
+            except (KeyError, ValueError, TypeError):
+                continue
+
+    applied = 0
+    for keep_id, merge_id in pairs:
+        merge_row = conn.execute(
+            "SELECT pto_slug, height_cm, weight_kg, nickname FROM athletes WHERE athlete_id = ?",
+            [merge_id],
+        ).fetchone()
+        if merge_row is None:
+            continue  # Already merged on a previous run.
+        keep_row = conn.execute(
+            "SELECT pto_slug, height_cm, weight_kg, nickname FROM athletes WHERE athlete_id = ?",
+            [keep_id],
+        ).fetchone()
+        if keep_row is None:
+            print(f"  [merge] keep_id={keep_id} not found - skipping merge of {merge_id}")
+            continue
+
+        new_slug   = keep_row[0] or merge_row[0]
+        new_height = keep_row[1] or merge_row[1]
+        new_weight = keep_row[2] or merge_row[2]
+        new_nick   = keep_row[3] or merge_row[3]
+        if (new_slug, new_height, new_weight, new_nick) != keep_row:
+            conn.execute(
+                "UPDATE athletes SET pto_slug=?, height_cm=?, weight_kg=?, nickname=? WHERE athlete_id=?",
+                [new_slug, new_height, new_weight, new_nick, keep_id],
+            )
+
+        # Re-point athlete_id in tables sharing a (race_id, athlete_id, …) PK.
+        # The NOT-EXISTS clause keeps any keep-side row that already covers the
+        # same key; the residual merge-side row gets dropped below.
+        for table, key_cols in [
+            ("results",                     ("race_id",)),
+            ("ratings",                     ("race_id", "category")),
+            ("rankings",                    ("race_id", "category")),
+            ("start_list_entries",          ("race_id",)),
+            ("corrections",                 ("race_id", "discipline", "source")),
+        ]:
+            on_clause = " AND ".join(f"k.{c} = m.{c}" for c in key_cols)
+            conn.execute(f"""
+                UPDATE {table} m
+                SET athlete_id = ?
+                WHERE m.athlete_id = ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM {table} k
+                      WHERE k.athlete_id = ? AND {on_clause}
+                  )
+            """, [keep_id, merge_id, keep_id])
+            conn.execute(f"DELETE FROM {table} WHERE athlete_id = ?", [merge_id])
+
+        # Nationality history: keep is canonical (built from its own ingest
+        # observations). Drop the merge's history rather than splice in.
+        conn.execute("DELETE FROM athlete_nationality_history WHERE athlete_id = ?", [merge_id])
+
+        # Finally remove the orphan athlete row.
+        conn.execute("DELETE FROM athletes WHERE athlete_id = ?", [merge_id])
+        applied += 1
+
+    print(f"Applied {applied} athlete merge(s) "
+          f"({len(pairs) - applied} already-applied or skipped)")
+
+
+def reconcile_athlete_nationality(conn):
+    """Sync athletes.country_full to the latest athlete_nationality_history row.
+
+    Per-race upserts can leave the country_full cache stale: WT short-course and
+    PTO long-course ingests run in separate chronological passes, so the very
+    last upsert may carry an *older* country than the athlete's true latest
+    observation. This rebuilds the cache from history, which is correctly
+    timeline-tracked.
+
+    Uses a plain UPDATE; the FK constraints from results/ratings/rankings/etc
+    that used to make this a no-op were dropped (see results.athlete_id note
+    in the schema).
+    """
+    rows = conn.execute("""
+        WITH latest AS (
+            SELECT athlete_id, country_full,
+                   ROW_NUMBER() OVER (PARTITION BY athlete_id ORDER BY start_date DESC) AS rn
+            FROM athlete_nationality_history
+        )
+        SELECT a.athlete_id, l.country_full
+        FROM athletes a
+        JOIN latest l ON l.athlete_id = a.athlete_id AND l.rn = 1
+        WHERE a.country_full <> l.country_full
+    """).fetchall()
+
+    if not rows:
+        print("Nationality cache already in sync.")
+        return 0
+
+    for athlete_id, country_full in rows:
+        conn.execute(
+            "UPDATE athletes SET country_full = ? WHERE athlete_id = ?",
+            [country_full, athlete_id],
+        )
+    print(f"Reconciled country_full for {len(rows)} athlete(s).")
+    return len(rows)
 
 
 def insert_results_bulk(conn, rows):

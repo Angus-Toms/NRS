@@ -3,21 +3,28 @@
 #
 # Steps (in order):
 #   1. ingest       - fetch from World Triathlon API, upsert races/athletes/results
-#   2. pto          - scrape stats.protriathletes.org for long-course results
-#   3. ignored      - auto-detect subset/oversized races, then apply manual ignored.csv overrides
-#   4. stages       - flag combined rows of multi-stage events (heats/semis/A-B finals);
+#   2. startlist    - fetch upcoming events + start lists for /upcoming page
+#   3. pto          - scrape stats.protriathletes.org for long-course results
+#   4. merges       - apply manual athlete merges from data/athlete_merges.csv
+#   5. ignored      - auto-detect subset/oversized races, then apply manual ignored.csv overrides
+#   6. stages       - flag combined rows of multi-stage events (heats/semis/A-B finals);
 #                     must run after ignored (writes to ignored_races)
-#   5. series       - load series.csv, apply rules, apply event_series.csv overrides
-#   6. autocorr     - detect mechanical anomalies, write auto-correction rows
-#   7. ratings      - load corrections.csv, recompute ELO ratings + rankings
+#   7. series       - load series.csv, apply rules, apply event_series.csv overrides
+#   8. recurring    - fuzzy-name fallback recurring-event detection for events
+#                     uncaught by series rules
+#   9. autocorr     - detect mechanical anomalies, write auto-correction rows
+#  10. ratings      - load corrections.csv, recompute ELO ratings + rankings
 #
 # Usage:
 #   ./build_db.sh                     # run all steps
 #   ./build_db.sh --skip-ingest       # skip WT API fetch (e.g. data already ingested)
+#   ./build_db.sh --skip-startlist    # skip upcoming-race/start-list fetch
 #   ./build_db.sh --skip-pto          # skip PTO scrape
+#   ./build_db.sh --skip-merges       # skip manual athlete merges
 #   ./build_db.sh --skip-stages       # skip multi-stage flagging
 #   ./build_db.sh --skip-ignored      # skip ignored-race detection
 #   ./build_db.sh --skip-series       # skip series membership rebuild
+#   ./build_db.sh --skip-recurring    # skip fuzzy-name recurring fallback
 #   ./build_db.sh --skip-autocorr     # skip auto-correction pass
 #   ./build_db.sh --skip-ratings      # skip ratings/rankings recompute
 #   ./build_db.sh --ratings-only      # shortcut: auto-corr + recompute ratings + rankings
@@ -32,18 +39,21 @@ step()    { echo -e "\n${GREEN}${BOLD}==> $*${RESET}"; }
 note()    { echo -e "${YELLOW}    $*${RESET}"; }
 elapsed() { echo -e "    done in ${BOLD}$(( SECONDS - $1 ))s${RESET}"; }
 
-DO_INGEST=true; DO_PTO=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_AUTOCORR=true; DO_RATINGS=true
+DO_INGEST=true; DO_STARTLIST=true; DO_PTO=true; DO_MERGES=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_RECURRING=true; DO_AUTOCORR=true; DO_RATINGS=true
 
 for arg in "$@"; do
     case $arg in
-        --skip-ingest)   DO_INGEST=false ;;
-        --skip-pto)      DO_PTO=false ;;
-        --skip-stages)   DO_STAGES=false ;;
-        --skip-ignored)  DO_IGNORED=false ;;
-        --skip-series)   DO_SERIES=false ;;
-        --skip-autocorr) DO_AUTOCORR=false ;;
-        --skip-ratings)  DO_RATINGS=false ;;
-        --ratings-only)  DO_INGEST=false; DO_PTO=false; DO_STAGES=false; DO_IGNORED=false; DO_SERIES=false ;;
+        --skip-ingest)    DO_INGEST=false ;;
+        --skip-startlist) DO_STARTLIST=false ;;
+        --skip-pto)       DO_PTO=false ;;
+        --skip-merges)    DO_MERGES=false ;;
+        --skip-stages)    DO_STAGES=false ;;
+        --skip-ignored)   DO_IGNORED=false ;;
+        --skip-series)    DO_SERIES=false ;;
+        --skip-recurring) DO_RECURRING=false ;;
+        --skip-autocorr)  DO_AUTOCORR=false ;;
+        --skip-ratings)   DO_RATINGS=false ;;
+        --ratings-only)   DO_INGEST=false; DO_STARTLIST=false; DO_PTO=false; DO_MERGES=false; DO_STAGES=false; DO_IGNORED=false; DO_SERIES=false; DO_RECURRING=false ;;
     esac
 done
 
@@ -57,7 +67,18 @@ if $DO_INGEST; then
     elapsed $T
 fi
 
-# ── 2. PTO scrape ─────────────────────────────────────────────────────────────
+# ── 2. Start lists ────────────────────────────────────────────────────────────
+# Fetches upcoming events and their start lists for the /upcoming page.
+# Must run after ingest so _purge_completed() can drop upcoming rows whose
+# races have since been ingested as completed.
+if $DO_STARTLIST; then
+    step "Start lists - fetch upcoming events (next 90 days) + entries"
+    T=$SECONDS
+    python3 -m ptd_data.ingest --start-lists
+    elapsed $T
+fi
+
+# ── 3. PTO scrape ─────────────────────────────────────────────────────────────
 if $DO_PTO; then
     step "PTO - scrape stats.protriathletes.org for long-course results"
     T=$SECONDS
@@ -65,7 +86,17 @@ if $DO_PTO; then
     elapsed $T
 fi
 
-# ── 3. Ignored races ──────────────────────────────────────────────────────────
+# ── 4. Manual athlete merges ──────────────────────────────────────────────────
+# Collapse duplicate rows the auto-matchers couldn't bridge. Runs after PTO so
+# any new merge entries land before downstream rating/series passes.
+if $DO_MERGES; then
+    step "Merges - apply data/athlete_merges.csv"
+    T=$SECONDS
+    python3 -c "from ptd_data import db; conn = db.get_conn(read_only=False); db.apply_athlete_merges(conn); conn.close()"
+    elapsed $T
+fi
+
+# ── 5. Ignored races ──────────────────────────────────────────────────────────
 if $DO_IGNORED; then
     step "Ignored races - auto-detect subsets/oversized + manual ignored.csv"
     T=$SECONDS
@@ -73,7 +104,7 @@ if $DO_IGNORED; then
     elapsed $T
 fi
 
-# ── 4. Multi-stage flagging ───────────────────────────────────────────────────
+# ── 7. Multi-stage flagging ───────────────────────────────────────────────────
 # Runs AFTER ignored: stages.py adds stage rows to ignored_races.
 if $DO_STAGES; then
     step "Stages - flag multi-round events + ignore their stage rows"
@@ -82,7 +113,7 @@ if $DO_STAGES; then
     elapsed $T
 fi
 
-# ── 5. Series membership ──────────────────────────────────────────────────────
+# ── 8. Series membership ──────────────────────────────────────────────────────
 if $DO_SERIES; then
     step "Series - load series.csv, apply rules, apply CSV overrides"
     T=$SECONDS
@@ -90,7 +121,15 @@ if $DO_SERIES; then
     elapsed $T
 fi
 
-# ── 6. Auto corrections ───────────────────────────────────────────────────────
+# ── 8b. Recurring fallback ────────────────────────────────────────────────────
+if $DO_RECURRING; then
+    step "Recurring fallback - fuzzy-cluster orphan events into recurring groups"
+    T=$SECONDS
+    python3 -m ptd_data.recurring_events
+    elapsed $T
+fi
+
+# ── 9. Auto corrections ───────────────────────────────────────────────────────
 if $DO_AUTOCORR; then
     step "Auto-corrections - detect mechanical anomalies, write auto rows"
     T=$SECONDS
@@ -98,7 +137,7 @@ if $DO_AUTOCORR; then
     elapsed $T
 fi
 
-# ── 7. Ratings + Rankings ─────────────────────────────────────────────────────
+# ── 10. Ratings + Rankings ────────────────────────────────────────────────────
 if $DO_RATINGS; then
     step "Ratings + Rankings - load corrections.csv, recompute ELO + rankings"
     T=$SECONDS

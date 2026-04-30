@@ -14,8 +14,9 @@ const activeText = document.getElementById('as-active-text');
 
 let searchTimer = null;
 
-function getDisc()  { return document.querySelector('[name="as-disc"]:checked')?.value  || 'overall'; }
-function getOrder() { return document.querySelector('[name="as-order"]:checked')?.value || 'top'; }
+function getDisc()   { return document.querySelector('[name="as-disc"]:checked')?.value   || 'overall'; }
+function getOrder()  { return document.querySelector('[name="as-order"]:checked')?.value  || 'top'; }
+function getCourse() { return document.querySelector('[name="as-course"]:checked')?.value || 'all'; }
 
 // ── Filter toggle ──
 filterBtn.addEventListener('click', () => {
@@ -31,6 +32,10 @@ filterBtn.addEventListener('click', () => {
 
 // ── Radio + select + YOB + active toggle all re-run search ──
 document.querySelectorAll('[name="as-disc"], [name="as-order"]').forEach(r => {
+    r.addEventListener('change', triggerSearch);
+});
+
+document.querySelectorAll('[name="as-course"]').forEach(r => {
     r.addEventListener('change', triggerSearch);
 });
 countryEl.addEventListener('change', triggerSearch);
@@ -75,7 +80,7 @@ function triggerSearch() {
 async function runSearch(q) {
     results.innerHTML = '<div class="as-loading">Searching…</div>';
 
-    const params = new URLSearchParams({ q, disc: getDisc(), order: getOrder() });
+    const params = new URLSearchParams({ q, disc: getDisc(), order: getOrder(), course: getCourse() });
     if (countryEl.value)    params.set('country', countryEl.value);
     if (yobStart.value)     params.set('yob_start', yobStart.value);
     if (yobEnd.value)       params.set('yob_end', yobEnd.value);
@@ -105,16 +110,27 @@ function renderResults(athletes, disc, order) {
                 <span class="rating-value${d === disc ? ' rating-highlight' : ''}">${a[d + '_rating']}</span>
             </div>`).join('');
 
-        // Meta row - flag · country · YOB · races · wins
+        // Meta row - flag · country · YOB · races · wins · [tags]
         const yobItem  = a.year_of_birth ? `<span class="meta-item">b. ${a.year_of_birth}</span>` : '';
+        const tags = [];
+        if (a.has_elite_short) tags.push('<span class="ptd-tag ptd-tag--sc">SC</span>');
+        if (a.has_elite_long)  tags.push('<span class="ptd-tag ptd-tag--lc">LC</span>');
+        if (a.has_ag)          tags.push('<span class="ptd-tag ptd-tag--ag">AG</span>');
+        const tagsItem = tags.length
+            ? `<span class="meta-item ptd-tag-row">${tags.join('')}</span>`
+            : '';
         const metaHtml = `
             <span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>
             ${yobItem}
             <span class="meta-item"><span class="meta-val">${a.race_starts}</span> races</span>
-            <span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>`;
+            <span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>
+            ${tagsItem}`;
 
+        // When course is 'all' we don't have a clean course to hand off to
+        // the profile page, so let the profile page pick its own default.
+        const courseQS = getCourse() === 'all' ? '' : `?course=${encodeURIComponent(getCourse())}`;
         return `
-        <a href="/athlete/${a.athlete_id}" class="as-result-item">
+        <a href="/athlete/${a.athlete_id}${courseQS}" class="as-result-item">
             <img class="as-result-avatar" src="${img}" alt="${escapeHtml(a.name)}" onerror="this.src='${defaultImg}'">
             <div class="as-result-info">
                 <div class="as-result-name">${escapeHtml(a.name)}</div>

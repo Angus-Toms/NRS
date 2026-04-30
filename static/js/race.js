@@ -134,6 +134,7 @@ function initPrediction() {
     const existingIds   = new Set(getJSON('race-athlete-ids') || []);
     const raceYear      = getJSON('race-year');
     const gender        = document.getElementById('add-prediction-btn').dataset.gender;
+    const course        = document.getElementById('add-prediction-btn').dataset.course || 'short';
     const tbody         = document.querySelector('table.results-table tbody');
     const addBtn        = document.getElementById('add-prediction-btn');
     const modal         = document.getElementById('prediction-modal');
@@ -158,7 +159,7 @@ function initPrediction() {
         const q = e.target.value.trim();
         if (q.length < 2) { searchResults.classList.remove('active'); searchResults.innerHTML = ''; return; }
         try {
-            const res      = await fetch(`/compare/search?q=${encodeURIComponent(q)}&gender=${encodeURIComponent(gender)}`);
+            const res      = await fetch(`/compare/search?q=${encodeURIComponent(q)}&gender=${encodeURIComponent(gender)}&course=${encodeURIComponent(course)}`);
             const data     = await res.json();
             const filtered = data.filter(a => !existingIds.has(a.athlete_id));
             _renderPredictionResults(filtered, searchResults);

@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from config import STATIC_BASE_URL
 
 from ptd_data import queries
-from ptd_data.ratings import SCALE
+from ptd_data.ratings import SCALE, YEAR_REF
 from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
 
 templates = Jinja2Templates(directory="templates")
@@ -17,6 +17,73 @@ router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
 START_RATING  = 1500
+
+# History-window size by course. Tuned from a 300-race MAE sweep: short-course
+# pros race often enough that N=10 smooths course-to-course variance; long-
+# course pros race rarely, so a smaller N keeps the anchor on recent form.
+ANCHOR_HISTORY_N   = {'short': 10, 'long': 5}
+ANCHOR_MIN_SAMPLES = 2
+
+# Top-K highest-rated athletes whose history is pooled to form the anchor.
+# K=3 won the MAE sweep — pooling across multiple top athletes dilutes any
+# one athlete's inconsistency without sacrificing rating-relevance. ELO still
+# picks who the top-K are and the leader's rating still drives the ELO-
+# scaling reference, so the rating system remains the backbone.
+ANCHOR_TOP_K = 3
+
+# Quantile of the pooled history used as the anchor. Short course:
+# p50 (median) is already optimal — winner bias ~0. Long course: p50 is too
+# slow for winners (long overall winners run +16m faster than the median,
+# long run +9m faster) because the pool captures a top-3 athlete's *typical*
+# performance, but on race day the actual winner usually pushes harder than
+# their own personal median. p33 cuts ~3m (run) / ~7m (overall) of winner
+# bias for only ~1–2m of full-field MAE cost. Trade-off validated on a 400-
+# race sweep.
+ANCHOR_POOL_QUANTILE = {'short': 0.50, 'long': 0.33}
+
+_SHORT_DISTANCES = {'sprint', 'standard'}
+
+
+def _anchor_time(field_ratings, leader_rating, distance, disc, model,
+                 target_year=None, target_date=None):
+    """Return the anchor time for this discipline across the whole field.
+
+    Strategy: pool the last-N finishes of the top-K highest-rated athletes
+    at this distance/discipline (strictly before `target_date` if given),
+    take a course-specific quantile. The field is still ELO-scaled from the
+    leader's rating. Falls back to the population quantile model if the
+    pool is too sparse.
+
+    `target_date` avoids post-target history leaking into the pool on
+    historical-race displays — old-era races otherwise draw from modern tech
+    times and over-predict speed.
+
+    `target_year` is used by the long-course population model's year term to
+    adjust fallback predictions for era drift (tech, training). Only fires
+    for long-course races; short-course models store year_coef=0.
+    """
+    if disc in ('overall', 'swim', 'bike', 'run'):
+        course        = 'short' if distance in _SHORT_DISTANCES else 'long'
+        n_per_athlete = ANCHOR_HISTORY_N[course]
+        quantile      = ANCHOR_POOL_QUANTILE[course]
+        topK = sorted(field_ratings, key=field_ratings.get, reverse=True)[:ANCHOR_TOP_K]
+        pool = []
+        for aid in topK:
+            pool.extend(queries.get_athlete_discipline_history(
+                aid, distance, disc, limit=n_per_athlete, before_date=target_date,
+            ))
+        if len(pool) >= ANCHOR_MIN_SAMPLES:
+            return float(np.quantile(pool, quantile))
+    # Population-model fallback. Year term is stored 0 for short-course models,
+    # so this formula is a no-op on short course. For long course with a known
+    # target year, it adjusts old predictions slower to account for era drift.
+    # Clamped to offset ≤ 0: the long-course year_coef fits a multi-decade
+    # trend that extrapolates too aggressively into the recent plateau. So we
+    # only apply the year term when the target year is earlier than YEAR_REF.
+    year_offset = min(target_year - YEAR_REF, 0) if target_year is not None else 0.0
+    return (model['slope'] * leader_rating
+            + model.get('year_coef', 0.0) * year_offset
+            + model['intercept'])
 
 
 def _course_signal_for_race(race_id, gender, models):
@@ -34,6 +101,8 @@ def _course_signal_for_race(race_id, gender, models):
 
     results     = queries.get_race_results(race_id)
     pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
+    race_info   = queries.get_race_info(race_id)
+    target_year = race_info['race_date'].year if race_info and race_info.get('race_date') else None
     DISCS = ['overall', 'swim', 'bike', 'run']
     CONF_THRESHOLD = 10
 
@@ -43,7 +112,10 @@ def _course_signal_for_race(race_id, gender, models):
             return 0.0
         return min(1.0, (pr.get('prior_starts', 0) or 0) / CONF_THRESHOLD)
 
-    # Compute predicted times
+    # Compute predicted times — include the year term so long-course era drift
+    # doesn't masquerade as a course-condition signal. Clamped to ≤ 0 (see
+    # _anchor_time docstring).
+    year_offset = min(target_year - YEAR_REF, 0) if target_year is not None else 0.0
     preds = {}
     for disc in DISCS:
         m = models.get((gender, distance, disc))
@@ -54,7 +126,7 @@ def _course_signal_for_race(race_id, gender, models):
                                    else START_RATING)
                  for r in results}
         lr = max(field.values())
-        lt = m['slope'] * lr + m['intercept']
+        lt = m['slope'] * lr + m.get('year_coef', 0.0) * year_offset + m['intercept']
         for aid, rating in field.items():
             preds.setdefault(aid, {})[disc] = max(0, round(lt * (10 ** ((lr - rating) / SCALE))))
 
@@ -101,11 +173,15 @@ def _compute_race_predictions(race_id, race, results, models):
         return None, None, None
 
     pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
-    gender  = race['gender']
-    DISCS   = ['overall', 'swim', 'bike', 'run']  # transitions excluded - too course-specific
+    gender      = race['gender']
+    target_date = race.get('race_date')
+    target_year = target_date.year if target_date else None
+    DISCS       = ['overall', 'swim', 'bike', 'run']  # transitions excluded - too course-specific
 
-    # For each discipline, pick the highest-rated athlete as predicted leader,
-    # then derive all other times via the ELO log-ratio formula.
+    # For each discipline, compute a robust anchor time from the top-rated
+    # athletes' pooled history (strictly before target_date, so historical
+    # race pages aren't contaminated by post-race finishes), then ELO-scale
+    # the rest of the field off the leader's rating.
     preds = {}  # athlete_id -> {disc: predicted_time_s}
     for disc in DISCS:
         m = models.get((gender, distance, disc))
@@ -117,12 +193,12 @@ def _compute_race_predictions(race_id, race, results, models):
             pr  = pre_ratings.get(aid)
             field_ratings[aid] = pr[disc] if pr and pr[disc] else START_RATING
 
-        leader_id     = max(field_ratings, key=field_ratings.get)
-        leader_rating = field_ratings[leader_id]
-        leader_time   = m['slope'] * leader_rating + m['intercept']
+        leader_rating = max(field_ratings.values())
+        anchor        = _anchor_time(field_ratings, leader_rating, distance, disc, m,
+                                     target_year=target_year, target_date=target_date)
 
         for aid, rating in field_ratings.items():
-            t = leader_time * (10 ** ((leader_rating - rating) / SCALE))
+            t = anchor * (10 ** ((leader_rating - rating) / SCALE))
             preds.setdefault(aid, {})[disc] = max(0, round(t))
 
     if not preds:
@@ -318,8 +394,9 @@ def _compute_upcoming_predictions(race, entries, models):
     if not distance:
         return None
 
-    gender = race['gender']
-    DISCS  = ['overall', 'swim', 'bike', 'run']
+    gender      = race['gender']
+    target_year = race['race_date'].year if race.get('race_date') else None
+    DISCS       = ['overall', 'swim', 'bike', 'run']
 
     # Current ratings per athlete (None = debut, use START_RATING)
     current_ratings = {
@@ -338,11 +415,11 @@ def _compute_upcoming_predictions(race, entries, models):
         if not m:
             continue
         field_ratings = {aid: cr[disc] for aid, cr in current_ratings.items()}
-        leader_id     = max(field_ratings, key=field_ratings.get)
-        leader_rating = field_ratings[leader_id]
-        leader_time   = m['slope'] * leader_rating + m['intercept']
+        leader_rating = max(field_ratings.values())
+        anchor        = _anchor_time(field_ratings, leader_rating, distance, disc, m,
+                                     target_year=target_year)
         for aid, rating in field_ratings.items():
-            t = leader_time * (10 ** ((leader_rating - rating) / SCALE))
+            t = anchor * (10 ** ((leader_rating - rating) / SCALE))
             preds.setdefault(aid, {})[disc] = max(0, round(t))
 
     if not preds:
@@ -548,20 +625,34 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     event_races = queries.get_races_by_event(event_id) if event_id else []
     series = queries.get_series_for_race(race_id)
 
-    # Other editions at the same venue (same recurring_event), matched on program
-    program = (race.get("sub_category"), race.get("gender")) if race.get("sub_category") and race.get("gender") else None
+    # Other editions at the same venue (same recurring_event). Match on
+    # sub_category only (not gender): IM Worlds alternates gender per
+    # venue per year, so a strict gender match would hide e.g. the
+    # men's 2024 Hawaii edition when viewing the women's 2025 race.
+    program = (race.get("sub_category"), None) if race.get("sub_category") else None
     other_editions = queries.get_other_editions_for_event(event_id, program=program) if event_id else []
     for oe in other_editions:
         oe["year"] = oe["race_date"].year
+    recurring_meta = queries.get_recurring_event_for_event(event_id) if event_id else None
+    recurring_slug = recurring_meta["slug"] if recurring_meta else None
 
-    # Context pills: event + all series (race-level and event-level)
-    context_links = []
-    if event_id:
-        event_info = queries.get_event_info(event_id)
-        if event_info:
-            context_links.append({'label': event_info['name'], 'url': f"/event/{event_id}"})
+    # Context pills: each pill is a series or recurring-event grouping the
+    # race belongs to. Both kinds are simple links; tier drives the colour.
+    context_pills = []
+    if recurring_meta:
+        context_pills.append({
+            'kind': 'recurring',
+            'tier': 'recurring',
+            'label': recurring_meta['name'],
+            'url': f"/recurring/{recurring_meta['slug']}",
+        })
     for s in queries.get_all_series_for_race(race_id):
-        context_links.append({'label': s['name'], 'url': f"/series/{s['slug']}"})
+        context_pills.append({
+            'kind': 'series',
+            'tier': s.get('tier') or 'series',
+            'label': s['name'],
+            'url': f"/series/{s['slug']}",
+        })
 
     _venue = race["location"]
     race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
@@ -607,9 +698,10 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "race_distance":           race_distance,
         "course_conditions":       course_conditions if not ignored_info else None,
         "series":                  series,
-        "context_links":           context_links,
+        "context_pills":           context_pills,
         "corrections_data":        corrections_data,
         "other_editions":          other_editions,
+        "recurring_slug":           recurring_slug,
         "is_upcoming":             False,
     })
 
@@ -639,11 +731,12 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         [
             {
                 **e,
-                'overall_rating':    format_rating(e['overall_rating']),
-                'swim_rating':       format_rating(e['swim_rating']),
-                'bike_rating':       format_rating(e['bike_rating']),
-                'run_rating':        format_rating(e['run_rating']),
-                'transition_rating': format_rating(e['transition_rating']),
+                'is_debut':          e['overall_rating'] is None,
+                'overall_rating':    format_rating(e['overall_rating']) if e['overall_rating'] is not None else 1500,
+                'swim_rating':       format_rating(e['swim_rating'])    if e['swim_rating']    is not None else 1500,
+                'bike_rating':       format_rating(e['bike_rating'])    if e['bike_rating']    is not None else 1500,
+                'run_rating':        format_rating(e['run_rating'])     if e['run_rating']     is not None else 1500,
+                'transition_rating': format_rating(e['transition_rating']) if e['transition_rating'] is not None else 1500,
             }
             for e in entries
         ],
@@ -684,7 +777,7 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         "race_location":         race_location,
         "race_country":          race_country,
         "event_id":              race['event_id'],
-        "event_races":           [],
+        "event_races":           queries.get_upcoming_races_by_event(race['event_id']),
         "finish_count":          0,
         "dnf_count":             0,
         "ignored_info":          None,
@@ -708,6 +801,7 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         "entry_count":           len(entries),
         "is_upcoming":           True,
         "series":                None,
-        "context_links":         [],
+        "context_pills":         [],
         "other_editions":        [],
+        "recurring_slug":        None,
     })

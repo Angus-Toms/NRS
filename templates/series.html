@@ -14,37 +14,28 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css">
-{% if map_locations %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-{% endif %}
+<link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
-    <div class="page-hero-inner">
-        <div>
-            <h1>{{ series.name }}{% if active_program_label %} <span class="series-hero-program">- {{ active_program_label }}</span>{% endif %}</h1>
-        </div>
-        {% if hero_stats and hero_stats.editions %}
-        <div class="hero-stats">
-            <div class="hero-stat">
-                <span class="hero-stat-num">{{ hero_stats.editions }}</span>
-                <span class="hero-stat-lbl">Editions</span>
-            </div>
-            {% if hero_stats.unique_winners %}
-            <div class="hero-stat-sep"></div>
-            <div class="hero-stat">
-                <span class="hero-stat-num">{{ hero_stats.unique_winners }}</span>
-                <span class="hero-stat-lbl">Winners</span>
-            </div>
-            {% endif %}
-            {% if hero_stats.year_span %}
-            <div class="hero-stat-sep"></div>
-            <div class="hero-stat">
-                <span class="hero-stat-num">{{ hero_stats.year_span }}</span>
-                <span class="hero-stat-lbl">Years</span>
-            </div>
-            {% endif %}
+    <div class="page-hero-inner series-hero-inner">
+        <h1>{{ series.name }}</h1>
+        {% if program_overflow %}
+        {# Many programs (AG worlds has 100+): single dropdown beats a wall
+           of pills. The selected option also shows the active program. #}
+        <select class="program-dropdown" id="program-dropdown"
+                onchange="if (this.value) { switchProgram(this.value); }">
+            {% for tab in program_tabs + program_overflow %}
+            <option value="{{ tab.slug }}"{% if tab.active %} selected{% endif %}>{{ tab.label }}</option>
+            {% endfor %}
+        </select>
+        {% elif program_tabs | length > 1 %}
+        <div class="radio-chips program-toggle" id="program-toggle">
+            {% for tab in program_tabs %}
+            <input type="radio" name="program" id="prog-{{ tab.slug }}" value="{{ tab.slug }}"{% if tab.active %} checked{% endif %}>
+            <label for="prog-{{ tab.slug }}">{{ tab.label }}</label>
+            {% endfor %}
         </div>
         {% endif %}
     </div>
@@ -54,493 +45,820 @@
 {% block content %}
 <div class="series-page">
 
-    <!-- ── Program tab bar ─────────────────────────────────────────────── -->
-    {% if program_tabs | length > 1 %}
-    <nav class="series-program-tabs" aria-label="Program selector">
-        {% for tab in program_tabs %}
-        <a href="?program={{ tab.slug }}"
-           class="series-program-tab{% if tab.active %} series-program-tab--active{% endif %}">
-            {{ tab.label }}
-            <span class="series-program-tab-count">{{ tab.count }}</span>
-        </a>
-        {% endfor %}
-    </nav>
-    {% endif %}
+    {# All dynamic sections below are rendered by JS from data shipped in
+       extra_js. Keep server-rendered fallbacks empty - the SPA-style JS
+       owns the timeline / panel / tabs interactions. #}
 
-    <!-- ── Most recent edition ─────────────────────────────────────────── -->
-    {% if races %}
-    {% set latest = races[0] %}
-    <section class="series-latest-section">
-        <div class="page-section-head">Most Recent Edition</div>
-        <div class="series-latest-card">
-            <a href="/race/{{ latest.race_id }}" class="series-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
-            <div class="series-latest-header">
-                <a href="/race/{{ latest.race_id }}" class="series-latest-title">{{ latest.event_name }}{% if active_program_label %} - {{ active_program_label }}{% endif %}{% if latest.is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</a>
-                <span class="series-latest-date">{{ latest.race_date.strftime('%d %B %Y') }}</span>
-            </div>
-            <div class="series-latest-athletes">
-                {% for p in latest.podium %}
-                {% set pos_cls = 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' %}
-                <div class="series-latest-athlete series-latest-athlete--{{ pos_cls }}">
-                    <div class="series-latest-pos {{ pos_cls }}">
-                        {{ ['1st','2nd','3rd'][p.position - 1] }}
-                    </div>
-                    <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/512/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}"
-                         alt="{{ p.name }}" class="series-latest-athlete-img">
-                    <a href="/athlete/{{ p.athlete_id }}" class="series-latest-athlete-name">{{ p.name }} {{ p.country_emoji }}</a>
-                    <div class="series-latest-time">
-                        {{ p.time_fmt }}{% if p.gap_fmt %} <span class="series-latest-gap">({{ p.gap_fmt }})</span>{% endif %}
-                    </div>
-                    {% if p.swim_fmt %}
-                    <div class="series-latest-splits">
-                        <div class="series-split"><span class="series-split-label">Swim</span><span class="series-split-val">{{ p.swim_fmt }}</span></div>
-                        {% if p.t1_fmt %}<div class="series-split series-split--t"><span class="series-split-label">T1</span><span class="series-split-val">{{ p.t1_fmt }}</span></div>{% endif %}
-                        <div class="series-split"><span class="series-split-label">Bike</span><span class="series-split-val">{{ p.bike_fmt }}</span></div>
-                        {% if p.t2_fmt %}<div class="series-split series-split--t"><span class="series-split-label">T2</span><span class="series-split-val">{{ p.t2_fmt }}</span></div>{% endif %}
-                        <div class="series-split"><span class="series-split-label">Run</span><span class="series-split-val">{{ p.run_fmt }}</span></div>
-                    </div>
-                    {% endif %}
+    <!-- ── Year timeline ─────────────────────────────────────────────── -->
+    <div class="timeline-wrap">
+        <button class="tl-arrow tl-arrow--prev" id="tl-prev" aria-label="Earlier editions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="tl-arrow tl-arrow--next" id="tl-next" aria-label="Later editions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <div class="timeline-track">
+            <div class="timeline-line"></div>
+            <div class="timeline-years" id="timeline"></div>
+        </div>
+    </div>
+
+    <!-- ── Selected edition panel ───────────────────────────────────── -->
+    <div class="edition-panel" id="ed-panel"></div>
+
+    <!-- ── Tabs ─────────────────────────────────────────────────────── -->
+    <div class="tabs">
+        <div class="tab active" data-tab="leaders">Most Wins</div>
+        <div class="tab" data-tab="stats">Stats</div>
+        <div class="tab" data-tab="medals">Medals by Country</div>
+        <div class="tab" data-tab="ages">Youngest / Oldest</div>
+    </div>
+
+    <div class="tabpanel active" data-panel="leaders">
+        <div class="leaders-card" id="leaders-card"></div>
+    </div>
+
+    <div class="tabpanel" data-panel="stats">
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-card-head">
+                    <h3>Winning Times</h3>
+                    <div class="radio-chips" id="fmt-times"></div>
                 </div>
-                {% endfor %}
-                {% if not latest.podium %}
-                <div style="padding:1.5rem;color:var(--text-lighter);font-size:0.875rem;">No results recorded</div>
-                {% endif %}
+                <div class="chart-wrap"><canvas id="ch-times"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-head">
+                    <h3>Race Standard</h3>
+                    <select class="chart-select" id="std-disc">
+                        <option value="overall">Overall</option>
+                        <option value="swim">Swim</option>
+                        <option value="bike">Bike</option>
+                        <option value="run">Run</option>
+                        <option value="transition">Transition</option>
+                    </select>
+                </div>
+                <div class="chart-wrap"><canvas id="ch-std"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-head"><h3>Winning Margin</h3></div>
+                <div class="chart-wrap"><canvas id="ch-margin"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-head">
+                    <h3>Fastest Splits</h3>
+                    <div class="radio-chips" id="fmt-splits"></div>
+                </div>
+                <div class="chart-wrap"><canvas id="ch-splits"></canvas></div>
             </div>
         </div>
-    </section>
-    {% endif %}
+    </div>
 
-    <!-- ── Map ─────────────────────────────────────────────────────────── -->
-    {% if map_locations %}
-    <section class="series-map-section">
-        <div class="series-map-card">
-            <div id="series-map"></div>
-        </div>
-    </section>
-    {% endif %}
-
-    <!-- ── Previous editions ──────────────────────────────────────────── -->
-    <section class="series-editions">
-        <div class="page-section-head">Previous Editions</div>
-        {% for race in races[1:] %}
-        <div class="series-race-card">
-            <a href="/race/{{ race.race_id }}" class="series-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
-            <div class="series-race-header">
-                <span class="series-race-title">{{ race.event_name }}{% if active_program_label %} - {{ active_program_label }}{% endif %}{% if race.is_multi_stage %} {% include "_multi_stage_badge.html" %}{% endif %}</span>
-                <span class="series-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
-            </div>
-            <div class="series-race-card-body">
-                <div class="series-race-podium">
-                    {% for p in race.podium %}
-                    <div class="series-podium-row">
-                        <div class="series-podium-left">
-                            <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                            <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="series-podium-img">
-                            <a href="/athlete/{{ p.athlete_id }}" class="series-podium-name">{{ p.name }} {{ p.country_emoji }}</a>
-                        </div>
-                        <div class="series-podium-right">
-                            {% if p.position == 1 %}
-                                <span class="series-podium-time series-podium-time--winner">{{ p.time_fmt }}</span>
-                            {% elif p.gap_fmt %}
-                                <span class="series-podium-gap">{{ p.gap_fmt }}</span>
-                            {% else %}
-                                <span class="series-podium-time">{{ p.time_fmt }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% if not race.podium %}
-                    <div class="series-podium-row"><span style="color:var(--text-lighter);font-size:0.82rem">No results recorded</span></div>
-                    {% endif %}
-                </div>
-                {% if race.standards %}
-                <div class="series-race-standards">
-                    {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
-                    <div class="series-std-col">
-                        <div class="series-std-disc">{{ label }}</div>
-                        <div class="series-std-val">{{ race.standards[disc] if race.standards[disc] else '-' }}</div>
-                        {% if race.standards[disc] %}
-                        <span class="std-pill std-pill--{{ race.standard_classes[disc] }}">{{ race.standard_classes[disc]|title }}</span>
-                        {% else %}
-                        <span class="series-std-na">-</span>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </section>
-
-    <!-- ── Recurring venues ────────────────────────────────────────────── -->
-    {% if recurring_groups %}
-    <section class="series-recurring">
-        <div class="page-section-head">Recurring Venues</div>
-        <div class="series-recurring-grid">
-            {% for g in recurring_groups %}
-            <div class="series-recurring-card">
-                <div class="series-recurring-name">{{ g.name }}</div>
-                <div class="series-recurring-meta">
-                    {{ g.edition_count }} editions ·
-                    {{ g.first_date.year }}{% if g.last_date.year != g.first_date.year %}–{{ g.last_date.year }}{% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
-
-    <!-- ── Most Wins ─────────────────────────────────────────────────── -->
-    {% if leaders %}
-    <section class="series-leaders">
-        <div class="page-section-head">Most Wins</div>
-        <div class="leaders-table-card">
-            <table class="leaders-table" id="leaders-table">
-                <thead>
-                    <tr>
-                        <th class="col-athlete-head">Athlete</th>
-                        <th class="col-podiums-head">Podiums</th>
-                        <th class="col-editions">Editions Won</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for l in leaders %}
-                    <tr>
-                        <td>
-                            <div class="leaders-athlete">
-                                <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ l.athlete_id ~ '.webp' if l.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ l.name }}" class="leaders-athlete-img">
-                                <a href="/athlete/{{ l.athlete_id }}" class="leaders-athlete-link">{{ l.name }} {{ l.country_emoji }}</a>
-                            </div>
-                        </td>
-                        <td class="col-podiums">
-                            {%- set gc = l.podiums | selectattr('position','equalto',1) | list | length -%}
-                            {%- set sc = l.podiums | selectattr('position','equalto',2) | list | length -%}
-                            {%- set bc = l.podiums | selectattr('position','equalto',3) | list | length -%}
-                            {%- if gc %}<span class="podium-group"><span class="podium-n">{{ gc }}×</span><span class="pos-circle pos-circle--sm gold">1</span></span>{% endif -%}
-                            {%- if sc %}<span class="podium-group"><span class="podium-n">{{ sc }}×</span><span class="pos-circle pos-circle--sm silver">2</span></span>{% endif -%}
-                            {%- if bc %}<span class="podium-group"><span class="podium-n">{{ bc }}×</span><span class="pos-circle pos-circle--sm bronze">3</span></span>{% endif -%}
-                        </td>
-                        <td class="col-editions">
-                            {%- for w in l.win_editions -%}
-                            <span class="si-edition-item"><a href="/race/{{ w.race_id }}" class="si-edition">{{ w.short }}</a>{%- if not loop.last %}<span class="si-edition-sep">·</span>{%- endif %}</span>{%- if not loop.last %}<wbr>{%- endif -%}
-                            {%- endfor -%}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+    <div class="tabpanel" data-panel="medals">
+        <div class="series-data-card">
+            <table class="series-data-table" id="medals-table">
+                <thead><tr>
+                    <th>Country</th>
+                    <th>Medals</th>
+                </tr></thead>
+                <tbody></tbody>
             </table>
         </div>
-    </section>
-    {% endif %}
+    </div>
 
-    <!-- ── Performance history ────────────────────────────────────────── -->
-    {% if perf_history | length > 1 %}
-    <section class="series-chart-section">
-        <div class="page-section-head">
-            <span id="series-chart-title">Winning times - Overall</span>
-            <div class="radio-chips series-format-chips" id="series-format-chips"></div>
-        </div>
-        <div class="series-perf-card">
-            <div class="series-perf-legend" id="series-perf-legend">
-                <span class="series-legend-item series-legend-item--winner" id="series-legend-1">Winner</span>
-                <span class="series-legend-item series-legend-item--p10" id="series-legend-2">10th Place</span>
-                <span class="series-legend-item series-legend-item--p25" id="series-legend-3">25th Place</span>
+    <div class="tabpanel" data-panel="ages">
+        <div class="age-grid">
+            <div>
+                <div class="age-head">Youngest Winners</div>
+                <div class="series-data-card">
+                    <table class="series-data-table" id="age-young"><thead><tr>
+                        <th>Athlete</th><th class="age-col">Age</th><th class="yr-col">Edition</th>
+                    </tr></thead><tbody></tbody></table>
+                </div>
             </div>
-            <div class="series-main-chart-wrap">
-                <canvas id="series-chart-main"></canvas>
-            </div>
-            <div class="ratings-mini-row">
-                <div class="ratings-mini active" data-disc="overall" data-label="Overall" onclick="switchSeriesDisc('overall')">
-                    <canvas id="series-thumb-overall"></canvas>
-                </div>
-                <div class="ratings-mini" data-disc="swim" data-label="Swim" onclick="switchSeriesDisc('swim')">
-                    <canvas id="series-thumb-swim"></canvas>
-                </div>
-                <div class="ratings-mini" data-disc="bike" data-label="Bike" onclick="switchSeriesDisc('bike')">
-                    <canvas id="series-thumb-bike"></canvas>
-                </div>
-                <div class="ratings-mini" data-disc="run" data-label="Run" onclick="switchSeriesDisc('run')">
-                    <canvas id="series-thumb-run"></canvas>
+            <div>
+                <div class="age-head">Oldest Winners</div>
+                <div class="series-data-card">
+                    <table class="series-data-table" id="age-old"><thead><tr>
+                        <th>Athlete</th><th class="age-col">Age</th><th class="yr-col">Edition</th>
+                    </tr></thead><tbody></tbody></table>
                 </div>
             </div>
         </div>
-        <div id="series-tooltip" class="series-chart-tooltip" style="display:none"></div>
-    </section>
-    {% endif %}
+    </div>
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% if map_locations %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="https://unpkg.com/tippy.js@6"></script>
 <script>
-(function() {
-    const locs = {{ map_locations | tojson }};
-    const map = L.map('series-map', { zoomControl: true, scrollWheelZoom: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-        maxZoom: 18,
-    }).addTo(map);
-    const icon = L.divIcon({
-        className: '',
-        html: '<div class="series-map-pin-dot"></div>',
-        iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -8],
+// ── Server data ────────────────────────────────────────────────────────
+// `let` so switchProgram can swap them in place without a full reload.
+let RACES              = {{ races_json | tojson }};
+let LEADERS            = {{ leaders | tojson }};
+let MEDAL_TABLE        = {{ medal_table | tojson }};
+let YOUNGEST_WINNERS   = {{ youngest_winners | tojson }};
+let OLDEST_WINNERS     = {{ oldest_winners | tojson }};
+let PERF_HISTORY       = {{ perf_history | tojson }};
+let STANDARDS_HISTORY  = {{ standards_history | tojson }};
+let ACTIVE_PROGRAM     = {{ active_program | tojson }};
+const PROGRAM_TABS     = {{ program_tabs | tojson }};
+const STATIC_BASE      = {{ STATIC_BASE_URL | tojson }};
+const SERIES_NAME      = {{ series.name | tojson }};
+
+// Newest-first from the server -> oldest-first for the timeline / charts.
+let EDITIONS = [];
+// Field-fastest splits per race (whoever in the field had the fastest
+// swim/bike/run, not just the podium). Drives the "fastest" tag and the
+// gap-to-leader line on the podium table. The perf_history query exposes
+// these as winner_swim/winner_bike/winner_run despite the misleading
+// names - they're rank-1 in the discipline, not the race winner's split.
+let FIELD_FASTEST = {};
+
+function syncDerivedData(){
+    EDITIONS = RACES.slice().reverse();
+    FIELD_FASTEST = {};
+    PERF_HISTORY.forEach(r => {
+        FIELD_FASTEST[r.race_id] = {
+            swim: r.winner_swim,
+            bike: r.winner_bike,
+            run:  r.winner_run,
+            t1:   r.winner_t1,
+            t2:   r.winner_t2,
+        };
     });
-    const bounds = [];
-    locs.forEach(loc => {
-        bounds.push([loc.lat, loc.lng]);
-        L.marker([loc.lat, loc.lng], { icon }).addTo(map)
-            .bindPopup(`<strong>${loc.label}</strong><span>${loc.year}</span>`, {
-                className: 'series-map-popup', closeButton: false,
+    activeIdx   = EDITIONS.length - 1;
+    windowStart = Math.max(0, EDITIONS.length - TIMELINE_WINDOW);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function fmtSec(s){
+    if (s == null) return "";
+    const sec = Math.round(s);
+    const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), ss = sec%60;
+    if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+    return `${m}:${String(ss).padStart(2,"0")}`;
+}
+function fmtGap(s){ return s == null ? "" : `+${fmtSec(s)}`; }
+function profileSrc(athlete_id, profile_img, size){
+    return profile_img ? `${STATIC_BASE}athlete_imgs/${size}/${athlete_id}.webp`
+                       : `${STATIC_BASE}imgs/default_user_64.webp`;
+}
+function surnameOf(name){
+    // Last whitespace-separated token works for the long tail of athlete names.
+    return name.split(/\s+/).pop();
+}
+function attrEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;"); }
+function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
+
+// ── Timeline ───────────────────────────────────────────────────────────
+const TIMELINE_WINDOW = 10;
+let activeIdx   = 0;
+let windowStart = 0;
+syncDerivedData();
+
+function buildTimeline(){
+    const t = document.getElementById("timeline");
+    if (!EDITIONS.length){ t.innerHTML = ""; return; }
+    const end = Math.min(EDITIONS.length, windowStart + TIMELINE_WINDOW);
+    const slice = EDITIONS.slice(windowStart, end);
+    t.innerHTML = slice.map((e, i) => {
+        const winner = e.podium[0];
+        if (!winner) return `<div class="tyear" data-i="${windowStart + i}">
+            <div class="tyear-img" style="background:var(--border-color)"></div>
+            <span class="tyear-name">-</span>
+            <span class="tyear-num">${e.year ?? ""}</span>
+            <span class="tyear-dot"></span>
+            <span class="tyear-time">-</span>
+        </div>`;
+        return `<div class="tyear" data-i="${windowStart + i}">
+            <img class="tyear-img" src="${profileSrc(winner.athlete_id, winner.profile_img, 128)}" alt="${winner.name}">
+            <span class="tyear-name">${surnameOf(winner.name)}</span>
+            <span class="tyear-num">${e.year ?? ""}</span>
+            <span class="tyear-dot"></span>
+            <span class="tyear-time">${winner.time_fmt || ""}</span>
+        </div>`;
+    }).join("");
+    t.querySelectorAll(".tyear").forEach(el => el.onclick = () => setActive(+el.dataset.i));
+    document.getElementById("tl-prev").disabled = windowStart === 0;
+    document.getElementById("tl-next").disabled = end >= EDITIONS.length;
+    updateTimeline();
+}
+function updateTimeline(){
+    document.querySelectorAll(".tyear").forEach(el => {
+        el.classList.toggle("active", +el.dataset.i === activeIdx);
+    });
+}
+document.getElementById("tl-prev").onclick = () => {
+    windowStart = Math.max(0, windowStart - TIMELINE_WINDOW);
+    buildTimeline();
+};
+document.getElementById("tl-next").onclick = () => {
+    windowStart = Math.min(EDITIONS.length - TIMELINE_WINDOW, windowStart + TIMELINE_WINDOW);
+    buildTimeline();
+};
+
+// ── Edition panel ──────────────────────────────────────────────────────
+function buildPanel(){
+    if (!EDITIONS.length){
+        document.getElementById("ed-panel").innerHTML = `<div class="ep-empty">No editions recorded for this program.</div>`;
+        return;
+    }
+    const e = EDITIONS[activeIdx];
+    const dateStr = e.race_date
+        ? new Date(e.race_date).toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"})
+        : "";
+    const headerTitle = e.event_name || ("Edition " + (e.year || ""));
+    const meta = [e.venue, e.country].filter(Boolean).join(" · ");
+
+    // Each cell shows time + a small annotation underneath:
+    //   - swim/bike/run, if a podium athlete OWNS the field-fastest:
+    //       that row gets the orange "fastest" tag, others show their
+    //       gap to the field-fastest as "+m:ss".
+    //   - swim/bike/run, if no podium athlete owns the field-fastest
+    //       (someone outside top 3 had it): all three rows show their
+    //       gap to the field-fastest as "+m:ss".
+    //   - t1/t2/total: gap is to the podium leader (no field data); the
+    //       leader's annotation line stays blank.
+    const ff = FIELD_FASTEST[e.race_id] || {};
+
+    // Annotation for one leg across the podium. Always works against the
+    // field-fastest time (whoever in the field had the quickest leg, not
+    // just the podium). If the field-wide value isn't available - typical
+    // for transitions in races where transition splits aren't collected -
+    // the cells render with no annotation.
+    function splitInfo(podium, valKey, fieldKey){
+        const fieldBest = ff[fieldKey];
+        if (fieldBest == null || fieldBest <= 0) {
+            return podium.map(p => {
+                const v = p[valKey];
+                return (v == null || v <= 0) ? {empty: true} : {};
             });
-    });
-    if (bounds.length === 1) { map.setView(bounds[0], 5); }
-    else { map.fitBounds(bounds, { padding: [32, 32], maxZoom: 8 }); }
-})();
-</script>
-{% endif %}
-
-
-{% if perf_history | length > 1 %}
-<script>
-(function() {
-    const raw = {{ perf_history | tojson }};
-
-    function fmtTime(s) {
-        if (!s) return '';
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const sec = Math.round(s % 60);
-        if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-        return `${m}:${String(sec).padStart(2,'0')}`;
-    }
-    function fmtDiff(s) {
-        const t = fmtTime(Math.abs(s));
-        return t ? `+${t}` : null;
-    }
-
-    const C_WINNER = '#1a1a2e';
-    const C_P10    = '#e87722';
-    const C_P25    = '#94a3b8';
-
-    const discKeys = {
-        overall: ['winner_s',    'p10_s',    'p25_s'   ],
-        swim:    ['winner_swim', 'p10_swim', 'p25_swim'],
-        bike:    ['winner_bike', 'p10_bike', 'p25_bike'],
-        run:     ['winner_run',  'p10_run',  'p25_run' ],
-    };
-
-    // ── Format classification (heuristic from overall winning time) ───
-    const FORMAT_LABELS = { standard: 'Standard', sprint: 'Sprint', 'super-sprint': 'Super Sprint' };
-    const FORMAT_ORDER  = ['standard', 'sprint', 'super-sprint'];
-    function classifyFormat(winner_s) {
-        if (!winner_s) return 'standard';
-        if (winner_s < 2700) return 'super-sprint';
-        if (winner_s < 5400) return 'sprint';
-        return 'standard';
-    }
-    const presentFormats = [...new Set(raw.map(r => classifyFormat(r.winner_s)))]
-        .sort((a, b) => FORMAT_ORDER.indexOf(a) - FORMAT_ORDER.indexOf(b));
-
-    const tooltip = document.getElementById('series-tooltip');
-    let activeDisc   = 'overall';
-    let activeFormat = presentFormats[0];
-    let filteredRaw  = raw.filter(r => classifyFormat(r.winner_s) === activeFormat);
-    let mainChart    = null;
-    const thumbCharts = {};
-
-    // Zebra stripes for category axis
-    const zebraPlugin = {
-        id: 'seriesZebra',
-        beforeDraw(chart) {
-            const xScale = chart.scales.x;
-            if (!xScale || !xScale.ticks.length) return;
-            const { ctx, chartArea: { top, bottom } } = chart;
-            const n = xScale.ticks.length;
-            ctx.save();
-            ctx.fillStyle = 'rgba(0,0,0,0.035)';
-            for (let i = 0; i < n; i++) {
-                if (i % 2 !== 0) continue;
-                const cx = xScale.getPixelForTick(i);
-                const halfGap = i < n - 1
-                    ? (xScale.getPixelForTick(i + 1) - cx) / 2
-                    : i > 0 ? (cx - xScale.getPixelForTick(i - 1)) / 2 : 20;
-                ctx.fillRect(cx - halfGap, top, halfGap * 2, bottom - top);
-            }
-            ctx.restore();
         }
-    };
-
-    function externalTooltip(context, chartEl) {
-        const { tooltip: tip } = context;
-        if (tip.opacity === 0) { tooltip.style.display = 'none'; return; }
-
-        const idx    = tip.dataPoints?.[0]?.dataIndex ?? -1;
-        const entry  = idx >= 0 ? filteredRaw[idx] : null;
-        const year   = tip.title?.[0] ?? '';
-        const raceMeta = entry
-            ? `<div class="tt-race-name">${entry.event_name || ''}</div>
-               <div class="tt-race-date">${entry.race_date ? entry.race_date.substring(0, 10) : ''}</div>`
-            : '';
-
-        const winnerVal = tip.dataPoints.find(dp => dp.datasetIndex === 0)?.raw ?? null;
-        const lines = tip.dataPoints.map(dp => {
-            const col   = [C_WINNER, C_P10, C_P25][dp.datasetIndex];
-            const label = dp.dataset.label;
-            const val   = fmtTime(dp.raw);
-            let diff = '';
-            if (dp.datasetIndex > 0 && dp.raw && winnerVal) {
-                const d = fmtDiff(dp.raw - winnerVal);
-                if (d) diff = ` <span class="tt-diff">${d}</span>`;
-            }
-            return `<span class="tt-row"><span class="tt-dot" style="background:${col}"></span>${label}: <strong>${val || '-'}</strong>${diff}</span>`;
-        }).join('');
-
-        tooltip.innerHTML = `<div class="tt-year">${year}</div>${raceMeta}${lines}`;
-
-        const rect     = chartEl.getBoundingClientRect();
-        const wrapRect = chartEl.closest('.series-perf-card').getBoundingClientRect();
-        let left = rect.left - wrapRect.left + tip.caretX + 12;
-        const tipW = 180;
-        if (left + tipW > wrapRect.width) left = rect.left - wrapRect.left + tip.caretX - tipW - 12;
-        tooltip.style.display = 'block';
-        tooltip.style.left    = left + 'px';
-        tooltip.style.top     = (rect.top - wrapRect.top + tip.caretY - 20) + 'px';
+        return podium.map(p => {
+            const v = p[valKey];
+            if (v == null || v <= 0) return {empty: true};
+            if (v === fieldBest)     return {fastest: true};
+            return {gap: v - fieldBest};
+        });
     }
 
-    function makeDatasets(wKey, p10Key, p25Key, isOverall) {
-        const l1 = isOverall ? 'Winner'      : 'Fastest';
-        const l2 = isOverall ? '10th Place'  : '10th Fastest';
-        const l3 = isOverall ? '25th Place'  : '25th Fastest';
-        return [
-            { label: l1, data: filteredRaw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 2.5, pointRadius: 3.5, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
-            { label: l2, data: filteredRaw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 2,   pointRadius: 3,   pointHoverRadius: 5, tension: 0.25, spanGaps: true },
-            { label: l3, data: filteredRaw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1.5, pointRadius: 2.5, pointHoverRadius: 4, tension: 0.25, spanGaps: true },
+    const swimInfo = splitInfo(e.podium, "swim_s", "swim");
+    const t1Info   = splitInfo(e.podium, "t1_s",   "t1");
+    const bikeInfo = splitInfo(e.podium, "bike_s", "bike");
+    const t2Info   = splitInfo(e.podium, "t2_s",   "t2");
+    const runInfo  = splitInfo(e.podium, "run_s",  "run");
+
+    function cellHtml(text, info, opts={}){
+        const tdCls = "w1-num"
+            + (opts.transition ? " w1-num--t" : "")
+            + (opts.total      ? " w1-num--total" : "");
+        if (info && info.empty)        return `<td class="${tdCls}"><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
+        if (!text)                     return `<td class="${tdCls}"><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
+        const baseCls = opts.total ? "w1-cell w1-cell--total" : "w1-cell";
+        if (info && info.fastest){
+            return `<td class="${tdCls}"><span class="${baseCls} is-field-fastest"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">fastest</span></span></td>`;
+        }
+        const gap = info && info.gap ? `+${fmtSec(info.gap)}` : "&nbsp;";
+        return `<td class="${tdCls}"><span class="${baseCls}"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">${gap}</span></span></td>`;
+    }
+
+    const rowsHtml = e.podium.map((p, i) => {
+        const tier = ["gold","silver","bronze"][i] || "";
+        const totalInfo = (i === 0 || p.gap == null) ? null : {gap: p.gap};
+        return `<tr class="${tier}-row">
+            <td class="w1-pos"><span class="pos-circle ${tier}">${p.position}</span></td>
+            <td class="w1-ath-cell"><a href="/athlete/${p.athlete_id}" class="w1-ath ${tier}-img">
+                <img src="${profileSrc(p.athlete_id, p.profile_img, 128)}" alt="${p.name}"><b>${p.name}</b> ${p.country_emoji}
+            </a></td>
+            ${cellHtml(p.swim_fmt, swimInfo[i])}
+            ${cellHtml(p.t1_fmt,   t1Info[i],   {transition:true})}
+            ${cellHtml(p.bike_fmt, bikeInfo[i])}
+            ${cellHtml(p.t2_fmt,   t2Info[i],   {transition:true})}
+            ${cellHtml(p.run_fmt,  runInfo[i])}
+            ${cellHtml(p.time_fmt, totalInfo, {total:true})}
+        </tr>`;
+    }).join("");
+
+    // Standards strip in the navy header. Order: Overall · Swim · Bike · Run · Trans.
+    const stds = e.standards;
+    const stdClasses = e.standard_classes;
+    let stdsHtml = "";
+    if (stds && stdClasses){
+        const order = [
+            ["Overall",    "overall"],
+            ["Swim",       "swim"],
+            ["Bike",       "bike"],
+            ["Run",        "run"],
+            ["Transition", "transition"],
         ];
+        stdsHtml = `<div class="ep-head-stds">` + order.map(([lbl, k]) => {
+            const v = stds[k], c = stdClasses[k];
+            if (v == null || c == null) return "";
+            return `<div class="ch-std">
+                <span class="ch-std-d">${lbl}</span>
+                <span class="ch-std-v">${v}</span>
+                <span class="std-pill std-pill--${c}">${cap(c)}</span>
+            </div>`;
+        }).join("") + `</div>`;
     }
 
-    function buildMain(disc) {
-        const [wKey, p10Key, p25Key] = discKeys[disc];
-        const el = document.getElementById('series-chart-main');
-        if (mainChart) mainChart.destroy();
-        mainChart = new Chart(el, {
-            type: 'line',
-            data: { labels: filteredRaw.map(r => r.year), datasets: makeDatasets(wKey, p10Key, p25Key, disc === 'overall') },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: false,
-                        external: ctx => externalTooltip(ctx, el),
-                    },
-                },
-                scales: {
-                    x: {
-                        grid: { color: 'rgba(0,0,0,0.04)' },
-                        ticks: { font: { size: 11 }, maxRotation: 0 },
-                    },
-                    y: {
-                        reverse: true,
-                        grid: { color: 'rgba(0,0,0,0.04)' },
-                        ticks: {
-                            font: { size: 11 },
-                            callback: v => fmtTime(v),
-                            maxTicksLimit: 6,
-                        },
-                    },
-                },
-            },
-            plugins: [zebraPlugin],
-        });
-    }
+    const navHtml = `<div class="ep-nav">
+        <button class="ep-btn" id="prev"${activeIdx === 0 ? " disabled" : ""} aria-label="Previous edition">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="ep-btn" id="next"${activeIdx === EDITIONS.length - 1 ? " disabled" : ""} aria-label="Next edition">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+    </div>`;
 
-    function buildThumb(disc) {
-        const [wKey, p10Key, p25Key] = discKeys[disc];
-        const el = document.getElementById(`series-thumb-${disc}`);
-        if (!el) return;
-        if (thumbCharts[disc]) { thumbCharts[disc].destroy(); delete thumbCharts[disc]; }
-        const hasData = disc === 'overall' || filteredRaw.some(r => r[wKey]);
-        if (!hasData) { el.closest('.ratings-mini').style.display = 'none'; return; }
-        el.closest('.ratings-mini').style.display = '';
-        thumbCharts[disc] = new Chart(el, {
-            type: 'line',
-            data: {
-                labels: filteredRaw.map(r => r.year),
-                datasets: [
-                    { data: filteredRaw.map(r => r[wKey]   || null), borderColor: C_WINNER, borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                    { data: filteredRaw.map(r => r[p10Key] || null), borderColor: C_P10,    borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                    { data: filteredRaw.map(r => r[p25Key] || null), borderColor: C_P25,    borderWidth: 1,   pointRadius: 0, tension: 0.25, spanGaps: true },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: {
-                    x: { display: false },
-                    y: { display: false, reverse: true },
-                },
-            },
-        });
-    }
+    document.getElementById("ed-panel").innerHTML = `
+        <div class="ep-head">
+            <div class="ep-head-l">
+                <span class="ep-kicker">${dateStr}</span>
+                <a href="/race/${e.race_id}" class="ep-title">${headerTitle}</a>
+                ${meta ? `<span class="ep-meta">${meta}</span>` : ""}
+            </div>
+            ${stdsHtml}
+            ${navHtml}
+        </div>
+        <table class="w1-table">
+            <thead><tr>
+                <th>#</th>
+                <th>Athlete</th>
+                <th class="num">Swim</th>
+                <th class="num w1-num--t">T1</th>
+                <th class="num">Bike</th>
+                <th class="num w1-num--t">T2</th>
+                <th class="num">Run</th>
+                <th class="num w1-num--total">Total</th>
+            </tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>`;
+    document.getElementById("prev").onclick = () => setActive(activeIdx - 1);
+    document.getElementById("next").onclick = () => setActive(activeIdx + 1);
+}
 
-    // ── Format chips ──────────────────────────────────────────────────
-    function buildFormatChips() {
-        const container = document.getElementById('series-format-chips');
-        if (!container || presentFormats.length <= 1) {
-            if (container) container.style.display = 'none';
-            return;
+function setActive(i){
+    if (i < 0 || i >= EDITIONS.length) return;
+    activeIdx = i;
+    if (i < windowStart){
+        windowStart = i;
+        buildTimeline();
+    } else if (i >= windowStart + TIMELINE_WINDOW){
+        windowStart = i - (TIMELINE_WINDOW - 1);
+        buildTimeline();
+    } else {
+        updateTimeline();
+    }
+    buildPanel();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tabpanel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.querySelector(`[data-panel="${t.dataset.tab}"]`).classList.add("active");
+});
+
+// ── Most Wins ──────────────────────────────────────────────────────────
+function renderLeaders(){
+    const card = document.getElementById("leaders-card");
+    if (!LEADERS.length){
+        card.innerHTML = `<div class="series-empty">No winners recorded for this program.</div>`;
+        return;
+    }
+    card.innerHTML = LEADERS.map(l => {
+        const podiums = l.podiums || [];
+        const editionsFor = pos => podiums.filter(p => p.position === pos);
+        function group(list, cls, num){
+            if (!list.length) return "";
+            // Use the race "short" (e.g. "Nice '23") so years are disambiguated
+            // when a series has multiple races in one calendar year.
+            const tip = `<div class="tip-years">${list.map(p => p.short || p.year).join("<span>·</span>")}</div>`;
+            return `<span class="podium-group" data-tippy-content="${attrEsc(tip)}">
+                <span class="podium-n">${list.length}×</span>
+                <span class="pos-circle pos-circle--sm ${cls}">${num}</span>
+            </span>`;
         }
-        presentFormats.forEach(fmt => {
-            const id  = `fmt-${fmt}`;
-            const inp = document.createElement('input');
-            inp.type = 'radio'; inp.name = 'series-format'; inp.id = id; inp.value = fmt;
-            inp.checked = fmt === activeFormat;
-            inp.addEventListener('change', () => switchFormat(fmt));
-            const lbl = document.createElement('label');
-            lbl.htmlFor = id;
-            lbl.textContent = FORMAT_LABELS[fmt];
-            container.appendChild(inp);
-            container.appendChild(lbl);
-        });
+        const groupsHtml = group(editionsFor(1), "gold", 1)
+                         + group(editionsFor(2), "silver", 2)
+                         + group(editionsFor(3), "bronze", 3);
+        return `<div class="leader-row">
+            <img src="${profileSrc(l.athlete_id, l.profile_img, 128)}" alt="${l.name}">
+            <a href="/athlete/${l.athlete_id}" class="leader-name">${l.name} ${l.country_emoji}</a>
+            <div>${groupsHtml}</div>
+        </div>`;
+    }).join("");
+}
+
+// ── Medals by Country ──────────────────────────────────────────────────
+function renderMedals(){
+    const tbody = document.querySelector("#medals-table tbody");
+    if (!MEDAL_TABLE.length){
+        tbody.innerHTML = `<tr><td colspan="2" class="series-empty">No medals recorded.</td></tr>`;
+        return;
+    }
+    // Pull per-medal detail (surname + race short) from RACES, joined to
+    // the server's medal_table by country_emoji. Race short comes from
+    // venue + 2-digit year so we can tell apart same-year editions.
+    function shortFor(e){
+        const v  = (e.venue || "").trim();
+        const yy = e.year != null ? String(e.year).slice(-2) : "";
+        return v && yy ? `${v} '${yy}` : (v || String(e.year || ""));
+    }
+    // Iterate RACES (newest-first from the server) so each country's tooltip
+    // list reads top-down from latest medal to earliest.
+    const detail = {};
+    RACES.forEach(e => e.podium.forEach((p, i) => {
+        const cc = p.country_emoji;
+        if (!cc) return;
+        const slot = i === 0 ? "g" : i === 1 ? "s" : "b";
+        detail[cc] = detail[cc] || {g:[], s:[], b:[]};
+        detail[cc][slot].push({surname: surnameOf(p.name), short: shortFor(e)});
+    }));
+
+    function group(list, cls, num){
+        if (!list || !list.length) return "";
+        const inner = list.map(w => `<div class="tip-row"><b>${w.surname}</b><span>${w.short}</span></div>`).join("");
+        const tip = `<div class="tip-list">${inner}</div>`;
+        return `<span class="podium-group" data-tippy-content="${attrEsc(tip)}">
+            <span class="podium-n">${list.length}×</span>
+            <span class="pos-circle pos-circle--sm ${cls}">${num}</span>
+        </span>`;
     }
 
-    function switchFormat(fmt) {
-        if (fmt === activeFormat) return;
-        activeFormat = fmt;
-        filteredRaw  = raw.filter(r => classifyFormat(r.winner_s) === fmt);
-        tooltip.style.display = 'none';
-        buildMain(activeDisc);
-        ['overall', 'swim', 'bike', 'run'].forEach(buildThumb);
+    tbody.innerHTML = MEDAL_TABLE.map(c => {
+        const d = detail[c.country_emoji] || {g:[], s:[], b:[]};
+        const groups = group(d.g, "gold", 1) + group(d.s, "silver", 2) + group(d.b, "bronze", 3);
+        const linkOpen  = c.country_alpha3 ? `<a href="/country/${c.country_alpha3}" class="medals-country">` : `<span class="medals-country">`;
+        const linkClose = c.country_alpha3 ? `</a>` : `</span>`;
+        return `<tr>
+            <td>${linkOpen}${c.country_full || c.country_emoji} <span class="medals-flag">${c.country_emoji}</span>${linkClose}</td>
+            <td>${groups}</td>
+        </tr>`;
+    }).join("");
+}
+
+// ── Youngest / Oldest Winners ──────────────────────────────────────────
+function renderAges(){
+    function rowHtml(w){
+        return `<tr>
+            <td><a href="/athlete/${w.athlete_id}" class="age-ath"><img src="${profileSrc(w.athlete_id, w.profile_img, 128)}">${w.name} ${w.country_emoji}</a></td>
+            <td><span class="age-val">${w.age}</span></td>
+            <td><a href="/race/${w.race_id}" class="age-yr">${w.edition_short || w.year || ""}</a></td>
+        </tr>`;
     }
+    const young = document.querySelector("#age-young tbody");
+    const old   = document.querySelector("#age-old tbody");
+    young.innerHTML = YOUNGEST_WINNERS.length ? YOUNGEST_WINNERS.map(rowHtml).join("") : `<tr><td colspan="3" class="series-empty">No data</td></tr>`;
+    old.innerHTML   = OLDEST_WINNERS.length   ? OLDEST_WINNERS.map(rowHtml).join("")   : `<tr><td colspan="3" class="series-empty">No data</td></tr>`;
+}
 
-    const discTitles = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run' };
+// ── Charts (Stats tab) ─────────────────────────────────────────────────
+const FORMAT_LABELS = {sprint:"Sprint", standard:"Standard", "super-sprint":"Super Sprint"};
+const FORMAT_ORDER  = ["super-sprint", "sprint", "standard"];
+function classifyFormat(seconds){
+    if (!seconds) return "standard";
+    if (seconds < 2700) return "super-sprint";
+    if (seconds < 5400) return "sprint";
+    return "standard";
+}
 
-    window.switchSeriesDisc = function(disc) {
-        if (disc === activeDisc) return;
-        const card = document.getElementById('series-chart-main').closest('.series-perf-card');
-        card.querySelectorAll('.ratings-mini').forEach(el => el.classList.remove('active'));
-        card.querySelector(`.ratings-mini[data-disc="${disc}"]`).classList.add('active');
-        tooltip.style.display = 'none';
-        activeDisc = disc;
-        const isOverall = disc === 'overall';
-        document.getElementById('series-legend-1').textContent = isOverall ? 'Winner'     : 'Fastest';
-        document.getElementById('series-legend-2').textContent = isOverall ? '10th Place' : '10th Fastest';
-        document.getElementById('series-legend-3').textContent = isOverall ? '25th Place' : '25th Fastest';
-        document.getElementById('series-chart-title').textContent = `Winning times - ${discTitles[disc]}`;
-        buildMain(disc);
+let timesFormat  = "standard";
+let splitsFormat = "standard";
+let stdDisc      = "overall";
+let charts = {};
+
+function buildFormatChips(containerId, current, onChange){
+    const c = document.getElementById(containerId);
+    const present = [...new Set(EDITIONS.map(e => classifyFormat(e.podium[0] && e.podium[0].overall_s)))]
+        .sort((a, b) => FORMAT_ORDER.indexOf(a) - FORMAT_ORDER.indexOf(b));
+    if (present.length <= 1){ c.style.display = "none"; return present[0] || current; }
+    c.style.display = "flex";
+    const chosen = present.includes(current) ? current : present[0];
+    c.innerHTML = present.map(f => `
+        <input type="radio" name="${containerId}" id="${containerId}-${f}" value="${f}"${f === chosen ? " checked" : ""}>
+        <label for="${containerId}-${f}">${FORMAT_LABELS[f]}</label>`).join("");
+    c.querySelectorAll("input").forEach(inp => inp.onchange = () => onChange(inp.value));
+    return chosen;
+}
+
+function editionsInFormat(format){
+    return EDITIONS.filter(e => classifyFormat(e.podium[0] && e.podium[0].overall_s) === format);
+}
+
+// Progressive line-draw animation: each point draws after the previous,
+// segment by segment. Linear x for steady stagger; eased y so the line
+// settles smoothly into place.
+function drawAnimation(numPoints){
+    if (!numPoints) return false;
+    const total = 900;
+    const per   = total / numPoints;
+    return {
+        x: {
+            type: "number", easing: "linear", duration: per, from: NaN,
+            delay(ctx){
+                if (ctx.type !== "data" || ctx.xStarted) return 0;
+                ctx.xStarted = true;
+                return ctx.index * per;
+            }
+        },
+        y: {
+            type: "number", easing: "easeOutCubic", duration: per * 2,
+            from(ctx){
+                const meta = ctx.chart.getDatasetMeta(ctx.datasetIndex);
+                if (!meta || ctx.index === 0 || !meta.data[ctx.index - 1]){
+                    return ctx.chart.scales.y.getPixelForValue(100);
+                }
+                return meta.data[ctx.index - 1].getProps(["y"], true).y;
+            },
+            delay(ctx){
+                if (ctx.type !== "data" || ctx.yStarted) return 0;
+                ctx.yStarted = true;
+                return ctx.index * per;
+            }
+        }
     };
+}
+// Bar chart: simple staggered grow-from-baseline.
+function barAnimation(numPoints){
+    if (!numPoints) return false;
+    const per = 700 / Math.max(numPoints, 1);
+    return {
+        duration: 700,
+        easing: "easeOutCubic",
+        delay: (ctx) => (ctx.type === "data" && ctx.mode === "default") ? ctx.dataIndex * per : 0,
+    };
+}
 
-    buildFormatChips();
-    buildMain('overall');
-    ['overall', 'swim', 'bike', 'run'].forEach(buildThumb);
-})();
+// External tooltip renderer for Chart.js — reuses the navy "pd-dark" Tippy
+// look so chart and pill tooltips share one visual language.
+function chartTooltip(getHtml){
+    return function(context){
+        const {chart, tooltip} = context;
+        const wrap = chart.canvas.parentNode;
+        let el = wrap.querySelector(".chart-tip");
+        if (!el){
+            el = document.createElement("div");
+            el.className = "chart-tip tippy-box";
+            el.setAttribute("data-theme", "pd-dark");
+            const inner = document.createElement("div");
+            inner.className = "tippy-content";
+            el.appendChild(inner);
+            wrap.appendChild(el);
+        }
+        if (tooltip.opacity === 0){ el.style.opacity = "0"; return; }
+        const html = getHtml(tooltip, chart);
+        if (!html){ el.style.opacity = "0"; return; }
+        el.querySelector(".tippy-content").innerHTML = html;
+        const wrapW = wrap.clientWidth;
+        let left = tooltip.caretX;
+        const tipW = el.offsetWidth || 200;
+        if (left - tipW/2 < 4) left = tipW/2 + 4;
+        if (left + tipW/2 > wrapW - 4) left = wrapW - tipW/2 - 4;
+        el.style.position = "absolute";
+        el.style.left = left + "px";
+        el.style.top  = tooltip.caretY + "px";
+        el.style.transform = "translate(-50%, calc(-100% - 12px))";
+        el.style.opacity = "1";
+        el.style.pointerEvents = "none";
+    };
+}
+
+function ttHead(ed){
+    const dateStr = ed.race_date
+        ? new Date(ed.race_date).toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"})
+        : "";
+    const meta = [ed.venue, ed.country].filter(Boolean).join(" · ");
+    return `<div class="ct-head">
+        <div class="ct-title">${ed.event_name || ed.year}</div>
+        ${meta || dateStr ? `<div class="ct-meta">${meta}${meta && dateStr ? " · " : ""}${dateStr}</div>` : ""}
+    </div>`;
+}
+function tooltipTimes(tip, chart){
+    const ed = chart.$eds[tip.dataPoints[0].dataIndex];
+    if (!ed) return "";
+    const w = ed.podium[0];
+    if (!w) return "";
+    return `${ttHead(ed)}
+        <div class="ct-body">
+            <div class="ct-row"><span>Winner</span><b>${w.name} ${w.country_emoji}</b></div>
+            <div class="ct-row"><span>Time</span><b>${w.time_fmt}</b></div>
+        </div>`;
+}
+function tooltipStd(tip, chart){
+    const ed = chart.$eds[tip.dataPoints[0].dataIndex];
+    if (!ed) return "";
+    const v = (ed.standards         || {})[stdDisc];
+    const c = (ed.standard_classes  || {})[stdDisc];
+    const name = {overall:"Overall", swim:"Swim", bike:"Bike", run:"Run", transition:"Transition"}[stdDisc];
+    return `${ttHead(ed)}
+        <div class="ct-body">
+            <div class="ct-row"><span>${name} standard</span><b>${v ?? "-"}</b></div>
+            ${c ? `<div class="ct-row"><span>Class</span><span class="std-pill std-pill--${c}">${cap(c)}</span></div>` : ""}
+        </div>`;
+}
+function tooltipMargin(tip, chart){
+    const ed = chart.$eds[tip.dataPoints[0].dataIndex];
+    if (!ed) return "";
+    const w = ed.podium[0], r = ed.podium[1];
+    return `${ttHead(ed)}
+        <div class="ct-body">
+            ${w ? `<div class="ct-row"><span>Winner</span><b>${w.name} ${w.country_emoji}</b></div>` : ""}
+            ${r ? `<div class="ct-row"><span>Runner-up</span><b>${r.name} ${r.country_emoji}</b></div>` : ""}
+            ${r && r.gap_fmt ? `<div class="ct-row"><span>Margin</span><b>${r.gap_fmt}</b></div>` : ""}
+        </div>`;
+}
+function tooltipSplits(tip, chart){
+    const ed = chart.$eds[tip.dataPoints[0].dataIndex];
+    if (!ed) return "";
+    function best(idx, fmtKey){
+        let b = {sec: Infinity, ath: null, time: ""};
+        ed.podium.forEach(p => {
+            const s = p[idx];
+            if (s != null && s > 0 && s < b.sec) b = {sec: s, ath: p, time: p[fmtKey] || fmtSec(s)};
+        });
+        return b.ath ? b : null;
+    }
+    const swim = best("swim_s", "swim_fmt");
+    const bike = best("bike_s", "bike_fmt");
+    const run  = best("run_s",  "run_fmt");
+    const row  = (lbl, b) => b ? `<div class="ct-row"><span>${lbl}</span><b>${surnameOf(b.ath.name)} · ${b.time}</b></div>` : "";
+    return `${ttHead(ed)}
+        <div class="ct-body">
+            ${row("Swim", swim)}
+            ${row("Bike", bike)}
+            ${row("Run",  run)}
+        </div>`;
+}
+
+function buildCharts(){
+    Object.values(charts).forEach(c => c && c.destroy());
+    charts = {};
+
+    timesFormat  = buildFormatChips("fmt-times",  timesFormat,  f => { timesFormat  = f; rebuildTimesChart();  });
+    splitsFormat = buildFormatChips("fmt-splits", splitsFormat, f => { splitsFormat = f; rebuildSplitsChart(); });
+
+    const stdSelect = document.getElementById("std-disc");
+    stdSelect.value = stdDisc;
+    stdSelect.onchange = () => { stdDisc = stdSelect.value; rebuildStdChart(); };
+
+    rebuildTimesChart();
+    rebuildSplitsChart();
+    rebuildStdChart();
+    rebuildMarginChart();
+}
+
+function rebuildTimesChart(){
+    const eds = editionsInFormat(timesFormat);
+    const yrs = eds.map(e => e.year);
+    const data = eds.map(e => e.podium[0] && e.podium[0].overall_s);
+    if (charts.times) charts.times.destroy();
+    charts.times = new Chart(document.getElementById("ch-times"), {
+        type: "line",
+        data: {labels: yrs, datasets: [{label:"Winning time", data, borderColor:"#1a1a2e", borderWidth:2.5, pointRadius:3, tension:0.25, spanGaps:true}]},
+        options: {responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+            animation: drawAnimation(yrs.length),
+            plugins:{legend:{display:false}, tooltip:{enabled:false, external: chartTooltip(tooltipTimes)}},
+            scales:{x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{reverse:true, ticks:{font:{size:10}, callback: v => fmtSec(v)}}}}
+    });
+    charts.times.$eds = eds;
+}
+
+function rebuildSplitsChart(){
+    const eds = editionsInFormat(splitsFormat);
+    const yrs = eds.map(e => e.year);
+    // Fastest split = min across the podium per discipline. (Field-fastest
+    // would need full results data; podium-min is a reasonable proxy.)
+    const fastestSec = (e, key) => {
+        const vs = e.podium.map(p => p[key]).filter(s => s != null && s > 0);
+        return vs.length ? Math.min(...vs) : null;
+    };
+    if (charts.splits) charts.splits.destroy();
+    charts.splits = new Chart(document.getElementById("ch-splits"), {
+        type: "line",
+        data: {labels: yrs, datasets: [
+            {label:"Swim", data: eds.map(e => fastestSec(e, "swim_s")), borderColor:"#0ea5e9", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
+            {label:"Bike", data: eds.map(e => fastestSec(e, "bike_s")), borderColor:"#1a1a2e", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
+            {label:"Run",  data: eds.map(e => fastestSec(e, "run_s")),  borderColor:"#e85d04", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
+        ]},
+        options: {responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+            animation: drawAnimation(yrs.length),
+            plugins:{legend:{labels:{font:{size:11}, boxWidth:14}}, tooltip:{enabled:false, external: chartTooltip(tooltipSplits)}},
+            scales:{x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{reverse:true, ticks:{font:{size:10}, callback: v => fmtSec(v)}}}}
+    });
+    charts.splits.$eds = eds;
+}
+
+function rebuildStdChart(){
+    // Use the standards_history series so the chart is well-defined even
+    // for races where the in-card panel didn't get a standard (rare).
+    const yrs  = STANDARDS_HISTORY.map(r => r.year);
+    const data = STANDARDS_HISTORY.map(r => Math.round(r[stdDisc + "_std"] || 0) || null);
+    // Build a parallel array of "edition-like" objects keyed by race_id so
+    // tooltip can read venue/country/event_name.
+    const byId = {};
+    EDITIONS.forEach(e => byId[e.race_id] = e);
+    const eds = STANDARDS_HISTORY.map(r => byId[r.race_id] || {year:r.year, race_id:r.race_id, event_name:r.event_name, race_date:r.race_date,
+                                                              standards:{[stdDisc]: Math.round(r[stdDisc + "_std"] || 0)},
+                                                              standard_classes:{}});
+    if (charts.std) charts.std.destroy();
+    charts.std = new Chart(document.getElementById("ch-std"), {
+        type: "line",
+        data: {labels: yrs, datasets: [{data, borderColor:"#e85d04", backgroundColor:"rgba(232,93,4,0.1)", fill:true, borderWidth:2.5, pointRadius:3, tension:0.25, spanGaps:true}]},
+        options: {responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+            animation: drawAnimation(yrs.length),
+            plugins:{legend:{display:false}, tooltip:{enabled:false, external: chartTooltip(tooltipStd)}},
+            scales:{x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{ticks:{font:{size:10}}}}}
+    });
+    charts.std.$eds = eds;
+}
+
+function rebuildMarginChart(){
+    const yrs     = EDITIONS.map(e => e.year);
+    const margins = EDITIONS.map(e => (e.podium[1] && e.podium[1].gap) || null);
+    if (charts.margin) charts.margin.destroy();
+    charts.margin = new Chart(document.getElementById("ch-margin"), {
+        type: "bar",
+        data: {labels: yrs, datasets: [{data: margins, backgroundColor:"#1a1a2e"}]},
+        options: {responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+            animation: barAnimation(yrs.length),
+            plugins:{legend:{display:false}, tooltip:{enabled:false, external: chartTooltip(tooltipMargin)}},
+            scales:{x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{ticks:{font:{size:10}, callback: v => fmtSec(v)}}}}
+    });
+    charts.margin.$eds = EDITIONS;
+}
+
+// ── Program toggle: AJAX swap (no full page reload) ───────────────────
+async function switchProgram(slug){
+    const dataUrl = location.pathname.replace(/\/$/, "") + "/data?program=" + encodeURIComponent(slug);
+    let data;
+    try {
+        const r = await fetch(dataUrl);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        data = await r.json();
+    } catch (err) {
+        // Fall back to a full reload if the JSON endpoint fails.
+        const url = new URL(location.href);
+        url.searchParams.set("program", slug);
+        location.href = url.toString();
+        return;
+    }
+
+    RACES             = data.races_json;
+    LEADERS           = data.leaders;
+    MEDAL_TABLE       = data.medal_table;
+    YOUNGEST_WINNERS  = data.youngest_winners;
+    OLDEST_WINNERS    = data.oldest_winners;
+    PERF_HISTORY      = data.perf_history;
+    STANDARDS_HISTORY = data.standards_history;
+    ACTIVE_PROGRAM    = data.active_program;
+    syncDerivedData();
+
+    // Reflect program in the URL without pushing history (back button
+    // still returns to wherever the user came from before this page).
+    const url = new URL(location.href);
+    url.searchParams.set("program", slug);
+    history.replaceState({}, "", url);
+
+    // Hero stats + document title.
+    const ed = document.getElementById("hs-editions");
+    const yr = document.getElementById("hs-years");
+    if (ed) ed.textContent = data.hero_stats.editions;
+    if (yr) yr.textContent = data.hero_stats.year_span || "";
+    document.title = `${SERIES_NAME}${data.active_program_label ? " - " + data.active_program_label : ""} - Pro Tri Data`;
+
+    buildTimeline();
+    buildPanel();
+    renderLeaders();
+    renderMedals();
+    renderAges();
+    buildCharts();
+}
+
+document.querySelectorAll("#program-toggle input").forEach(r => r.onchange = () => switchProgram(r.value));
+
+// ── Tippy delegated init ──────────────────────────────────────────────
+tippy.delegate("body", {
+    target: "[data-tippy-content]",
+    allowHTML: true,
+    theme: "pd-dark",
+    placement: "top",
+    arrow: true,
+    delay: [80, 0],
+    offset: [0, 6],
+});
+
+// ── First render ──────────────────────────────────────────────────────
+buildTimeline();
+buildPanel();
+renderLeaders();
+renderMedals();
+renderAges();
+buildCharts();
 </script>
-{% endif %}
 {% endblock %}

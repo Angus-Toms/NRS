@@ -39,6 +39,7 @@ _STAGE_RE = re.compile(
     r'|final\s+(?:men|women)\b'
     r'|heat'
     r'|repechage'
+    r'|qualifier'
     r'|last\s+chance'
     r'|quarter[- ]?final'
     r')\b',
