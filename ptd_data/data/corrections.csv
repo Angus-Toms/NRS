@@ -275,3 +275,4 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 1973,6372,00:00:00,00:00:00,01:28:59,00:00:00,00:42:25,02:11:24,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
 1973,6359,00:00:00,00:00:00,01:30:23,00:00:00,00:41:15,02:11:38,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
 1973,6354,00:00:00,00:00:00,01:35:40,00:00:00,00:36:36,02:12:16,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
+1975234367,1812042395,00:28:17,00:03:02,00:00:00,00:00:00,00:00:00,00:00:00,Anna Bergsten DNF — preserve swim and T1; auto-corr cascade zeroed the real swim time

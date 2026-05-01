@@ -23,14 +23,12 @@
     <!-- Structured data -->
     {% block jsonld %}{% endblock %}
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ STATIC_BASE_URL }}imgs/favicon-128.png">
-    
+
+    <!-- Preload primary upright weight for faster first paint (font is self-hosted in base.css) -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ STATIC_BASE_URL }}fonts/plus-jakarta-sans/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2">
+
     <!-- Base CSS, force cache bust -->
     <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/base.css">
     <script>

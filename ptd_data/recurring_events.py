@@ -32,6 +32,16 @@ REPORT_PATH = Path(__file__).parent / "recurring_fallback_report.txt"
 SHORT_DISTANCES = {"sprint", "standard"}
 LONG_DISTANCES  = {"middle", "t100", "long"}
 
+# Series whose member events should never be grouped into a fuzzy-fallback
+# recurring. Used for championships that change venue every year — every
+# edition has an identical name (e.g. "Ironman 70.3 World Championship") so
+# the fuzzy clusterer would otherwise re-create the recurring we suppressed
+# in series_rules.py.
+NO_RECURRING_SERIES_SLUGS = {
+    "im-703-world-championships",
+    "wt-long-distance-championships",
+}
+
 
 def _normalize_name(name):
     """Strip year + diacritics + punctuation, lowercase, collapse whitespace.
@@ -113,6 +123,18 @@ def _cluster_bucket(items, threshold):
 def apply_fallback(conn):
     print("Recurring fallback: clustering orphan events by fuzzy name within course + first-token buckets")
 
+    blocked_event_ids = set()
+    if NO_RECURRING_SERIES_SLUGS:
+        placeholders = ",".join("?" * len(NO_RECURRING_SERIES_SLUGS))
+        blocked_event_ids = {
+            eid for (eid,) in conn.execute(f"""
+                SELECT DISTINCT es.event_id
+                FROM event_series es
+                JOIN series s ON s.series_id = es.series_id
+                WHERE s.slug IN ({placeholders})
+            """, list(NO_RECURRING_SERIES_SLUGS)).fetchall()
+        }
+
     rows = conn.execute("""
         SELECT e.event_id, e.name,
                ARRAY_AGG(DISTINCT r.distance) FILTER (WHERE r.distance IS NOT NULL) AS dists
@@ -122,6 +144,7 @@ def apply_fallback(conn):
         WHERE er.event_id IS NULL
         GROUP BY e.event_id, e.name
     """).fetchall()
+    rows = [r for r in rows if r[0] not in blocked_event_ids]
 
     name_lookup = {}
     buckets = defaultdict(list)  # (course, first_token) -> [(event_id, normalized_name)]

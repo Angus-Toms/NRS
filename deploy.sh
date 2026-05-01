@@ -64,12 +64,12 @@ fi
 # ── 2. Static assets → Cloudflare R2 ─────────────────────────────────────────
 if $DO_STATIC; then
     step "Cloudflare R2: uploading static assets"
-    for dir in css js imgs; do
+    for dir in css js imgs fonts/plus-jakarta-sans; do
         echo "  $dir/"
         for f in "$STATIC_DIR/$dir"/*; do
             [ -f "$f" ] || continue
             key="$dir/$(basename "$f")"
-            printf "    %-40s" "$key"
+            printf "    %-60s" "$key"
             wrangler r2 object put "$BUCKET/$key" --file "$f" --remote > /dev/null 2>&1 \
                 && echo "ok" || echo "FAILED"
         done

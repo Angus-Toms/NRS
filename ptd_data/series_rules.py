@@ -128,14 +128,21 @@ RULES = [
                                           name_regex(r"grand final"),
                                       ),
                                       recurring=True),
-    # Ironman 70.3 World Championships: one event per year named exactly that.
-    # Venue isn't in the event name (it varies year-to-year), so derive from
-    # an explicit slug/name rather than venue_key.
+    # Ironman 70.3 World Championships: series only, not recurring. The race
+    # is at a different venue every year, so a single "recurring" group would
+    # just duplicate the series page. recurring_events.py also has a guard
+    # so the fuzzy fallback doesn't re-cluster the identically-named events.
     SeriesRule("im-703-world-championships",
-                                      name_regex(r"ironman\s+70\.?3\s+world\s+championship"),
-                                      recurring=True,
-                                      recurring_slug="im-703-world-championships",
-                                      recurring_name="Ironman 70.3 World Championships"),
+                                      name_regex(r"ironman\s+70\.?3\s+world\s+championship")),
+    # WT Long Distance Championships: same shape — annual championship at a
+    # rotating venue, so it's a series, not a recurring. Includes the older
+    # "ITU Long Distance" naming (PTO-scraped pre-rebrand editions) since
+    # World Triathlon was ITU before 2020.
+    SeriesRule("wt-long-distance-championships",
+                                      any_of(
+                                          name_regex(r"\b(wt|world\s+triathlon)\s+long\s+distance\s+championship"),
+                                          name_regex(r"\bitu\s+long\s+distance\b"),
+                                      )),
     # Ironman (full) World Championships: historically Kona only, St George 2022,
     # then Kona + Nice alternating genders from 2023. Names vary, so match each form.
     SeriesRule("im-world-championships",
