@@ -1,10 +1,27 @@
 from datetime import date
 from urllib.parse import quote
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
 from ptd_data import db
 
 router = APIRouter()
+
+# Google caps sitemaps at 50,000 URLs / 50MB. Use a smaller shard size
+# so each file stays well under both limits.
+ATHLETES_PER_SITEMAP = 25_000
+
+
+def _athlete_rows():
+    conn = db.get_conn(read_only=True)
+    rows = conn.execute("""
+        SELECT a.athlete_id, MAX(r.overall) AS peak_rating
+        FROM athletes a
+        JOIN ratings r ON a.athlete_id = r.athlete_id
+        GROUP BY a.athlete_id
+        ORDER BY peak_rating DESC
+    """).fetchall()
+    conn.close()
+    return rows
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
@@ -22,10 +39,6 @@ Disallow: /favicon.ico
 # Sitemap index
 Sitemap: {base_url}/sitemap.xml
 """
-
-
-def _xml_escape(s: str) -> str:
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _url(loc: str, lastmod: str | None = None, changefreq: str | None = None,
@@ -55,15 +68,25 @@ def _wrap_urlset(urls: list[str]) -> str:
 async def sitemap_index(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
+    athlete_count = len(_athlete_rows())
+    num_athlete_shards = max(1, (athlete_count + ATHLETES_PER_SITEMAP - 1) // ATHLETES_PER_SITEMAP)
+
+    entries = [
+        f'  <sitemap><loc>{base}/sitemap-static.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-series.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-recurring.xml</loc><lastmod>{today}</lastmod></sitemap>',
+    ]
+    for i in range(1, num_athlete_shards + 1):
+        entries.append(
+            f'  <sitemap><loc>{base}/sitemap-athletes-{i}.xml</loc><lastmod>{today}</lastmod></sitemap>'
+        )
+
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f'  <sitemap><loc>{base}/sitemap-static.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
-        f'  <sitemap><loc>{base}/sitemap-athletes.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
-        f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
-        f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
-        f'  <sitemap><loc>{base}/sitemap-series.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
-        f'  <sitemap><loc>{base}/sitemap-recurring.xml</loc><lastmod>{today}</lastmod></sitemap>\n'
+        + "\n".join(entries) + "\n"
         '</sitemapindex>\n'
     )
     return Response(content=xml, media_type="application/xml")
@@ -87,23 +110,24 @@ async def sitemap_static(request: Request) -> Response:
     return Response(content=_wrap_urlset(urls), media_type="application/xml")
 
 
-@router.get("/sitemap-athletes.xml")
-async def sitemap_athletes(request: Request) -> Response:
+@router.get("/sitemap-athletes-{shard}.xml")
+async def sitemap_athletes(request: Request, shard: int) -> Response:
     base = str(request.base_url).rstrip("/")
-    conn = db.get_conn(read_only=True)
-    # All athletes with at least one rating, ordered by overall rating desc.
-    # Priority tiers: top 500 → 0.9, top 2000 → 0.8, top 10000 → 0.7, rest → 0.5
-    rows = conn.execute("""
-        SELECT a.athlete_id, MAX(r.overall) AS peak_rating
-        FROM athletes a
-        JOIN ratings r ON a.athlete_id = r.athlete_id
-        GROUP BY a.athlete_id
-        ORDER BY peak_rating DESC
-    """).fetchall()
-    conn.close()
+    rows = _athlete_rows()
+    total = len(rows)
+    num_shards = max(1, (total + ATHLETES_PER_SITEMAP - 1) // ATHLETES_PER_SITEMAP)
+    if shard < 1 or shard > num_shards:
+        raise HTTPException(status_code=404, detail="Sitemap shard out of range")
 
+    start = (shard - 1) * ATHLETES_PER_SITEMAP
+    end = min(start + ATHLETES_PER_SITEMAP, total)
+
+    # Priority tiers based on global rank: top 500 → 0.9, top 2000 → 0.8,
+    # top 10000 → 0.7, rest → 0.5.
     urls = []
-    for rank, (athlete_id, _) in enumerate(rows, start=1):
+    for idx in range(start, end):
+        athlete_id, _ = rows[idx]
+        rank = idx + 1
         if rank <= 500:
             priority = 0.9
         elif rank <= 2000:
@@ -150,19 +174,18 @@ async def sitemap_races(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today()
     conn = db.get_conn(read_only=True)
+    # Every race (elite, AG, short and long course) for all time, keyed by race_id.
     rows = conn.execute("""
-        SELECT DISTINCT race_handle, MAX(race_date) AS race_date
+        SELECT race_id, race_date
         FROM races
-        WHERE category = 'elite'
-          AND race_date >= '2000-01-01'
-        GROUP BY race_handle
         ORDER BY race_date DESC
     """).fetchall()
     conn.close()
 
     urls = []
-    for handle, race_date in rows:
+    for race_id, race_date in rows:
         if race_date is None:
+            urls.append(_url(f"{base}/race/{race_id}", changefreq="never", priority=0.4))
             continue
         days_ago = (today - race_date).days
         if days_ago <= 30:
@@ -173,9 +196,8 @@ async def sitemap_races(request: Request) -> Response:
             priority, changefreq = 0.7, "yearly"
         else:
             priority, changefreq = 0.5, "never"
-        encoded = quote(handle, safe="")
         urls.append(_url(
-            f"{base}/race/{_xml_escape(encoded)}",
+            f"{base}/race/{race_id}",
             lastmod=race_date.isoformat(),
             changefreq=changefreq,
             priority=priority,
