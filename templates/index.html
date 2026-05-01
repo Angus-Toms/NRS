@@ -321,7 +321,7 @@
                 </div>
                 <div class="blog-card-body">
                     <p class="blog-body">{{ latest_blog.teaser }}</p>
-                    <a class="blog-link" href="/about/blog/{{ latest_blog.slug }}">Read more<svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.7em;width:auto;vertical-align:middle;margin-left:0.3em"><polyline points="2,1 7,6 2,11"/></svg></a>
+                    <a class="blog-link" href="/about/blog/{{ latest_blog.slug }}" aria-label="Read more: {{ latest_blog.title }}">Read more<svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.7em;width:auto;vertical-align:middle;margin-left:0.3em"><polyline points="2,1 7,6 2,11"/></svg></a>
                 </div>
             </article>
             {% endif %}

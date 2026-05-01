@@ -13,7 +13,7 @@
 
 {% block jsonld %}
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SportsEvent","name":{{ event.name | tojson }},"sport":"Triathlon","url":"https://www.protridata.com/event/{{ event.event_id }}"{% if event.venue %},"location":{"@type":"Place","name":{{ event.venue | tojson }}}{% endif %}}
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ event.name | tojson }},"sport":"Triathlon","url":"https://www.protridata.com/event/{{ event.event_id }}"{% if event.start_date %},"startDate":"{{ event.start_date.isoformat() }}"{% endif %}{% if event.end_date %},"endDate":"{{ event.end_date.isoformat() }}"{% endif %}{% if event.venue %},"location":{"@type":"Place","name":{{ event.venue | tojson }}}{% endif %}}
 </script>
 {% endblock %}
 

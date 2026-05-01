@@ -64,13 +64,54 @@ fi
 # ── 2. Static assets → Cloudflare R2 ─────────────────────────────────────────
 if $DO_STATIC; then
     step "Cloudflare R2: uploading static assets"
+    # Content-Type matters: without it, Cloudflare won't apply Brotli (which
+    # is gated on compressible MIME types) and won't cache via the default
+    # static-asset rules. Wrangler doesn't auto-detect, so we map by extension.
+    # Content-Type matters: without it, Cloudflare won't apply Brotli (which
+    # is gated on compressible MIME types) and won't cache via the default
+    # static-asset rules. Wrangler doesn't auto-detect, so we map by extension.
+    content_type_for() {
+        case "$1" in
+            *.css)             echo "text/css; charset=utf-8" ;;
+            *.js)              echo "application/javascript; charset=utf-8" ;;
+            *.json)            echo "application/json; charset=utf-8" ;;
+            *.svg)             echo "image/svg+xml" ;;
+            *.webp)            echo "image/webp" ;;
+            *.png)             echo "image/png" ;;
+            *.jpg|*.jpeg)      echo "image/jpeg" ;;
+            *.gif)             echo "image/gif" ;;
+            *.ico)             echo "image/x-icon" ;;
+            *.woff2)           echo "font/woff2" ;;
+            *.woff)            echo "font/woff" ;;
+            *.ttf)             echo "font/ttf" ;;
+            *.txt)             echo "text/plain; charset=utf-8" ;;
+            *.xml)             echo "application/xml; charset=utf-8" ;;
+            *)                 echo "application/octet-stream" ;;
+        esac
+    }
+    # Cache-Control tells Cloudflare (and browsers) how long to cache the
+    # asset. Fonts + images have content-hashed or otherwise-stable URLs so
+    # they get the long-lived immutable header. CSS/JS are still served from
+    # plain /css/base.css etc. so we use a 1-hour max-age to avoid serving
+    # stale styles for too long after a deploy + cache purge.
+    cache_control_for() {
+        case "$1" in
+            *.woff2|*.woff|*.ttf|*.webp|*.png|*.jpg|*.jpeg|*.gif|*.ico|*.svg)
+                echo "public, max-age=31536000, immutable" ;;
+            *)
+                echo "public, max-age=3600" ;;
+        esac
+    }
     for dir in css js imgs fonts/plus-jakarta-sans; do
         echo "  $dir/"
         for f in "$STATIC_DIR/$dir"/*; do
             [ -f "$f" ] || continue
             key="$dir/$(basename "$f")"
+            ct=$(content_type_for "$f")
+            cc=$(cache_control_for "$f")
             printf "    %-60s" "$key"
-            wrangler r2 object put "$BUCKET/$key" --file "$f" --remote > /dev/null 2>&1 \
+            wrangler r2 object put "$BUCKET/$key" --file "$f" \
+                --content-type "$ct" --cache-control "$cc" --remote > /dev/null 2>&1 \
                 && echo "ok" || echo "FAILED"
         done
     done
