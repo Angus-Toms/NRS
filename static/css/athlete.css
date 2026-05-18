@@ -22,16 +22,14 @@
     align-items: center;
 }
 
+/* Visual treatment (round, cover, ring, shadow) lives in base.css under
+   .profile-img + .profile-img--on-dark; this hero image is aliased into
+   both. Keep only sizing and layout here. */
 .athlete-hero-img {
     width: 110px;
     height: 110px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     flex-shrink: 0;
     align-self: center;
-    display: block;
 }
 
 .athlete-hero-img.inactive {
@@ -105,14 +103,6 @@
     color: #fff;
     border-bottom-color: #fff;
 }
-
-.athlete-hero-flag-link {
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform 0.15s;
-    display: inline-block;
-}
-.athlete-hero-flag-link:hover { transform: scale(1.15); }
 
 .hero-meta-dot {
     color: rgba(255, 255, 255, 0.25);
@@ -291,6 +281,9 @@
 }
 
 
+/* Generic .disc-list / .disc-row / .substat rules live in base.css since
+   they're shared between the athlete and race pages. */
+
 /* ============================================
    RANKINGS
    ============================================ */
@@ -323,6 +316,287 @@ sup.ordinal-suffix {
 /* Used when no splits have been recorded for particular performance */
 .no-best-performance {
     font-size: var(--font-size-bg);
+}
+
+/* ── Per-discipline colours ──
+   Used to tint sparklines so each row reads at a glance. Keep in sync with
+   DISC_COLORS in athlete.js. */
+.disc-row--overall    { --disc-color: #E87722; }
+.disc-row--swim       { --disc-color: #38bdf8; }
+.disc-row--bike       { --disc-color: #a78bfa; }
+.disc-row--run        { --disc-color: #34d399; }
+.disc-row--transition { --disc-color: #f472b6; }
+
+/* ============================================
+   RATINGS TABLE
+   Editorial-style table: column headers up top, one row per discipline.
+   Variants by athlete state set how many columns to render:
+     .disc-table-change-rank  active w/ rank   (6 cols + toggle)
+     .disc-table-rank         retired w/ rank  (5 cols + toggle)
+     .disc-table-change       active no rank   (5 cols + toggle)
+     .disc-table              fallback         (4 cols + toggle)
+   ============================================ */
+.disc-table {
+    margin-bottom: 2rem;
+}
+
+/* Each row + the header share the same grid template so cells align.
+   Name + rating get smaller fr shares since their content is short; the
+   data columns (rank/peak/best/change) take 1fr each. All shrink together
+   but the short-content cols stay narrower. */
+.disc-table .disc-row,
+.disc-table .disc-head {
+    display: grid;
+    align-items: center;
+    gap: 0 1.25rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--border-color);
+    /* default: name | rating | peak | best */
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "name rating peak best";
+}
+.disc-table-change .disc-row,
+.disc-table-change .disc-head {
+    /* name | rating | peak | best | change */
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "name rating peak best change";
+}
+.disc-table-rank .disc-row,
+.disc-table-rank .disc-head {
+    /* name | rating | rank | peak | best */
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "name rating rank peak best";
+}
+.disc-table-change-rank .disc-row,
+.disc-table-change-rank .disc-head {
+    /* name | rating | rank | peak | best | change */
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "name rating rank peak best change";
+}
+
+/* Pin every header cell + data cell to its named grid-area so the header
+   text column and content column always line up exactly (no reliance on
+   auto-placement order). */
+.disc-th--rating { grid-area: rating; }
+.disc-th--change { grid-area: change; }
+.disc-th--rank   { grid-area: rank; }
+.disc-th--peak   { grid-area: peak; }
+.disc-th--best   { grid-area: best; }
+.disc-table .disc-name        { grid-area: name; }
+.disc-table .disc-rating-num  { grid-area: rating; }
+.disc-table .disc-change      { grid-area: change; }
+.disc-table .disc-rank        { grid-area: rank; }
+.disc-table .disc-peak        { grid-area: peak; }
+.disc-table .disc-best        { grid-area: best; }
+.disc-table .disc-toggle      { grid-area: toggle; }
+
+/* Header row: no top border (it's the first row), small vertical padding. */
+.disc-head {
+    border-top: none !important;
+    padding: 0.5rem 0 0.5rem !important;
+}
+.disc-th {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    justify-self: start;
+}
+/* Force data cells to start-align too — defends against any browser-default
+   stretch quirk that could leave the header offset relative to content. */
+.disc-table .disc-name,
+.disc-table .disc-rating-num,
+.disc-table .disc-change,
+.disc-table .disc-rank,
+.disc-table .disc-peak,
+.disc-table .disc-best {
+    justify-self: start;
+}
+
+/* Data row */
+.disc-table .disc-row:first-of-type { /* first data row sits under header */ }
+.disc-table .disc-name {
+    align-self: center;
+    line-height: 1;
+}
+.disc-table .disc-rating-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    align-self: center;
+}
+
+/* Change cell: number + sparkline laid out as a 2-col grid so the spark
+   always starts at the same x regardless of how many digits the change has
+   ("+4" vs "+187"). Baseline-aligned with the big rating number on its left. */
+.disc-change {
+    display: grid;
+    grid-template-columns: 3.2em minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0 0.5rem;
+    min-width: 0;
+}
+.disc-change .disc-rating-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    /* Stay left-aligned within the fixed slot. */
+    justify-self: start;
+}
+.disc-change .disc-spark {
+    flex: 1 1 auto;
+    height: 22px;
+    min-width: 80px;
+    max-width: 220px;
+    color: var(--disc-color, var(--text-light));
+    opacity: 0.8;
+    /* SVGs default to baseline-aligned at their bottom edge; lift slightly
+       so the line tracks roughly through the rating-num x-height instead
+       of sitting visibly below the baseline. */
+    transform: translateY(0.35em);
+}
+
+/* Rank cell: world rank on top, optional national rank as sub line below. */
+.disc-rank {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    min-width: 0;
+}
+.disc-rank .ranking-link { color: var(--text-color); text-decoration: none; }
+.disc-rank .ranking-link:hover { color: var(--primary-color); }
+/* National rank uses the shared .disc-cell-sub styling so it matches the
+   peak race subtext exactly. Override .disc-rank .ranking-link's text-color
+   above so it picks up text-light like the peak race link does. */
+.disc-rank a.disc-cell-sub {
+    color: var(--text-light);
+}
+.disc-rank a.disc-cell-sub:hover { color: var(--primary-color); }
+
+/* Peak / Best cells: value (top) + sub (below) stacked. Main row items
+   (rating, name, change) baseline-align with the value line; sub lines
+   hang below that baseline. */
+.disc-peak,
+.disc-best {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-width: 0;
+}
+.disc-cell-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+a.disc-cell-value:hover { color: var(--primary-color); }
+.disc-cell-sub {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-light);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    /* Bumped from 1.2 — overflow: hidden clips at the line-box, so smaller
+       line-height was cutting descenders (g/y/p) on race slugs. */
+    line-height: 1.5;
+    padding-bottom: 1px;
+}
+a.disc-cell-sub:hover { color: var(--primary-color); }
+
+/* Peak race slug: allow up to two lines if the race name is long, instead
+   of single-line truncation. Other .disc-cell-sub uses (national rank,
+   best-race badge) stay one line. */
+.disc-peak .disc-cell-sub {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.3;
+}
+/* Best-race delta badge: inline-flex + gap so the chevron arrow has the
+   same breathing room from the number as elsewhere (matches .disc-rating-change). */
+.disc-best-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.disc-best-badge.rating-increase { color: var(--success-color); }
+.disc-best-badge.rating-decrease { color: var(--error-color);   }
+.disc-best-badge.rating-neutral,
+.disc-best-badge.no-best-performance { color: var(--text-lighter); }
+
+/* Toggle button: not used at any breakpoint right now. Hidden everywhere. */
+.disc-toggle { display: none; }
+
+/* ── Mobile (<=768) ──
+   Drop 1y Change. Keep rank / peak / best. Equal column widths. */
+@media (max-width: 768px) {
+    .disc-th--change,
+    .disc-table .disc-change { display: none; }
+
+    /* Catch-all: name + rating + peak + best */
+    .disc-table .disc-row,
+    .disc-table .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "name rating peak best";
+    }
+    /* Variants with change become same as default (change hidden). */
+    .disc-table-change .disc-row,
+    .disc-table-change .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "name rating peak best";
+    }
+    /* Variants with rank keep rank. */
+    .disc-table-rank .disc-row,
+    .disc-table-rank .disc-head,
+    .disc-table-change-rank .disc-row,
+    .disc-table-change-rank .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "name rating rank peak best";
+    }
+}
+
+/* ── Narrow mobile (<=480) ──
+   Also drop Peak Rating; keep rank + best. */
+@media (max-width: 480px) {
+    .disc-th--peak,
+    .disc-table .disc-peak { display: none; }
+
+    /* Catch-all: name + rating + best */
+    .disc-table .disc-row,
+    .disc-table .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr);
+        grid-template-areas: "name rating best";
+    }
+    .disc-table-change .disc-row,
+    .disc-table-change .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr);
+        grid-template-areas: "name rating best";
+    }
+    .disc-table-rank .disc-row,
+    .disc-table-rank .disc-head,
+    .disc-table-change-rank .disc-row,
+    .disc-table-change-rank .disc-head {
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr);
+        grid-template-areas: "name rating rank best";
+    }
 }
 
 /* 1yr change shown in stat card sub-row - flex so SVG chevron centres */
@@ -364,13 +638,6 @@ sup.ordinal-suffix {
 
 .sub-race-toggle.expanded .sub-race-chevron {
     transform: rotate(90deg);
-}
-
-.sub-race-count {
-    font-size: 0.72em;
-    margin-left: 0.25em;
-    font-weight: 500;
-    letter-spacing: 0.01em;
 }
 
 /* Disable CSS nth-child striping for athlete tables - JS handles it via .stripe-even */
@@ -436,14 +703,33 @@ tr.sub-race-row .link:hover {
     color: var(--text-lighter);
 }
 
-/* Athlete table column widths */
-.results-table .date-col     { width: 95px; }
-.results-table .program-col  { width: 80px; }
-.results-table .position-col { width: 48px; }
+/* Athlete table column widths. Every column is fixed-width so the table has a
+   natural size that fills the 1100px page container; .table-section scrolls
+   horizontally if the screen is narrower. */
+.results-table .date-col     { width: 135px; }
+.results-table .race-col     { width: 247px; }
+.results-table .program-col  { width: 95px; }
 
-.rating-table .date-col      { width: 95px; }
-.rating-table .program-col   { width: 80px; }
-.rating-table .position-col  { width: 48px; }
+/* Match results-table for the four leading columns so the two tables line up
+   visually on desktop. */
+.rating-table .date-col      { width: 135px; }
+.rating-table .race-col      { width: 247px; }
+.rating-table .program-col   { width: 95px; }
+
+/* Table fills its .table-section; non-time columns + overall are fixed and
+   the 5 split columns share the remainder via calc(), so the header always
+   meets the right edge cleanly. min-width keeps the splits readable on
+   narrow screens; below that .table-section scrolls.
+   Fixed total = 135+247+95+80+110 (overall) = 667.
+   Scoped to >=769px so it doesn't fight the mobile-accordion `min-width: 0`
+   override in base.css - without this scope the desktop min-width wins on
+   mobile (same specificity, athlete.css loads after base.css) and blows the
+   rows off the right edge. */
+@media (min-width: 769px) {
+    .results-table table         { width: 100%; min-width: 988px; }
+    .upcoming-races-table table  { min-width: 680px; }
+    .rating-table table          { min-width: 988px; }
+}
 
 /* Ranking number in stat card inherits race-stat-num size;
    link should be dark, orange on hover */
@@ -459,36 +745,35 @@ tr.sub-race-row .link:hover {
    HISTORICAL TABLES
    ============================================ */
 
-/* Time columns - auto width to fill remaining space */
-.results-table .time-col {
-    width: calc((100% - 500px) / 6);
-    min-width: 50px;
-}
+/* Split + overall columns: fixed compact widths. Leftover space goes to the
+   race-col (which has no explicit width). Table min-width keeps the splits
+   readable; below that the section scrolls horizontally. The default
+   `table td` padding (1rem each side) eats too much of the narrow time
+   columns, so override with a tighter horizontal padding. */
+.results-table .time-col    { width: calc((100% - 667px) / 5); }
+.results-table .overall-col { width: 110px; }
+
+/* (Desktop-hide rules for .time-disc-label, sort chips and .splits-toggle-col
+   live in base.css so both the athlete and race tables get them.) */
 
 /* Upcoming races table - wider pos col, 4 splits instead of 6 */
 .upcoming-races-table .position-col { width: 72px; }
-.upcoming-races-table .time-col     { width: calc((100% - 524px) / 4); min-width: 60px; }
+.upcoming-races-table .time-col     { width: 90px; }
 
-.rating-table .rating-col {
-    width: calc((100% - 500px) / 5);
-    min-width: 50px;
-}
+/* Mirror the results-table pattern so declared widths sum to exactly 100%
+   (no proportional rescaling). Fixed total = 135+247+95+80+110 = 667; the
+   four discipline rating columns share the remainder via calc(). The
+   .overall-col rule below has to come AFTER this one because both rules
+   apply to the overall <th> (it has both classes) - last-in-source wins. */
+.rating-table .rating-col   { width: calc((100% - 667px) / 4); }
+.rating-table .overall-col  { width: 110px; }
+
+/* (Moved to base.css so the race-page rating tables also keep the
+   value + change pill side-by-side.) */
 
 /* ============================================
    TIME AND TIME-BEHIND CELLS
    ============================================ */
-.time-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.time-behind {
-    font-size: 0.75em;
-    white-space: nowrap;
-    color: var(--text-light);
-}
-
 /* ============================================
    RATING CHANGES & INDICATORS
    ============================================ */
@@ -504,19 +789,50 @@ tr.sub-race-row .link:hover {
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
+    /* Flex-wrap so the actions stay on the same row when there's space (wider
+       end of this range, ~600-768) and naturally wrap to a second row only
+       when the info column would otherwise get choked. The flex-basis on
+       info acts as the "minimum width before actions drops below". */
     .athlete-hero-inner {
-        grid-template-columns: 1fr;
-        gap: 1.25rem;
-        padding: 1.25rem 0 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem 1.25rem;
+        padding: 1.25rem 0;
+        /* override desktop grid props */
+        grid-template-columns: none;
+        grid-template-areas: none;
     }
 
     .athlete-hero-img {
         width: 88px;
         height: 88px;
+        flex-shrink: 0;
+    }
+    .athlete-hero-info {
+        flex: 1 1 320px;
+        min-width: 0;
+    }
+    .athlete-hero-actions {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        /* No margin-left:auto: when actions sits on row 1, info's flex-grow
+           pushes it to the right end naturally; when actions wraps to row 2
+           it should sit at the left edge to match the info above. */
     }
 
-    .athlete-hero-name {
-        font-size: 1.5rem;
+    .athlete-hero-name { font-size: 1.5rem; }
+
+    /* Shrink the action chrome so the strip reads as secondary */
+    .athlete-mode-pill {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.65rem;
+    }
+    .athlete-compare-link {
+        font-size: 0.72rem;
+        padding: 0.25rem 0.65rem;
     }
 
     .palmares-grid {
@@ -527,17 +843,56 @@ tr.sub-race-row .link:hover {
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
+
+    /* Stack label above races at narrow widths so each gets the full row.
+       The dash separator only makes sense as an inline divider, so drop it
+       in this layout. */
+    .palmares-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+    }
+    .palmares-item-label {
+        white-space: normal;
+        max-width: 100%;
+    }
+    .palmares-item-sep { display: none; }
+    .palmares-item-races {
+        flex: 1 1 auto;
+    }
 }
 
 @media (max-width: 480px) {
-    .athlete-hero-name {
-        font-size: 1.375rem;
+    /* Centred hero: photo, info (name/meta/stats), then actions centred. */
+    .athlete-hero-inner {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.75rem;
     }
 
+    .athlete-hero-img { width: 72px; height: 72px; }
+    .athlete-hero-info {
+        flex: 0 1 auto;       /* override the 320px basis from <=768 */
+        align-items: center;
+    }
+    .athlete-hero-actions {
+        align-self: center;     /* override align-self:start from base */
+        justify-content: center;
+    }
+
+    .athlete-hero-name {
+        font-size: 1.375rem;
+        justify-content: center;
+    }
     .athlete-hero-name-row {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 0.5rem;
+    }
+    .athlete-hero-meta,
+    .athlete-hero-stats {
+        justify-content: center;
     }
 }
 
@@ -611,3 +966,89 @@ tr.sub-race-row .link:hover {
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
+
+.rivals-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.rival-card {
+    position: relative;
+    width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.75rem 0.5rem;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.rival-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.rival-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    color: var(--text-color);
+    width: 100%;
+}
+.rival-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--border-color);
+}
+.rival-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+.rival-record {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+}
+.rival-wins   { color: #16a34a; font-weight: 600; }
+.rival-losses { color: #dc2626; font-weight: 600; }
+.rival-compare {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: var(--text-light);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.rival-compare svg { width: 12px; height: 8px; }
+.rival-compare:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: rgba(232, 93, 4, 0.08);
+}
+
+@media (max-width: 500px) {
+    .rival-card { width: 120px; padding: 0.5rem 0.4rem; }
+    .rival-img  { width: 56px; height: 56px; }
+    .rival-name { font-size: 0.74rem; }
+    .rival-record { font-size: 0.72rem; }
+}
+
+/* The results / rating mobile accordion CSS now lives in base.css so the
+   race page picks it up too. */

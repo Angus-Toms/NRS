@@ -27,7 +27,7 @@
 
 {% block content %}
 <div class="filters-card">
-    <form method="get" action="/leaderboard" class="filters-form">
+    <form method="get" action="/athlete-leaderboard" class="filters-form">
 
         <div class="filters-primary">
 
@@ -140,7 +140,7 @@
             </button>
 
             <!-- Reset + Apply -->
-            <a href="/leaderboard" class="btn-reset">Reset</a>
+            <a href="/athlete-leaderboard" class="btn-reset">Reset</a>
             <button type="submit" class="btn-search">Search</button>
         </div>
 
@@ -259,7 +259,7 @@
 {% if not athletes %}
 <div class="no-results">
     <p>No athletes found matching your filters.</p>
-    <a href="/leaderboard" class="btn-search">Reset Filters</a>
+    <a href="/athlete-leaderboard" class="btn-search">Reset Filters</a>
 </div>
 {% endif %}
 {% endblock %}

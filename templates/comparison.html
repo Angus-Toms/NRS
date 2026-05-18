@@ -17,9 +17,10 @@
 
 {% block content %}
     <div class="search-container">
-        <div class="search-box">
+        <div class="search-box" data-athlete-key="athlete1">
             <div class="search-box-header">
                 <span>Athlete 1</span>
+                <button type="button" class="sel-remove-btn" aria-label="Clear selection">&times;</button>
             </div>
             <div class="search-box-body">
                 <div class="search-input-wrapper">
@@ -36,9 +37,10 @@
             </div>
         </div>
 
-        <div class="search-box">
+        <div class="search-box" data-athlete-key="athlete2">
             <div class="search-box-header">
                 <span>Athlete 2</span>
+                <button type="button" class="sel-remove-btn" aria-label="Clear selection">&times;</button>
             </div>
             <div class="search-box-body">
                 <div class="search-input-wrapper">
@@ -56,17 +58,16 @@
         </div>
     </div>
 
-    <div id="programPicker" class="program-picker" hidden>
-        <span class="program-picker-label">Compare across</span>
-        <div class="radio-chips" id="programPickerChips"></div>
-    </div>
-
-    <div class="compare-button-container">
+    <div class="compare-action-row">
+        <div id="programPicker" class="program-picker" hidden>
+            <span class="program-picker-label">Compare across</span>
+            <div class="radio-chips" id="programPickerChips"></div>
+        </div>
         <button id="compareBtn" class="compare-button" disabled>
             Compare Athletes
         </button>
-        <div id="programPickerHint" class="program-picker-hint" hidden></div>
     </div>
+    <div id="programPickerHint" class="program-picker-hint" hidden></div>
 
     <div id="errorMsg" class="error-message"></div>
     <div id="loading" class="loading">Loading comparison data...</div>

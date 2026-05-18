@@ -49,6 +49,8 @@
         </div>
     </section>
 
+    <p class="home-intro">Pro Tri Data is the home of independent triathlon analytics. Explore ratings, race results and career stats across short and long course: for pros, age-groupers and the chasers in between.</p>
+
     <!-- ── SECTION 1: ATHLETES ── -->
     <section class="home-section">
         <div class="home-section-head">
@@ -59,13 +61,14 @@
             <a href="/athletes" class="home-more-link">Browse All Athletes</a>
         </div>
 
-        {% set champ_rows = [
-            ('World Triathlon', men_champ,    women_champ,    'short'),
-            ('Ironman',         men_im_champ, women_im_champ, 'long'),
+        {% set champ_cards = [
+            ('WT',  men_champ,    'short'),
+            ('WT',  women_champ,  'short'),
+            ('IM',  men_im_champ, 'long'),
+            ('IM',  women_im_champ, 'long'),
         ] %}
-        {% for label, m, w, course in champ_rows %}
         <div class="champs-grid">
-            {% for champ in [m, w] %}
+            {% for label, champ, course in champ_cards %}
             <a href="/athlete/{{ champ.athlete_id }}?course={{ course }}" class="champ-card">
                 <div class="champ-card-header">
                     <span class="champ-badge">2025 {{ "Men" if champ.gender == "male" else "Women" }}'s {{ label }} World Champion</span>
@@ -75,33 +78,30 @@
                         src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ champ.athlete_id ~ '.webp' if champ.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
                         alt="{{ champ.name }}"
                         class="champ-img">
-                    <div class="champ-info">
-                        <div class="champ-namerow">
-                            <h3 class="champ-name">{{ champ.name }}</h3>
-                            <span class="champ-flag">{{ champ.country_emoji }}</span>
+                    <div class="champ-namerow">
+                        <h3 class="champ-name">{{ champ.name }}</h3>
+                        <span class="champ-flag">{{ champ.country_emoji }}</span>
+                    </div>
+                    <div class="champ-stats-row">
+                        <div class="champ-stat">
+                            <span class="champ-stat-num">{{ "%.0f"|format(champ.overall_rating) }}</span>
+                            <span class="champ-stat-lbl">Rating</span>
                         </div>
-                        <div class="champ-stats-row">
-                            <div class="champ-stat">
-                                <span class="champ-stat-num">{{ "%.0f"|format(champ.overall_rating) }}</span>
-                                <span class="champ-stat-lbl">Rating</span>
-                            </div>
-                            <div class="champ-stat-divider"></div>
-                            <div class="champ-stat">
-                                <span class="champ-stat-num">#{{ champ.world_overall }}</span>
-                                <span class="champ-stat-lbl">World rank</span>
-                            </div>
-                            <div class="champ-stat-divider"></div>
-                            <div class="champ-stat">
-                                <span class="champ-stat-num">{{ champ.wins }}</span>
-                                <span class="champ-stat-lbl">Career wins</span>
-                            </div>
+                        <div class="champ-stat-divider"></div>
+                        <div class="champ-stat">
+                            <span class="champ-stat-num">#{{ champ.world_overall }}</span>
+                            <span class="champ-stat-lbl">Rank</span>
+                        </div>
+                        <div class="champ-stat-divider"></div>
+                        <div class="champ-stat">
+                            <span class="champ-stat-num">{{ champ.wins }}</span>
+                            <span class="champ-stat-lbl">Wins</span>
                         </div>
                     </div>
                 </div>
             </a>
             {% endfor %}
         </div>
-        {% endfor %}
     </section>
 
     <!-- ── SECTION 2: RACES ── -->
@@ -246,30 +246,32 @@
                 <h2 class="home-section-title">Leaderboard</h2>
                 <p class="home-section-sub">See who leads overall, in different disciplines and nations &amp; who's climbing the rankings fastest this year.</p>
             </div>
-            <a href="/leaderboard" class="home-more-link">View More Leaderboards</a>
+            <a href="/athlete-leaderboard" class="home-more-link">View More Leaderboards</a>
         </div>
 
         <div class="home-lb-grid">
             {% for label, podium, gender_slug, cat, crs in [
-                ("Elite Men",         men_podium,         "male",   "elite", "short"),
-                ("Elite Women",       women_podium,       "female", "elite", "short"),
-                ("AG Men",            men_ag_podium,      "male",   "ag",    "short"),
-                ("AG Women",          women_ag_podium,    "female", "ag",    "short"),
-                ("Long Course Men",   men_long_podium,    "male",   "elite", "long"),
-                ("Long Course Women", women_long_podium,  "female", "elite", "long"),
+                ("Men · Short Course",   men_podium,         "male",   "elite", "short"),
+                ("Women · Short Course", women_podium,       "female", "elite", "short"),
+                ("Men · Long Course",    men_long_podium,    "male",   "elite", "long"),
+                ("Women · Long Course",  women_long_podium,  "female", "elite", "long"),
+                ("Men · Age Group",      men_ag_podium,      "male",   "ag",    "short"),
+                ("Women · Age Group",    women_ag_podium,    "female", "ag",    "short"),
             ] %}
-            <div class="home-lb-card">
-                <div class="home-lb-card-header">
-                    <a href="/leaderboard?gender={{ gender_slug }}&category={{ cat }}&course={{ crs }}&active_only=false" class="home-lb-card-title">All-time {{ label }}</a>
-                </div>
-                <ol class="home-lb-list">
+            <div class="lb-widget">
+                <a href="/athlete-leaderboard?gender={{ gender_slug }}&category={{ cat }}&course={{ crs }}&active_only=false" class="lb-widget-header">{{ label }}</a>
+                <ol class="lb-widget-list">
                     {% for a in podium %}
-                    <li class="home-lb-item">
-                        <span class="lb-pos lb-pos--{{ loop.index }}">{{ loop.index }}</span>
+                    {% set pos = loop.index %}
+                    <li class="lb-widget-item">
+                        {% if pos == 1 %}<span class="pos-circle gold">1</span>
+                        {% elif pos == 2 %}<span class="pos-circle silver">2</span>
+                        {% elif pos == 3 %}<span class="pos-circle bronze">3</span>
+                        {% else %}<span class="pos-other">{{ pos }}</span>{% endif %}
                         <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img else 'imgs/default_user_64.webp' }}"
-                             alt="{{ a.name }}" class="lb-img" loading="lazy">
-                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-name lb-name-link">{{ a.name }} {{ a.country_emoji }}</a>
-                        <span class="lb-rating">{{ "%.1f"|format(a.overall) }}</span>
+                             alt="{{ a.name }}" class="lb-widget-img" loading="lazy" width="32" height="32">
+                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-widget-name">{{ a.name }} {{ a.country_emoji }}</a>
+                        <span class="lb-widget-rating">{{ "%.0f"|format(a.overall) }}</span>
                     </li>
                     {% endfor %}
                 </ol>
@@ -298,7 +300,7 @@
                     <span class="compare-vs-divider">vs</span>
                     <span class="compare-vs-name">Gomez Noya</span>
                 </div>
-                <a href="/compare/7788/5695" class="compare-cta-btn">See Comparison</a>
+                <a href="/athlete-compare/7788/5695" class="compare-cta-btn">See Comparison</a>
             </div>
         </div>
     </section>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Races - Pro Tri Data{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_comparison.css">
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Compare Races</h1>
+        <span class="page-hero-subtitle">Head-to-head course, conditions &amp; field strength</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+    <div class="search-container">
+        <div class="search-box" data-race-key="race1">
+            <div class="search-box-header">
+                <span>Race 1</span>
+                <button type="button" class="sel-remove-btn" aria-label="Clear selection">&times;</button>
+            </div>
+            <div class="search-box-body">
+                <div class="search-input-wrapper">
+                    <input type="text" id="rc-search1" class="search-input"
+                           placeholder="Search race, event, venue..." autocomplete="off">
+                    <div id="rc-results1" class="search-results"></div>
+                </div>
+                <div id="rc-selected1"></div>
+            </div>
+        </div>
+
+        <div class="search-box" data-race-key="race2">
+            <div class="search-box-header">
+                <span>Race 2</span>
+                <button type="button" class="sel-remove-btn" aria-label="Clear selection">&times;</button>
+            </div>
+            <div class="search-box-body">
+                <div class="search-input-wrapper">
+                    <input type="text" id="rc-search2" class="search-input"
+                           placeholder="Pick race 1 first..." autocomplete="off" disabled>
+                    <div id="rc-results2" class="search-results"></div>
+                </div>
+                <div id="rc-selected2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="compare-action-row">
+        <button id="rc-compareBtn" class="compare-button" disabled>
+            Compare Races
+        </button>
+    </div>
+    <div id="rc-pickerHint" class="program-picker-hint" hidden></div>
+
+    <div id="rc-errorMsg" class="error-message"></div>
+    <div id="rc-loading" class="loading">Loading comparison data...</div>
+
+    <div id="rc-results" class="comparison-results"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/race_comparison.js"></script>
+{% endblock %}
+
+{% block race_comparison_specific_js %}
+<!-- JS for the race-comparison charts is injected here -->
+{% endblock %}

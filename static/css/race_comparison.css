@@ -1,0 +1,260 @@
+/* Page-specific styles for /race-compare. The shared comparison.css does the
+   heavy lifting for the picker boxes / h2h-stats card; this file adds race-
+   specific bits: selected-race card, header row, distribution charts. */
+
+/* ---- Selected race card (under the picker) ---- */
+.rc-sel-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.rc-sel-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.25;
+}
+.rc-sel-meta {
+    font-size: 0.82rem;
+    color: var(--text-light);
+}
+.rc-sel-meta-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.rc-sel-pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: none;
+    letter-spacing: 0;
+}
+.rc-sel-pill--male   { background: #e3eef9; border-color: #c5dbf2; color: #1f5599; }
+.rc-sel-pill--female { background: #fbe6ee; border-color: #f5c4d5; color: #b41754; }
+
+.rc-sel-stats {
+    display: flex;
+    gap: 1rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border-color);
+}
+.rc-sel-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+}
+.rc-sel-stat-num {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.rc-sel-stat-lbl {
+    font-size: 0.65rem;
+    color: var(--text-lighter);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+/* ---- Header row above the comparison: side-by-side podium cards ---- */
+.rc-header-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.rc-podium-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--box-shadow);
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+.rc-podium-card .event-race-podium {
+    gap: 0.5rem;
+}
+
+/* Best Performances row — 5-column grid:
+     [name1 (1fr)] [val1 (auto)] [label (160px)] [val2 (auto)] [name2 (1fr)]
+   Value columns sit immediately next to the centre label so their inner
+   edges line up across rows; names fill the outer flex space and anchor to
+   the value side (right-aligned for left, left-aligned for right) so each
+   reads as if pulled in toward its value. */
+.rc-bp-row {
+    display: grid;
+    grid-template-columns: 1fr auto 160px auto 1fr;
+    align-items: baseline;
+    column-gap: 0.6rem;
+    padding: 0.55rem 1.5rem;
+}
+.rc-bp-val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.rc-bp-val--left  { text-align: right; }
+.rc-bp-val--right { text-align: left; }
+.rc-bp-val .chg-arrow { margin-right: 0.15em; }
+.rc-bp-name {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    /* Extra padding on the outer edge keeps long names from butting up
+       against the table border before they ellipsise. */
+}
+.rc-bp-name--left  { text-align: right; padding-left:  0.5rem; }
+.rc-bp-name--right { text-align: left;  padding-right: 0.5rem; }
+.rc-bp-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    text-align: center;
+    white-space: nowrap;
+}
+/* Name links here shouldn't flip orange after a click. */
+.rc-bp-name.link,
+.rc-bp-name.link:visited { color: var(--text-light); }
+.rc-bp-name.link:hover   { color: var(--primary-color); }
+
+/* Common athletes table — multi-discipline rendering. Each cell carries one
+   span per discipline; only the active one is visible. .h2h-winner (from
+   comparison.css) colours the faster split; the slower side gets a small
+   "+M:SS" .time-behind under its time. */
+.rc-split-side {
+    display: none;
+    font-variant-numeric: tabular-nums;
+}
+.rc-split-side--active { display: inline-block; }
+
+/* Caption above the wins-summary block — clarifies what the three numbers
+   represent. */
+.rc-wins-caption {
+    text-align: center;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}
+
+/* Per-discipline win counts — all four pre-rendered, only the active one is
+   shown. Drives the same radio as the table below. */
+.rc-wins-val { display: none; }
+.rc-wins-val--active { display: inline; }
+
+/* Mirror the home page event podium so race-comparison cards read the same.
+   These classes are only defined in index.css, which isn't loaded on this
+   page — re-declared here verbatim. */
+.event-race-podium {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.event-race-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-color);
+}
+.event-race-entry-img {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.event-entry-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.event-entry-name:hover { color: var(--primary-color); }
+.event-entry-time {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+    flex-shrink: 0;
+}
+.event-entry-time--winner {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+.event-entry-time--diff {
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+@media (max-width: 720px) {
+    .rc-header-row { grid-template-columns: 1fr; }
+}
+
+/* Context line under a value in the h2h stats card (e.g. best-performance
+   athlete name beneath the +rating-change number). */
+.rc-stat-ctx {
+    display: block;
+    width: 100%;
+    font-size: 0.72rem;
+    color: var(--text-light);
+    margin-top: 2px;
+    line-height: 1.2;
+}
+.rc-stat-ctx .link { color: inherit; }
+.rc-stat-ctx .link:hover { color: var(--primary-color); }
+
+/* The left-cell of an h2h row is row-reversed in comparison.css; force the
+   context line to span the full width so it sits *under* the value (not
+   beside it). */
+.h2h-stat-row > .h2h-stat-cell:first-child  .rc-stat-ctx { text-align: right; }
+.h2h-stat-row > .h2h-stat-cell:last-child   .rc-stat-ctx { text-align: left; }
+.h2h-stat-cell { flex-wrap: wrap; }
+
+/* ---- Distribution chart card ---- */
+.rc-dist-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+}
+.rc-dist-main {
+    position: relative;
+    height: 320px;
+}
+.rc-mini-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* Common-athletes table widens header columns. */
+.h2h-table td.h2h-winner { color: var(--success-color); font-weight: 700; }

@@ -26,7 +26,12 @@
             </div>
             {% else %}
             <div class="race-hero-finishers">
-                {{ race.athlete_count }} athletes · {{ finish_count }} finishers · {{ dnf_count }} DNFs
+                {{ race.athlete_count }} athletes · {{ finish_count }} finishers
+                {%- set _label = {'DNF':'DNFs', 'DNS':'DNSs', 'DQ':'DQs', 'LAP':'LAPs', 'NC':'NCs'} -%}
+                {%- for status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] -%}
+                    {%- set n = race.status_counts.get(status, 0) -%}
+                    {%- if n %} · {{ n }} {{ _label[status] }}{%- endif -%}
+                {%- endfor -%}
             </div>
             {% endif %}
             {% if event_races|length > 1 %}
@@ -58,6 +63,13 @@
         <!-- Right: podium (past races only) -->
         {% if splits_data and not is_upcoming %}
         <div class="race-hero-podium">
+            <div class="race-hero-actions">
+                <a href="/race-compare?r1={{ race.race_id }}" class="race-compare-link">
+                    <svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em">
+                        <polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/>
+                    </svg>Compare race
+                </a>
+            </div>
             <div class="podium-label">Podium</div>
             {% for athlete in splits_data[:3] %}
                 {% if athlete.position in [1, 2, 3] %}

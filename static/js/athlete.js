@@ -301,6 +301,117 @@ function toggleNotableResults(button, targetId) {
     button.classList.toggle('open', !expanded);
 }
 
+// Mobile-only sort chips for the race results table. Mirrors the existing
+// header click behavior: click a chip to sort by that column; click again to
+// flip direction. Default state: Date desc (matches initial server order).
+(function initSortChips() {
+    const chipRow = document.querySelector('.results-sort-chips');
+    if (!chipRow) return;
+    // The .results-table class is shared with the upcoming-races table; target
+    // the race-results table specifically (it's the chip row's next sibling).
+    const table = chipRow.nextElementSibling?.querySelector('table.sortable-table');
+    if (!table) return;
+    const chips = chipRow.querySelectorAll('.sort-chip');
+
+    // Mark Date chip as the initial selected/desc state. We don't re-sort on
+    // load - server already delivers rows in date-desc order.
+    const dateChip = chipRow.querySelector('.sort-chip[data-sort-col="0"]');
+    if (dateChip) dateChip.classList.add('selected', 'desc');
+
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            const col = parseInt(chip.dataset.sortCol, 10);
+            const wasSelected = chip.classList.contains('selected');
+            const wasDesc = chip.classList.contains('desc');
+
+            chips.forEach(c => c.classList.remove('selected', 'asc', 'desc'));
+
+            // Toggle direction when re-clicking the active chip; otherwise pick
+            // a sensible default per column (date -> desc, others -> asc).
+            let asc;
+            if (wasSelected) asc = wasDesc;
+            else asc = col !== 0;
+
+            chip.classList.add('selected', asc ? 'asc' : 'desc');
+            sortTable(table, col, asc);
+            const tbody = table.querySelector('tbody');
+            if (tbody) _restripeTable(tbody);
+        });
+    });
+})();
+
+// Rating-history chip row: sort by date, position, or any discipline rating.
+// Default direction per axis: date -> desc (newest first), position -> asc
+// (1st first), discipline rating -> desc (highest first). All values are
+// read from the cell's data-value attribute.
+(function initRatingChips() {
+    const chipRow = document.querySelector('.ratings-sort-chips');
+    if (!chipRow) return;
+    const table = chipRow.nextElementSibling?.querySelector('table.sortable-table');
+    if (!table) return;
+
+    const chips = chipRow.querySelectorAll('.sort-chip');
+
+    // Default: Date desc, matching server-side order.
+    const dateChip = chipRow.querySelector('.sort-chip[data-sort-col="0"]');
+    if (dateChip) dateChip.classList.add('selected', 'desc');
+
+    const defaultAscFor = { date: false, position: true, discipline: false };
+
+    function sortRatings(col, axis, asc) {
+        const tbody = table.querySelector('tbody');
+        const rows  = Array.from(tbody.querySelectorAll('tr')).filter(
+            r => !r.querySelector('.no-data')
+        );
+        rows.sort((a, b) => {
+            let aVal = a.cells[col].getAttribute('data-value');
+            let bVal = b.cells[col].getAttribute('data-value');
+            if (axis === 'date') {
+                aVal = (aVal || '').toString();
+                bVal = (bVal || '').toString();
+            } else {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+                // NaNs (missing data) sink to the bottom regardless of asc/desc.
+                if (isNaN(aVal)) return 1;
+                if (isNaN(bVal)) return -1;
+            }
+            if (aVal < bVal) return asc ? -1 : 1;
+            if (aVal > bVal) return asc ? 1 : -1;
+            return 0;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+        _restripeTable(tbody);
+    }
+
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            const col  = parseInt(chip.dataset.sortCol, 10);
+            const axis = chip.dataset.sortAxis;
+            const wasSelected = chip.classList.contains('selected');
+            const wasDesc = chip.classList.contains('desc');
+            chips.forEach(c => c.classList.remove('selected', 'asc', 'desc'));
+            const asc = wasSelected ? wasDesc : defaultAscFor[axis];
+            chip.classList.add('selected', asc ? 'asc' : 'desc');
+            sortRatings(col, axis, asc);
+        });
+    });
+})();
+
+// Mobile splits accordion: each main race row has a chevron button that
+// toggles a .expanded class on its <tr>, revealing the splits row below.
+(function initSplitsToggle() {
+    document.querySelectorAll('.results-table .splits-toggle, .rating-table .splits-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = btn.closest('tr');
+            if (!row) return;
+            const expanded = row.classList.toggle('expanded');
+            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            btn.setAttribute('aria-label', expanded ? 'Hide splits' : 'Show splits');
+        });
+    });
+})();
+
 // Add click handlers to sortable headers.
 // (Previously wrapped in DOMContentLoaded; runs immediately because athlete.js
 // is at end of body and we also re-run it after partial nav when DOMContent
@@ -781,6 +892,40 @@ document.querySelectorAll('.sub-race-toggle').forEach(btn => {
 
 // Initial stripe pass - also called after sort (sortTable fires on th click)
 document.querySelectorAll('.results-table tbody, .rating-table tbody').forEach(_restripeTable);
+
+// Mobile-only chevron toggle: each non-Overall .disc-row has a chevron button
+// that expands/collapses its substats. Chevron is display:none on desktop so
+// click does nothing there. Toggling .expanded on the row drives the CSS.
+document.querySelectorAll('.disc-table .disc-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const row = btn.closest('.disc-row');
+        const expanded = row.classList.toggle('expanded');
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+});
+
+// Rivals row: hide any card that doesn't fit on one line. Recomputed on
+// container resize so the row stays single-line at every width without
+// hard-coded breakpoints.
+(function () {
+    const row = document.querySelector('.rivals-row');
+    if (!row) return;
+    const cards = Array.from(row.querySelectorAll('.rival-card'));
+    if (!cards.length) return;
+    function fit() {
+        cards.forEach(c => { c.style.display = ''; });
+        const firstTop = cards[0].offsetTop;
+        for (const c of cards) {
+            if (c.offsetTop > firstTop) c.style.display = 'none';
+        }
+    }
+    fit();
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(fit).observe(row.parentElement || document.body);
+    } else {
+        window.addEventListener('resize', fit);
+    }
+})();
 
 // Expose functions referenced from inline HTML onclick attributes. The IIFE
 // wrap above makes these locally scoped, so we hoist them back onto window.

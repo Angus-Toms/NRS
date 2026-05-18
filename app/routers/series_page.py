@@ -4,7 +4,6 @@ from fastapi.templating import Jinja2Templates
 
 from config import STATIC_BASE_URL
 from ptd_data import queries
-from ptd_data.queries import _location_from_name
 from app.routers.router_utils import format_time, format_time_behind
 
 templates = Jinja2Templates(directory="templates")
@@ -62,6 +61,7 @@ def _races_to_json(races):
             "race_id":        r["race_id"],
             "race_date":      rdate.isoformat() if rdate else None,
             "year":           rdate.year if rdate else None,
+            "race_handle":    r.get("race_handle"),
             "event_name":     r.get("event_name"),
             "race_title":     r.get("race_title"),
             "venue":          r.get("venue"),
@@ -207,7 +207,7 @@ def _build_program_payload(races, leaders, perf_history, medal_table,
         raw = race.pop("standards_raw", None)
         thresh = thresholds_by_gender.get(race.get("gender"))
         if raw and thresh:
-            race["standards"]        = {d: round(raw[d]) for d in _DISCS}
+            race["standards"]        = {d: (round(raw[d]) if raw.get(d) is not None else None) for d in _DISCS}
             race["standard_classes"] = {d: _classify(raw[d], thresh) for d in _DISCS}
         else:
             race["standards"]        = None
@@ -310,11 +310,6 @@ async def series_index(request: Request):
     # strongest-field records into a beginner/.../expert pill.
     thresholds = {g: queries.get_race_standard_thresholds(g) for g in ("male", "female")}
 
-    def _short_label(event_name, venue, race_date):
-        v = (venue or "").strip() or _location_from_name(event_name or "")
-        yr = race_date.year % 100 if race_date else None
-        return f"{v} '{yr:02d}" if yr is not None else v
-
     for s in series_list:
         h = highlights.get(s["series_id"], {})
         s["editions"]   = h.get("editions") or []
@@ -333,22 +328,14 @@ async def series_index(request: Request):
                     else:
                         p["gap_fmt"] = ""
 
-        # Short edition labels for top athletes ("Yokohama '24").
-        for leader_list in (s["top_male"], s["top_female"]):
-            for leader in leader_list:
-                for ed in leader["editions"]:
-                    ed["short"] = _short_label(ed.get("event_name"), ed.get("venue"), ed.get("race_date"))
-
-        # Records: attach short labels + classify the strongest-field
-        # ratings using the per-gender thresholds.
+        # Classify the strongest-field ratings using the per-gender
+        # thresholds; race_handle ("short") is already attached upstream.
         recs = records.get(s["series_id"]) or {"male": {}, "female": {}}
         for gender_key, db_gender in (("male", "male"), ("female", "female")):
             bucket = recs.get(gender_key, {})
             for k in ("strongest_overall", "strongest_swim", "strongest_bike", "strongest_run"):
                 if k in bucket:
-                    f = bucket[k]
-                    f["short"] = _short_label(f.get("event_name"), f.get("venue"), f.get("race_date"))
-                    f["classification"] = _classify(f["value"], thresholds[db_gender])
+                    bucket[k]["classification"] = _classify(bucket[k]["value"], thresholds[db_gender])
         s["records"] = recs
 
     groups = {t: [] for t in _TIER_ORDER}

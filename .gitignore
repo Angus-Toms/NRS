@@ -18,6 +18,12 @@ __pycache__/
 .wrangler/
 debug
 
+# Scheduled-run log (scripts/weekly.sh)
+scripts/weekly.log
+
+# Local secrets sourced by scripts/deploy.sh (RENDER_API_KEY etc)
+scripts/.env
+
 # Data (runtime only - source data in ptd_data/data/ is tracked)
 data/
 !ptd_data/data/

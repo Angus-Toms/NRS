@@ -1,4 +1,5 @@
 from datetime import date
+from functools import lru_cache
 from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
@@ -10,25 +11,36 @@ router = APIRouter()
 # so each file stays well under both limits.
 ATHLETES_PER_SITEMAP = 25_000
 
+# Shared read-only connection reused across requests. DuckDB connections are
+# heavyweight to open and serialise queries internally, so a single shared
+# read-only handle is cheaper and safe.
+_conn = None
 
+
+def _get_conn():
+    global _conn
+    if _conn is None:
+        _conn = db.get_conn(read_only=True)
+    return _conn
+
+
+@lru_cache(maxsize=1)
 def _athlete_rows():
-    conn = db.get_conn(read_only=True)
-    rows = conn.execute("""
+    """All athlete IDs ordered by peak rating. Cached for process lifetime —
+    the ratings table only changes on rebuild, which restarts the app. This
+    query scans the full ratings table and was previously rerun on every
+    sitemap-shard request."""
+    return _get_conn().execute("""
         SELECT a.athlete_id, MAX(r.overall) AS peak_rating
         FROM athletes a
         JOIN ratings r ON a.athlete_id = r.athlete_id
         GROUP BY a.athlete_id
         ORDER BY peak_rating DESC
     """).fetchall()
-    conn.close()
-    return rows
 
 
 def _athlete_count() -> int:
-    conn = db.get_conn(read_only=True)
-    n = conn.execute("SELECT COUNT(DISTINCT athlete_id) FROM ratings").fetchone()[0]
-    conn.close()
-    return n
+    return len(_athlete_rows())
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
@@ -38,6 +50,8 @@ async def robots_txt(request: Request) -> str:
 
 # Comparison result pages generate too many URL combinations
 Disallow: /compare/
+Disallow: /athlete-compare/
+Disallow: /race-compare/
 
 # Static assets & internal paths
 Disallow: /static/
@@ -117,13 +131,15 @@ async def sitemap_static(request: Request) -> Response:
     today = date.today().isoformat()
     urls = [
         _url(f"{base}/",           today, "daily",   1.0),
-        _url(f"{base}/leaderboard", today, "daily",  0.9),
+        _url(f"{base}/athlete-leaderboard", today, "daily",  0.9),
+        _url(f"{base}/race-leaderboard",    today, "daily",  0.8),
         _url(f"{base}/races",       today, "daily",  0.9),
         _url(f"{base}/upcoming",    today, "daily",  0.8),
         _url(f"{base}/athletes",    today, "weekly", 0.8),
         _url(f"{base}/countries",   today, "weekly", 0.7),
         _url(f"{base}/series",      today, "weekly", 0.7),
-        _url(f"{base}/compare",     today, "monthly", 0.5),
+        _url(f"{base}/athlete-compare", today, "monthly", 0.5),
+        _url(f"{base}/race-compare",    today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
     ]
     return _xml_response(_wrap_urlset(urls))
@@ -160,19 +176,22 @@ async def sitemap_athletes(request: Request, shard: int) -> Response:
     return _xml_response(_wrap_urlset(urls))
 
 
-@router.get("/sitemap-countries.xml")
-async def sitemap_countries(request: Request) -> Response:
-    base = str(request.base_url).rstrip("/")
-    today = date.today().isoformat()
-    conn = db.get_conn(read_only=True)
-    rows = conn.execute("""
+@lru_cache(maxsize=1)
+def _country_rows():
+    return _get_conn().execute("""
         SELECT n.alpha3, COUNT(a.athlete_id) AS athlete_count
         FROM nationalities n
         LEFT JOIN athletes a ON a.country_full = n.country_full
         GROUP BY n.alpha3
         ORDER BY athlete_count DESC, n.alpha3
     """).fetchall()
-    conn.close()
+
+
+@router.get("/sitemap-countries.xml")
+async def sitemap_countries(request: Request) -> Response:
+    base = str(request.base_url).rstrip("/")
+    today = date.today().isoformat()
+    rows = _country_rows()
 
     urls = []
     for alpha3, count in rows:
@@ -188,18 +207,19 @@ async def sitemap_countries(request: Request) -> Response:
     return _xml_response(_wrap_urlset(urls))
 
 
+@lru_cache(maxsize=1)
+def _race_rows():
+    return _get_conn().execute(
+        "SELECT race_id, race_date FROM races ORDER BY race_date DESC"
+    ).fetchall()
+
+
 @router.get("/sitemap-races.xml")
 async def sitemap_races(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today()
-    conn = db.get_conn(read_only=True)
     # Every race (elite, AG, short and long course) for all time, keyed by race_id.
-    rows = conn.execute("""
-        SELECT race_id, race_date
-        FROM races
-        ORDER BY race_date DESC
-    """).fetchall()
-    conn.close()
+    rows = _race_rows()
 
     urls = []
     for race_id, race_date in rows:
@@ -225,34 +245,38 @@ async def sitemap_races(request: Request) -> Response:
     return _xml_response(_wrap_urlset(urls))
 
 
+@lru_cache(maxsize=1)
+def _series_slugs():
+    return [r[0] for r in _get_conn().execute(
+        "SELECT slug FROM series ORDER BY sort_order, name"
+    ).fetchall()]
+
+
 @router.get("/sitemap-series.xml")
 async def sitemap_series(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
-    conn = db.get_conn(read_only=True)
-    rows = conn.execute("SELECT slug FROM series ORDER BY sort_order, name").fetchall()
-    conn.close()
-
-    urls = [_url(f"{base}/series/{quote(r[0], safe='')}", lastmod=today, changefreq="weekly", priority=0.7)
-            for r in rows]
+    urls = [_url(f"{base}/series/{quote(s, safe='')}", lastmod=today, changefreq="weekly", priority=0.7)
+            for s in _series_slugs()]
     return _xml_response(_wrap_urlset(urls))
+
+
+@lru_cache(maxsize=1)
+def _recurring_slugs():
+    return [r[0] for r in _get_conn().execute("""
+        SELECT re.slug
+        FROM recurring_events re
+        JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
+        JOIN events e ON e.event_id = er.event_id
+        GROUP BY re.recurring_event_id, re.slug
+        ORDER BY MAX(e.start_date) DESC
+    """).fetchall()]
 
 
 @router.get("/sitemap-recurring.xml")
 async def sitemap_recurring(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
-    conn = db.get_conn(read_only=True)
-    rows = conn.execute("""
-        SELECT re.slug, MAX(e.start_date) AS last_date
-        FROM recurring_events re
-        JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
-        JOIN events e ON e.event_id = er.event_id
-        GROUP BY re.recurring_event_id, re.slug
-        ORDER BY last_date DESC
-    """).fetchall()
-    conn.close()
-
     urls = [_url(f"{base}/recurring/{quote(slug, safe='')}", lastmod=today, changefreq="yearly", priority=0.6)
-            for slug, _ in rows]
+            for slug in _recurring_slugs()]
     return _xml_response(_wrap_urlset(urls))

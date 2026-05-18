@@ -243,6 +243,7 @@
 }
 
 /* ── All-time Leaderboards ── */
+/* Card styling is shared via .lb-widget* in base.css. */
 .as-lb-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -250,107 +251,12 @@
     margin-bottom: 2rem;
 }
 
-.as-lb-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.as-lb-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
-}
-
-.as-lb-card-header {
-    background: var(--navy);
-    padding: 0.55rem 1.25rem;
-}
-
-.as-lb-card-title {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #fff;
-    transition: color var(--transition-fast);
-}
-
-.as-lb-card:hover .as-lb-card-title {
-    color: var(--primary-color);
-}
-
-.as-lb-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.as-lb-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.65rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.as-lb-item:last-child {
-    border-bottom: none;
-}
-
-.as-lb-pos {
-    width: 1.6rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    font-weight: 600;
-    flex-shrink: 0;
-    color: var(--text-lighter);
-}
-
-.as-lb-pos--1,
-.as-lb-pos--2,
-.as-lb-pos--3 {
-    height: 1.6rem;
-    border-radius: 50%;
-    font-weight: 800;
-}
-
-.as-lb-pos--1 { background: var(--gold);   color: var(--gold-text); }
-.as-lb-pos--2 { background: var(--silver); color: var(--silver-text); }
-.as-lb-pos--3 { background: var(--bronze); color: var(--bronze-text); }
-
-.as-lb-name {
-    flex: 1;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.as-lb-rating {
-    font-size: 0.82rem;
-    color: var(--text-light);
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-}
-
 /* ── Responsive ── */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .as-lb-grid {
         grid-template-columns: 1fr;
     }
-}
 
-@media (max-width: 600px) {
     .as-champs-grid {
         grid-template-columns: 1fr;
     }
@@ -374,9 +280,7 @@
     .hero-stats {
         display: none;
     }
-}
 
-@media (max-width: 600px) {
     .as-result-item .athlete-ratings {
         display: none;
     }

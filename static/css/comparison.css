@@ -13,11 +13,16 @@
     /* overflow must stay visible so dropdown can escape the card */
 }
 
-/* Navy header band - matches champ-card-header */
+/* Navy header band - matches champ-card-header. Holds "Athlete N" label and
+   the remove-button (only shown once an athlete is selected). */
 .search-box-header {
     background: var(--navy);
-    padding: 0.55rem 1.25rem;
+    padding: 0.45rem 1rem;
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .search-box-header span {
@@ -143,23 +148,25 @@
     display: block;
 }
 
-/* Remove btn: top-right of the body padding area */
+/* Remove btn lives in the navy header (right side) and is hidden until the
+   parent .search-box has the .has-selection class. */
 .sel-remove-btn {
-    position: absolute;
-    top: 0.6rem;
-    right: 0.75rem;
+    display: none;
     background: transparent;
     border: none;
-    color: var(--text-lighter);
-    font-size: 1.25rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.05rem;
     line-height: 1;
     cursor: pointer;
-    padding: 0.25rem 0.4rem;
-    z-index: 1;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    transition: color 0.12s ease, background 0.12s ease;
 }
+.search-box.has-selection .sel-remove-btn { display: inline-block; }
 
 .sel-remove-btn:hover {
-    color: var(--error-color);
+    color: #ffffff;
+    background: var(--error-color);
 }
 
 /* Profile pic left, name + stats right - mirrors champ-card-body */
@@ -167,6 +174,51 @@
     display: flex;
     align-items: center;
     gap: 1.5rem;
+}
+
+/* ≤768px: stack vertically (pp on top), matches champ-card responsive layout.
+   Also drop the name's nowrap so long names wrap rather than overflowing the
+   widget at narrow widths (~480-540px is the squeeze band). */
+@media (max-width: 768px) {
+    .sel-athlete-card {
+        flex-direction: column;
+        gap: 0.85rem;
+        text-align: center;
+    }
+    .sel-athlete-name {
+        white-space: normal;
+        text-align: center;
+        font-size: 1.05rem;
+    }
+    .sel-athlete-stats {
+        justify-content: center;
+        gap: 0.7rem;
+        flex-wrap: wrap;
+    }
+    .sel-stat-num { font-size: 1rem; }
+    .sel-stat-lbl { font-size: 0.6rem; }
+}
+
+/* <480px: stack the two boxes (one on top of the other) and use the thinner
+   left-aligned card body (photo on the left, name + stats on the right) so
+   each row stays compact. */
+@media (max-width: 480px) {
+    .page-hero-subtitle { display: none; }
+    .search-container  { grid-template-columns: 1fr; gap: 0.6rem; }
+    .search-box-header { padding: 0.4rem 0.85rem; }
+    .search-box-body   { padding: 0.75rem 0.85rem; }
+    .sel-athlete-card  { flex-direction: row; gap: 0.85rem; text-align: left; }
+    .sel-athlete-img   { width: 56px; height: 56px; }
+    .sel-athlete-name  {
+        font-size: 0.95rem;
+        margin-bottom: 0.45rem;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .sel-athlete-stats { justify-content: flex-start; gap: 0.5rem; }
+    .sel-stat-num      { font-size: 0.95rem; }
+    .sel-stat-lbl      { font-size: 0.58rem; }
+    .sel-stat-divider  { height: 1.4rem; }
 }
 
 .sel-athlete-img {
@@ -193,17 +245,23 @@
     margin-bottom: 0.85rem;
 }
 
-/* Stats row: Rating | World rank | Career wins */
+/* Stats row: Rating | World rank | Career wins. flex-start so the numbers
+   sit on the same line regardless of whether a label wraps below. Dividers
+   align-self stretch so they span the row height (no fixed pixel height
+   that misaligns when labels wrap to two lines). */
 .sel-athlete-stats {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
 }
 
 .sel-stat {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    flex: 0 1 auto;
 }
 
 .sel-stat-num {
@@ -219,18 +277,29 @@
     text-transform: uppercase;
     letter-spacing: 0.07em;
     color: var(--text-lighter);
+    text-align: center;
+    line-height: 1.15;
 }
 
 .sel-stat-divider {
     width: 1px;
-    height: 2rem;
     background: var(--border-color);
     flex-shrink: 0;
+    align-self: stretch;
 }
 
 /* ============================================
    COMPARE BUTTON
    ============================================ */
+/* Course selector on top, Compare button beneath. Centred. Picker hides
+   itself via [hidden]; when absent the button just sits alone. */
+.compare-action-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    margin: 1.5rem 0 0.25rem;
+}
 .compare-button-container {
     text-align: center;
     margin: 1.5rem 0;
@@ -264,7 +333,7 @@
    ============================================ */
 .table-wrap {
     border-radius: var(--border-radius-lg);
-    overflow: hidden;
+    overflow-x: auto;
     border: 1px solid var(--border-color);
     box-shadow: var(--box-shadow);
     margin-bottom: 1.25rem;
@@ -280,17 +349,26 @@
     border-radius: var(--border-radius-lg);
     box-shadow: var(--box-shadow);
     margin-bottom: 1.5rem;
-    overflow: hidden;
+    /* Scroll horizontally below the row min-width rather than letting the
+       centre disc column squash the rating numbers on narrow phones. */
+    overflow-x: auto;
 }
+
+/* Floor the row width so values + label stay readable. Picked so 1fr cells
+   land at ~100px each on the narrowest devices we care about (320px viewport
+   minus card + page padding). */
+.h2h-stats-header,
+.h2h-stat-row { min-width: 420px; }
 
 .h2h-stats-header {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    /* Match the data rows so "vs" sits directly above the disc labels. */
+    grid-template-columns: 1fr 160px 1fr;
     align-items: center;
-    gap: 1.5rem;
-    padding: 0.9rem 1.5rem;
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
+    gap: 1.25rem;
+    padding: 0.7rem 1.5rem;
+    background: var(--navy);
+    color: #ffffff;
 }
 
 .h2h-stats-header .h2h-stats-athlete:first-child { text-align: right; }
@@ -298,8 +376,8 @@
 
 .h2h-stats-athlete {
     font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--text-color);
+    font-size: 0.9rem;
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -307,10 +385,11 @@
 
 .h2h-stats-vs {
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--text-lighter);
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
 }
 
 .h2h-stats-group {
@@ -323,23 +402,36 @@
 
 .h2h-stat-row {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    /* Fixed centre column so "Overall" / "Transition" / "Total Races" don't
+       push the rating values out of vertical alignment across rows. */
+    grid-template-columns: 1fr 160px 1fr;
     align-items: center;
-    gap: 1.5rem;
-    padding: 0.7rem 1.5rem;
+    gap: 1.25rem;
+    padding: 0.45rem 1.5rem;
 }
 
+/* Cells flank the central label. Left cell: value sits on the right
+   (touching the label) and delta sits left of the value. Right cell mirrors. */
 .h2h-stat-cell {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.2rem;
+    align-items: baseline;
+    gap: 0.5rem;
     font-variant-numeric: tabular-nums;
     color: var(--text-light);
 }
+.h2h-stat-row > .h2h-stat-cell:first-child {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    text-align: right;
+}
+.h2h-stat-row > .h2h-stat-cell:last-child {
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+}
 
 .h2h-stat-val {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.1;
 }
@@ -385,11 +477,25 @@
     letter-spacing: 0;
     cursor: default;
     font-size: 0.8rem;
+    text-align: left;
 }
 
 .h2h-table td {
     font-variant-numeric: tabular-nums;
 }
+
+/* Widen date column on the h2h table so "1 Mar 2024"-style dates stay on one
+   line. The global .date-col is 90px; comparison needs ~120px. */
+.h2h-table .date-col { width: 120px; white-space: nowrap; }
+
+/* Column min-widths so content stays readable on narrow viewports. The
+   parent .table-wrap scrolls horizontally below the table's total min-width. */
+.h2h-table             { min-width: 720px; }
+.h2h-table .date-col   { min-width: 120px; }
+.h2h-table .race-col   { min-width: 180px; }
+.h2h-table .h2h-pos-th { min-width: 48px; }
+.h2h-table .h2h-ath-header,
+.h2h-table .h2h-time-cell { min-width: 140px; }
 
 .h2h-table tbody tr:nth-child(even) td {
     background: #f2f4f6;
@@ -443,17 +549,19 @@
 
 .h2h-pos-th {
     width: 48px;
-    text-align: center !important;
+    text-align: left;
 }
 
 /* ============================================
    H2H WIN SUMMARY
    ============================================ */
+/* 3-column grid (rather than flex) so the three numbers stay vertically
+   aligned with the disc-picker chips above. Variable-width labels (athlete
+   names / race titles) used to pull each block's centre off-axis. */
 .h2h-wins-summary {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: start;
     margin-bottom: 1.5rem;
     padding: 0.5rem 0 1.25rem;
 }
@@ -463,6 +571,12 @@
     flex-direction: column;
     align-items: center;
     gap: 0.2rem;
+    min-width: 0;
+}
+
+.h2h-wins-lbl {
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .h2h-wins-total .h2h-wins-num {
@@ -491,15 +605,7 @@
    H2H TABLE
    ============================================ */
 .h2h-ath-header {
-    text-align: center !important;
-}
-
-.rating-number {
-    font-size: 1.4rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.25em;
+    text-align: left;
 }
 
 .align-chips {
@@ -513,10 +619,6 @@
 .h2h-disc-picker .radio-chips,
 .align-chips {
     background: #e4e4e0;
-}
-
-.time-cell {
-    width: calc((100% - 590) / 2);
 }
 
 .time-behind {
@@ -561,49 +663,9 @@
     display: block;
 }
 
-@media (max-width: 768px) {
-    .search-container {
-        grid-template-columns: 1fr;
-    }
-
-    .athlete-headers {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .vs-divider {
-        display: none;
-    }
-
-    .athlete-header.left {
-        flex-direction: row;
-        text-align: left;
-    }
-
-    .comparison-row {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-
-    .comparison-value.left {
-        text-align: left;
-    }
-
-    .comparison-label {
-        text-align: left;
-        font-weight: bold;
-        margin-top: 0.5rem;
-    }
-
-    .h2h-summary {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .charts-grid {
-        grid-template-columns: 1fr;
-    }
-}
+/* Athlete boxes stay side-by-side at every viewport width — the comparison
+   only makes visual sense two-up. Internal card layout becomes vertical
+   below 768 via the .sel-athlete-card rule. */
 
 /* ── Program picker (only shown when both athletes share >1 program) ── */
 .program-picker {
@@ -611,7 +673,7 @@
     justify-content: center;
     align-items: center;
     gap: 0.6rem;
-    margin: 1.25rem 0 0.25rem;
+    margin: 0;
     animation: program-picker-in 160ms ease-out;
 }
 .program-picker[hidden] { display: none; }
@@ -638,9 +700,3 @@
 }
 .program-picker-hint[hidden] { display: none; }
 
-/* Inline tag chips in the comparison search results (right of the meta line). */
-.athlete-tags {
-    display: flex;
-    gap: 0.25rem;
-    margin-top: 0.25rem;
-}

@@ -137,38 +137,176 @@ def parse_lnglat(coord):
     except (ValueError, TypeError):
         return 0.0
 
-_HANDLE_SKIP_WORDS = {
-    'world', 'triathlon', 'championships', 'americas', 'europe', 'africa', 'asia', 'oceania',
-    'cup', 'american', 'european', 'asian', 'games', 't100', 'tour', 'winter', 'development',
-    'regional', 'african', 'para', 'itu', 'etu', 'atu', 'fisu', 'university', 'junior', 'north',
-    'camtri', 'and', 'ntt', 'astc', 'premium',
+# Tokens stripped from a race title when extracting the venue. Built from a
+# frequency scan of all WT short-course event titles: anything that recurs as
+# sanctioning body, sport, level, geographic region, sponsor, or distance
+# modifier lives here. Venue tokens are whatever survives this filter (plus
+# the year strip and a regional-level suffix re-attached separately).
+_TITLE_FILLER = {
+    # sanctioning bodies / federations
+    'itu', 'etu', 'atu', 'astc', 'patco', 'camtri', 'otu', 'noc',
+    'fisu', 'cism', 'wt',
+    # sport / discipline / format
+    'triathlon', 'duathlon', 'aquathlon', 'aquabike', 'paratriathlon',
+    'relay', 'mixed', 'team',
+    # level / event descriptors
+    'world', 'cup', 'champ', 'champs', 'championship', 'championships',
+    'series', 'final', 'finals', 'games', 'grand', 'olympic', 'olympics',
+    'paralympic', 'national', 'continental', 'regional', 'development',
+    'qualifier', 'qualification', 'eliminator', 'indoor', 'prestige',
+    'university', 'military', 'masters', 'open', 'event', 'tour', 'cross',
+    # geographic descriptors (continents / hemispheres)
+    'european', 'asian', 'american', 'africa', 'african', 'europe', 'asia',
+    'oceania', 'americas', 'pan', 'pan-american', 'pan-am',
+    'central', 'south', 'north', 'east', 'west', 'latin', 'caribbean',
+    'balkan', 'nordic', 'mediterranean', 'commonwealth', 'pacific',
+    'southeast', 'all-africa', 'samoa', 'panamerican', 'iberoamerican',
+    'arab', 'arabic',
+    # age / level qualifiers
+    'junior', 'youth', 'u23', 'age', 'age-group', 'group', 'ag', 'para',
+    'yog', 'sea',
+    # distance / variant descriptors
+    'sprint', 'standard', 'super', 'long', 'middle', 'short', 'distance',
+    'winter', 'beach', 'islands', 'small', 'states',
+    # historical sponsors that crept into event titles
+    'dextro', 'energy', 'groupe', 'copley', 'ntt', 'premium', 'goodwill',
+    'goodwil', 't100',
+    # connectors / stop-words
+    'and', 'the', 'of', 'for', 'at', 'a', 'an',
 }
 
+# (cat_id → (level abbreviation, priority)). When a race has multiple
+# categories, the highest-priority label wins. Major Games (343) and
+# Recognised Games (346) deliberately have no static label here — they are
+# resolved from the title via _GAMES_PATTERNS so e.g. "Sydney 2000 Olympic
+# Games" surfaces as "Olympics", not a generic "Games".
+_CAT_LEVEL = {
+    624: ('World Champs', 100),
+    348: ('World Champs', 95),
+    351: ('WTCS', 85),
+    631: ('Indoor Cup', 80),
+    349: ('WC', 75),
+    477: ('Dev Cup', 70),
+    342: ('Junior CC', 55),
+    341: ('CC', 50),
+    340: ('Conti Champs', 45),
+    347: ('Regional Champs', 40),
+    352: ('Qualifier', 35),
+}
 
-def generate_race_handle(race_id, race_title, location, race_date):
-    """Generate display name for a race.
+# Title substring → label for Major / Recognised Games. Order matters: more
+# specific patterns (e.g. "youth olympic") must come before broader ones.
+_GAMES_PATTERNS = [
+    ('youth olympic',     'YOG'),
+    ('olympic',           'Olympics'),
+    ('commonwealth',      'Commonwealth Games'),
+    ('pan-american',      'Pan-Am Games'),
+    ('pan american',      'Pan-Am Games'),
+    ('asian youth',       'Asian Youth Games'),
+    ('asian beach',       'Asian Beach Games'),
+    ('asian',             'Asian Games'),
+    ('southeast asian',   'SEA Games'),
+    ('mediterranean',     'Mediterranean Games'),
+    ('european',          'European Games'),
+    ('south american',    'South American Games'),
+    ('central american',  'Central American Games'),
+    ('south pacific',     'Pacific Games'),
+    ('pacific',           'Pacific Games'),
+    ('african youth',     'African Youth Games'),
+    ('all-africa',        'African Games'),
+    ('africa',            'African Games'),
+    ('world games',       'World Games'),
+    ('world university',  'FISU'),
+    ('military',          'CISM'),
+]
 
-    Priority:
-    1. National champs: 2nd title word is a 3-letter country code → "{CODE} National Champs {YY}"
-    2. Short venue (<=3 words) → "{venue} {YY}"
-    3. First 3 non-skip words from title → "{words} {YY}"
+
+def _classify_race_level(race_title, cat_ids):
+    """Short level abbreviation for a race title + WT category ids.
+
+    Empty string if no level can be inferred from either source.
+    """
+    tl = race_title.lower()
+    cat_set = set(cat_ids or [])
+
+    # Major Games and Recognised Games derive their label from the title.
+    if 343 in cat_set or 346 in cat_set:
+        for pat, label in _GAMES_PATTERNS:
+            if pat in tl:
+                return label
+        return 'Games'
+
+    # Recognised Event covers FISU world university events, CISM military
+    # champs, and the older "ETU Prestige Event" series.
+    if 345 in cat_set:
+        if 'fisu' in tl or 'university' in tl:
+            return 'FISU'
+        if 'military' in tl or 'cism' in tl:
+            return 'CISM'
+        return 'Prestige'
+
+    # Pick the highest-priority static label among the race's categories.
+    best = None
+    for cid in cat_set:
+        meta = _CAT_LEVEL.get(cid)
+        if meta and (best is None or meta[1] > best[1]):
+            best = meta
+    label = best[0] if best else ''
+
+    # Junior / Youth / U23 modifier — re-attached when the title flags it and
+    # the picked label doesn't already encode the same qualifier (so we don't
+    # emit "Junior Junior CC").
+    if label and 'junior' not in label.lower():
+        if 'junior' in tl:
+            label = 'Junior ' + label
+        elif 'youth' in tl and 'yog' != label.lower():
+            label = 'Youth ' + label
+        elif 'u23' in tl:
+            label = 'U23 ' + label
+
+    # AG-only events (cat 483 alongside an elite level cat) get an AG prefix
+    # so podiums in athlete pages read "AG World Champs Avignon 89".
+    if label and 483 in cat_set and not label.lower().startswith('ag '):
+        label = 'AG ' + label
+
+    return label
+
+
+def _extract_venue(race_title):
+    """Strip years and filler tokens from a race title, leaving the venue.
+
+    Hyphenated tokens are split so e.g. "Pan-American" loses both halves to
+    the filler list. Punctuation other than hyphens collapses to whitespace.
+    """
+    s = re.sub(r'\b\d{4}\b', ' ', race_title)
+    s = re.sub(r"[.,'\"()/:;]", ' ', s)
+    s = s.replace('-', ' ')
+    kept = [w for w in s.split() if w.lower() not in _TITLE_FILLER]
+    # All-caps 3-letter country codes inside a title (rare outside the
+    # national champs format which is handled upstream) are also dropped.
+    kept = [w for w in kept if not re.match(r'^[A-Z]{3}$', w)]
+    return ' '.join(kept).strip()
+
+
+def short_course_race_handle(race_title, cat_ids, race_date):
+    """Compact display name for a short-course race, e.g. "Yokohama WC 24".
+
+    Pipeline: detect national champs by 3-letter ISO prefix; otherwise strip
+    fillers from the title to derive the venue, attach a level abbreviation
+    inferred from cat_ids (with title-derived nuances for Olympics / Games),
+    and suffix the 2-digit year.
     """
     year = race_date.year if hasattr(race_date, 'year') else int(str(race_date)[:4])
-    year_suffix = f"{year % 100:02d}"
+    yy = f"{year % 100:02d}"
+
     title_words = str(race_title).split()
-
     if len(title_words) > 1 and re.match(r'^[A-Z]{3}$', title_words[1]) and title_words[1] != 'ITU':
-        return f"{title_words[1]} National Champs {year_suffix}"
+        return f"{title_words[1]} National Champs {yy}"
 
-    if location:
-        venue_words = str(location).replace('"', '').replace("'", '').split()
-        if 0 < len(venue_words) <= 3:
-            return f"{' '.join(venue_words)} {year_suffix}"
-
-    candidates = [w for w in title_words[1:] if w and w.lower().strip('.,') not in _HANDLE_SKIP_WORDS]
-    if candidates:
-        return f"{' '.join(candidates[:3])} {year_suffix}"
-    return f"Event {race_id} {year_suffix}"
+    venue = _extract_venue(race_title)
+    level = _classify_race_level(race_title, cat_ids)
+    parts = [p for p in (venue, level, yy) if p]
+    return ' '.join(parts) if parts else f"Race {yy}"
 
 
 def get_category_ids(event):
@@ -275,16 +413,18 @@ class Ingester:
 
     def _ingest_events(self, events):
         """Single pass over events - fetches programs once, processes both genders."""
-        existing_event_ids = set(
+        all_existing = set(
             r[0] for r in self.conn.execute(
                 "SELECT DISTINCT event_id FROM races"
             ).fetchall()
         )
+        wt_event_ids = {e['event_id'] for e in events}
+        existing_event_ids = all_existing & wt_event_ids
 
         new_count = 0
         checked = 0
-        total_new = len(events) - len(existing_event_ids)
-        print(f"  {len(existing_event_ids)} events already in DB, {total_new} to check")
+        total_new = len(wt_event_ids) - len(existing_event_ids)
+        print(f"  {len(existing_event_ids)} of {len(wt_event_ids)} WT events already in DB, {total_new} to check")
 
         for event in events:
             event_id = event['event_id']
@@ -438,7 +578,7 @@ class Ingester:
             sub_category=race_sub_category(prog_name),
             cat_ids=str(get_category_ids(event)),
             distance=infer_distance(get_spec_ids(event), winner_s),
-            race_handle=generate_race_handle(prog_id, race_title, location, race_date),
+            race_handle=short_course_race_handle(race_title, get_category_ids(event), race_date),
             event_spec_ids=str(get_spec_ids(event)),
         )
         db.insert_results_bulk(self.conn, result_rows)
@@ -567,7 +707,7 @@ class StartListIngester:
         """, [
             race_id, event_id, race_title, prog_name, race_date, gender, category,
             str(get_category_ids(event)),
-            generate_race_handle(race_id, race_title, location, race_date),
+            short_course_race_handle(race_title, get_category_ids(event), race_date),
             str(get_spec_ids(event)),
         ])
 

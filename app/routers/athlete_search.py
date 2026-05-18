@@ -54,10 +54,11 @@ async def athletes_landing(request: Request):
     female_trending, female_trending_course = pick_trending("female")
     male_trending,   male_trending_course   = pick_trending("male")
 
-    # All-time top 5 per gender per course (4 cards total)
-    def top5(gender, course):
+    # All-time top 5 per gender per program (6 cards total: short, long, AG)
+    def top5(gender, course, category='elite'):
         return [_fmt_athlete(a) for a in queries.get_leaderboard(
-            gender, "overall", "top", None, None, None, False, 0, 5, course=course)]
+            gender, "overall", "top", None, None, None, False, 0, 5,
+            course=course, category=category)]
 
     return templates.TemplateResponse("athlete_search.html", {
         "request":                request,
@@ -71,8 +72,10 @@ async def athletes_landing(request: Request):
         "male_trending_course":   male_trending_course,
         "female_lb_short":        top5("female", "short"),
         "female_lb_long":         top5("female", "long"),
+        "female_lb_ag":           top5("female", "short", category="ag"),
         "male_lb_short":          top5("male",   "short"),
         "male_lb_long":           top5("male",   "long"),
+        "male_lb_ag":             top5("male",   "short", category="ag"),
     })
 
 

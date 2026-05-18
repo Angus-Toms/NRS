@@ -158,13 +158,13 @@
     border-left: 1px solid var(--border-color);
     padding-left: 1.25rem;
 }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
     .gender-pair { grid-template-columns: 1fr; gap: 1rem; }
     .gender-pair > div + div { border-left: none !important; padding-left: 0 !important; }
 }
 
 /* Eyebrow label running across each column with a horizontal hairline
-   trailing right of the text. Matches .si-leader-head convention. */
+   trailing right of the text. */
 .col-head {
     display: flex;
     align-items: center;
@@ -482,7 +482,7 @@
     position: absolute;
     left: 0.25rem;
     right: 0.25rem;
-    top: 90px;
+    top: 107px;
     height: 2px;
     background: var(--border-color);
     z-index: 0;
@@ -529,14 +529,24 @@
     transition: color 0.12s;
 }
 .tyear-num {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    line-height: 1;
+    line-height: 1.2;
     margin-top: 5px;
     color: var(--text-color);
     transition: color 0.12s;
     font-variant-numeric: tabular-nums;
+    text-align: center;
+    width: 100%;
+    /* Reserve room for two lines so the dot stays aligned across items
+       regardless of whether a given handle wraps. -webkit-box can drop
+       text-align on its content, so we clamp lines via max-height instead. */
+    min-height: calc(2 * 0.75rem * 1.2);
+    max-height: calc(2 * 0.75rem * 1.2);
+    overflow: hidden;
+    word-break: break-word;
+    padding: 0 2px;
 }
 /* The dot's white halo masks the line so it doesn't run through the dot. */
 .tyear-dot {
@@ -568,7 +578,7 @@
    wrap padding-top 0.75rem (12px) + line top 90px. */
 .tl-arrow {
     position: absolute;
-    top: 102px;
+    top: 119px;
     transform: translateY(-50%);
     width: 28px;
     height: 28px;
@@ -718,7 +728,7 @@
 .ep-head-stds .std-pill--expert,
 .tippy-box[data-theme~='pd-dark'] .std-pill--expert      { background: rgba(255, 255, 255, 0.16); color: #fff; }
 
-@media (max-width: 800px) {
+@media (max-width: 768px) {
     .ep-head { flex-wrap: wrap; }
     .ep-head-stds { order: 2; flex-wrap: wrap; }
     .ep-nav { order: 1; }
@@ -956,7 +966,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
-@media (max-width: 760px) { .age-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .age-grid { grid-template-columns: 1fr; } }
 .age-head {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -965,8 +975,6 @@
     font-weight: 700;
     margin: 0 0 0.45rem;
 }
-.age-table th.age-col { width: 60px; }
-.age-table th.yr-col  { width: 110px; }
 .age-ath {
     display: flex;
     align-items: center;
@@ -999,7 +1007,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
-@media (max-width: 800px) { .charts-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
 
 .chart-card {
     background: var(--white);

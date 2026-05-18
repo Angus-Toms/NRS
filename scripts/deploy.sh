@@ -2,32 +2,44 @@
 # deploy.sh - commit/push, upload static assets to R2, copy DB to Render
 #
 # Usage:
-#   ./deploy.sh                   # run all three steps
+#   ./deploy.sh                   # run all four steps
 #   ./deploy.sh --no-git          # skip git step
 #   ./deploy.sh --no-static       # skip Cloudflare R2 upload
 #   ./deploy.sh --no-db           # skip DB copy
+#   ./deploy.sh --no-restart      # skip Render service restart
 #
 # Requires:
 #   - wrangler (npm i -g wrangler) logged in
+#   - scripts/.env with RENDER_API_KEY set (only for the restart step)
 
 set -euo pipefail
 
 # ── Config (values pulled from config.py) ────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATIC_DIR="$SCRIPT_DIR/static"
-DB_LOCAL="$SCRIPT_DIR/ptd_data/ptd.duckdb"
-_py() { python3 -c "import sys; sys.path.insert(0,'$SCRIPT_DIR'); from config import $1; print($1)"; }
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+STATIC_DIR="$PROJECT_ROOT/static"
+DB_LOCAL="$PROJECT_ROOT/ptd_data/ptd.duckdb"
+_py() { python3 -c "import sys; sys.path.insert(0,'$PROJECT_ROOT'); from config import $1; print($1)"; }
 BUCKET=$(    _py CF_BUCKET)
 RENDER_SSH=$(  _py RENDER_SSH)
 DB_REMOTE=$(   _py RENDER_DB)
+
+# Load local secrets (RENDER_API_KEY etc). Not required for git/static/db steps.
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/.env"
+    set +a
+fi
 # ─────────────────────────────────────────────────────────────────────────────
 
-DO_GIT=true; DO_STATIC=true; DO_DB=true
+DO_GIT=true; DO_STATIC=true; DO_DB=true; DO_RESTART=true
 for arg in "$@"; do
     case $arg in
-        --no-git)    DO_GIT=false ;;
-        --no-static) DO_STATIC=false ;;
-        --no-db)     DO_DB=false ;;
+        --no-git)     DO_GIT=false ;;
+        --no-static)  DO_STATIC=false ;;
+        --no-db)      DO_DB=false ;;
+        --no-restart) DO_RESTART=false ;;
     esac
 done
 
@@ -35,7 +47,7 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; RESET='\033[0m'
 step() { echo -e "\n${GREEN}==> $*${RESET}"; }
 note() { echo -e "${YELLOW}    $*${RESET}"; }
 
-cd "$SCRIPT_DIR"
+cd "$PROJECT_ROOT"
 
 # ── 1. Git commit + push ──────────────────────────────────────────────────────
 if $DO_GIT; then
@@ -126,7 +138,23 @@ if $DO_DB; then
     scp "$DB_LOCAL" "$RENDER_SSH:${DB_REMOTE}.new"
     ssh "$RENDER_SSH" "mv '${DB_REMOTE}.new' '${DB_REMOTE}'"
     echo "  Copied."
-    note "Restart the Render service to pick up the new DB."
+fi
+
+# ── 4. Restart Render service (so the running app picks up the new DB) ───────
+if $DO_RESTART; then
+    step "Render: restarting service"
+    if [ -z "${RENDER_API_KEY:-}" ]; then
+        echo "  ERROR: RENDER_API_KEY not set. Add it to scripts/.env or pass --no-restart."
+        exit 1
+    fi
+    # Service ID is the part of RENDER_SSH before the @ (e.g. srv-d58k...).
+    RENDER_SERVICE_ID="${RENDER_SSH%%@*}"
+    curl -fsS -X POST \
+        -H "Authorization: Bearer $RENDER_API_KEY" \
+        -H "Accept: application/json" \
+        "https://api.render.com/v1/services/$RENDER_SERVICE_ID/restart" \
+        > /dev/null
+    echo "  Restart triggered for $RENDER_SERVICE_ID."
 fi
 
 step "Done"

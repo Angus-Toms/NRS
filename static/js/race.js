@@ -159,7 +159,7 @@ function initPrediction() {
         const q = e.target.value.trim();
         if (q.length < 2) { searchResults.classList.remove('active'); searchResults.innerHTML = ''; return; }
         try {
-            const res      = await fetch(`/compare/search?q=${encodeURIComponent(q)}&gender=${encodeURIComponent(gender)}&course=${encodeURIComponent(course)}`);
+            const res      = await fetch(`/athlete-compare/search?q=${encodeURIComponent(q)}&gender=${encodeURIComponent(gender)}&course=${encodeURIComponent(course)}`);
             const data     = await res.json();
             const filtered = data.filter(a => !existingIds.has(a.athlete_id));
             _renderPredictionResults(filtered, searchResults);
@@ -224,7 +224,7 @@ async function _addPredictionRow(athlete, models, disc, existingIds, tbody, race
     const ATHLETE_RATING_KEY = { overall: 'overall_rating', swim: 'swim_rating', bike: 'bike_rating', run: 'run_rating' };
     let athleteRating = null;
     try {
-        const data   = await fetch(`/compare/athlete/${athlete.id}`).then(r => r.json());
+        const data   = await fetch(`/athlete-compare/athlete/${athlete.id}`).then(r => r.json());
         athleteRating = data[ATHLETE_RATING_KEY[disc]];
     } catch (_) {}
 
@@ -353,3 +353,54 @@ function initRaceViewToggle() {
         });
     });
 }
+
+// Mobile chip-row sort + splits accordion for race page tables. Mirrors the
+// athlete page implementation; each .results-sort-chips / .ratings-sort-chips
+// row sorts the table inside its next-sibling wrapper.
+function initRaceSortChips() {
+    const defaultAscFor = { position: true, discipline: false };
+    document.querySelectorAll('.results-sort-chips, .ratings-sort-chips').forEach(chipRow => {
+        const table = chipRow.nextElementSibling?.querySelector('table.sortable-table');
+        if (!table) return;
+        const chips = chipRow.querySelectorAll('.sort-chip');
+
+        // Default: first chip (Position, defaults asc - 1st place first).
+        const first = chips[0];
+        if (first) first.classList.add('selected', 'asc');
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const col = parseInt(chip.dataset.sortCol, 10);
+                const wasSelected = chip.classList.contains('selected');
+                const wasDesc = chip.classList.contains('desc');
+                chips.forEach(c => c.classList.remove('selected', 'asc', 'desc'));
+
+                // Toggle direction when re-clicking; otherwise:
+                //   position -> asc (1st first), other (time/rating) -> desc.
+                const axis = chip.dataset.sortAxis || (col === 0 ? 'position' : 'value');
+                let asc;
+                if (wasSelected) asc = wasDesc;
+                else asc = defaultAscFor[axis] ?? false;
+
+                chip.classList.add('selected', asc ? 'asc' : 'desc');
+                sortTable(table, col, asc);
+            });
+        });
+    });
+}
+
+function initRaceSplitsToggle() {
+    document.querySelectorAll('.results-table .splits-toggle, .rating-table .splits-toggle').forEach(btn => {
+        // Skip listeners already attached after partial swaps.
+        if (btn.dataset.toggleInit) return;
+        btn.dataset.toggleInit = '1';
+        btn.addEventListener('click', () => {
+            const row = btn.closest('tr');
+            if (!row) return;
+            const expanded = row.classList.toggle('expanded');
+            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            btn.setAttribute('aria-label', expanded ? 'Hide splits' : 'Show splits');
+        });
+    });
+}
+

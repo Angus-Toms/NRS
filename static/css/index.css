@@ -37,6 +37,16 @@
     line-height: 1.15;
 }
 
+.home-intro {
+    margin: 2rem auto 0;
+    max-width: 72ch;
+    color: var(--text-light);
+    font-size: 1.02rem;
+    line-height: 1.6;
+    text-align: center;
+    padding: 0 var(--spacing-md);
+}
+
 
 /* ── SECTIONS ── */
 .home-section {
@@ -51,14 +61,22 @@
 
 /* Orange left-border section heading */
 .home-section-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 1rem;
+    align-items: center;     /* vertically centre title and more-link on row 1 */
     margin-bottom: 1.75rem;
     padding-left: 1rem;
     border-left: 4px solid var(--primary-color);
 }
+
+/* The title + sub are wrapped in a <div> in the markup; flatten that wrapper
+   into the grid so the sub can span both columns (full width, under the
+   more-link) while the title stays in column 1 next to the more-link. */
+.home-section-head > div { display: contents; }
+.home-section-title { grid-column: 1; grid-row: 1; }
+.home-more-link     { grid-column: 2; grid-row: 1; }
+.home-section-sub   { grid-column: 1 / -1; grid-row: 2; }
 
 .home-section-title {
     font-size: 1.3rem;
@@ -119,7 +137,6 @@
     color: var(--primary-color);
     text-decoration: none;
     white-space: nowrap;
-    padding-top: 0.25rem;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -143,12 +160,8 @@
 /* ── SECTION 1: CHAMPION CARDS ── */
 .champs-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-}
-
-.champs-grid + .champs-grid {
-    margin-top: 1.25rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
 }
 
 .champ-card {
@@ -168,17 +181,23 @@
     box-shadow: var(--box-shadow-hover);
 }
 
-/* Navy header band: just the badge label */
+/* Navy header band: just the badge label. min-height fits two lines so all
+   four cards stay even when one badge wraps and others don't. */
 .champ-card-header {
     background: var(--navy);
-    padding: 0.55rem 1.25rem;
+    padding: 0.4rem 0.75rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.4rem;
 }
 
 .champ-badge {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: #fff;
     transition: color var(--transition-fast);
 }
@@ -187,45 +206,43 @@
     color: var(--primary-color);
 }
 
-/* White body: photo + name/country + stats */
+/* White body: vertical layout — photo on top, name, stats below */
 .champ-card-body {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
-    padding: 1.25rem 1.5rem;
+    gap: 0.65rem;
+    padding: 1.25rem 0.75rem 1.1rem;
     flex: 1;
 }
 
 .champ-img {
-    width: 80px;
-    height: 80px;
+    width: 112px;
+    height: 112px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-}
-
-.champ-info {
-    flex: 1;
-    min-width: 0;
+    background: var(--border-color);
 }
 
 .champ-namerow {
     display: flex;
     align-items: baseline;
     gap: 0.4rem;
-    margin-bottom: 0.85rem;
     min-width: 0;
+    max-width: 100%;
+    justify-content: center;
 }
 
 .champ-flag {
-    font-size: 1.1rem;
+    font-size: 1rem;
     flex-shrink: 0;
     line-height: 1;
 }
 
 .champ-name {
-    font-size: 1.2rem;
-    font-weight: 500;
+    font-size: 1.05rem;
+    font-weight: 600;
     color: var(--text-color);
     margin: 0;
     letter-spacing: -0.01em;
@@ -233,23 +250,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    text-align: center;
 }
 
 
 .champ-stats-row {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.7rem;
+    margin-top: 0.15rem;
 }
 
 .champ-stat {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
+    align-items: center;
 }
 
 .champ-stat-num {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 800;
     color: var(--text-color);
     line-height: 1;
@@ -257,7 +277,7 @@
 }
 
 .champ-stat-lbl {
-    font-size: 0.67rem;
+    font-size: 0.62rem;
     text-transform: uppercase;
     letter-spacing: 0.07em;
     color: var(--text-lighter);
@@ -265,7 +285,7 @@
 
 .champ-stat-divider {
     width: 1px;
-    height: 2rem;
+    height: 1.6rem;
     background: var(--border-color);
     flex-shrink: 0;
 }
@@ -426,14 +446,6 @@
     pointer-events: all;
 }
 
-.event-entry-count {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
-}
-
 .event-race-title:hover {
     color: var(--primary-color);
 }
@@ -512,10 +524,6 @@
     color: var(--text-light);
 }
 
-.event-podium-pos--1 { background: var(--gold);   color: var(--gold-text); }
-.event-podium-pos--2 { background: var(--silver); color: var(--silver-text); }
-.event-podium-pos--3 { background: var(--bronze); color: var(--bronze-text); }
-
 .event-race-pending {
     font-size: 0.78rem;
     color: var(--text-lighter);
@@ -525,117 +533,12 @@
 
 
 /* ── SECTION 3: LEADERBOARD ── */
+/* Card styling is shared via .lb-widget* in base.css; this grid is the only
+   page-specific bit (6 cards in a 2-up layout on desktop). */
 .home-lb-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
-}
-
-.home-lb-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.home-lb-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
-}
-
-.home-lb-card-header {
-    background: var(--navy);
-    padding: 0.55rem 1.25rem;
-}
-
-.home-lb-card-title {
-    display: block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #fff;
-    text-decoration: none;
-    transition: color var(--transition-fast);
-}
-
-.home-lb-card-title:hover {
-    color: var(--primary-color);
-}
-
-.home-lb-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.home-lb-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.home-lb-item:last-child {
-    border-bottom: none;
-}
-
-.lb-pos {
-    width: 1.6rem;
-    height: 1.6rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    font-weight: 800;
-    flex-shrink: 0;
-    background: var(--border-color);
-    color: var(--text-light);
-}
-
-.lb-img {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.lb-pos--1 { background: var(--gold);   color: var(--gold-text); }
-.lb-pos--2 { background: var(--silver); color: var(--silver-text); }
-.lb-pos--3 { background: var(--bronze); color: var(--bronze-text); }
-
-.lb-name {
-    flex: 1;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.lb-name-link {
-    text-decoration: none;
-    position: relative;
-    z-index: 1;
-}
-
-.lb-name-link:hover {
-    color: var(--primary-color);
-}
-
-
-.lb-rating {
-    font-size: 0.82rem;
-    color: var(--text-light);
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
 }
 
 
@@ -727,90 +630,9 @@
     gap: 1.25rem;
 }
 
-.about-blog-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--primary-color);
-    border-radius: var(--border-radius-lg);
-    padding: 1.5rem 1.75rem;
-    text-decoration: none;
-    color: inherit;
-    transition: box-shadow var(--transition-fast);
-}
-
-.about-blog-card:hover {
-    box-shadow: var(--box-shadow-hover);
-}
-
-.about-blog-eyebrow {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--primary-color);
-}
-
-.about-blog-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-color);
-    margin: 0;
-    line-height: 1.3;
-}
-
-.about-blog-teaser {
-    font-size: 0.875rem;
-    color: var(--text-light);
-    margin: 0;
-    line-height: 1.55;
-    flex: 1;
-}
-
-.about-blog-link {
-    display: block;
-    text-align: right;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-top: 0.25rem;
-}
-
-.about-preview-blurb {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.75rem;
-    padding: 1.5rem 1.75rem;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-}
-
-.about-preview-blurb p {
-    font-size: 0.9rem;
-    color: var(--text-light);
-    margin: 0;
-    line-height: 1.6;
-}
-
-.about-blurb-link {
-    display: block;
-    text-align: right;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    text-decoration: none;
-    margin-top: 0.25rem;
-}
-
-.about-blurb-link:hover { color: var(--primary-hover); }
-
 
 /* ── RESPONSIVE ── */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .compare-widget {
         grid-template-columns: 1fr;
         gap: 1.5rem;
@@ -820,9 +642,7 @@
         flex-direction: row;
         justify-content: flex-start;
     }
-}
 
-@media (max-width: 768px) {
     .home-hero-inner {
         flex-direction: column;
         align-items: flex-start;
@@ -834,12 +654,12 @@
     }
 
     .champs-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .home-lb-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 0.85rem;
     }
 
     .about-preview {
@@ -856,8 +676,15 @@
         display: none;
     }
 
-    .champ-img { width: 72px; height: 72px; }
-    .champ-name { font-size: 1.1rem; }
+    .champs-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .champ-card-body { padding: 0.9rem 0.5rem 0.85rem; gap: 0.5rem; }
+    .champ-img { width: 84px; height: 84px; }
+    .champ-name { font-size: 0.9rem; }
+    .champ-badge { font-size: 0.55rem; letter-spacing: 0.05em; }
+    .champ-stats-row { gap: 0.45rem; }
+    .champ-stat-num { font-size: 0.85rem; }
+    .champ-stat-lbl { font-size: 0.55rem; }
+    .home-intro { font-size: 0.94rem; margin-top: 1.4rem; }
 
     .compare-widget {
         padding: 1.25rem;

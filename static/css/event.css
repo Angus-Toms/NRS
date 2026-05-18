@@ -251,7 +251,7 @@
 /* ============================================
    RESPONSIVE
    ============================================ */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
     .event-race-card-body {
         flex-direction: column;
     }

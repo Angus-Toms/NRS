@@ -214,7 +214,7 @@ function attrEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 
 // ── Timeline ───────────────────────────────────────────────────────────
-const TIMELINE_WINDOW = 10;
+const TIMELINE_WINDOW = 7;
 let activeIdx   = 0;
 let windowStart = 0;
 syncDerivedData();
@@ -226,17 +226,18 @@ function buildTimeline(){
     const slice = EDITIONS.slice(windowStart, end);
     t.innerHTML = slice.map((e, i) => {
         const winner = e.podium[0];
+        const label = e.race_handle || (e.year != null ? String(e.year) : "");
         if (!winner) return `<div class="tyear" data-i="${windowStart + i}">
             <div class="tyear-img" style="background:var(--border-color)"></div>
             <span class="tyear-name">-</span>
-            <span class="tyear-num">${e.year ?? ""}</span>
+            <span class="tyear-num">${label}</span>
             <span class="tyear-dot"></span>
             <span class="tyear-time">-</span>
         </div>`;
         return `<div class="tyear" data-i="${windowStart + i}">
             <img class="tyear-img" src="${profileSrc(winner.athlete_id, winner.profile_img, 128)}" alt="${winner.name}">
             <span class="tyear-name">${surnameOf(winner.name)}</span>
-            <span class="tyear-num">${e.year ?? ""}</span>
+            <span class="tyear-num">${label}</span>
             <span class="tyear-dot"></span>
             <span class="tyear-time">${winner.time_fmt || ""}</span>
         </div>`;

@@ -28,11 +28,16 @@
 #   ./build_db.sh --skip-autocorr     # skip auto-correction pass
 #   ./build_db.sh --skip-ratings      # skip ratings/rankings recompute
 #   ./build_db.sh --ratings-only      # shortcut: auto-corr + recompute ratings + rankings
+#   ./build_db.sh --extend            # ratings/rankings: wipe from earliest new race date
+#                                       forward and rebuild from there, instead of full
+#                                       clear+recompute. Combine with --ratings-only for
+#                                       a fast post-ingest top-up.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RESET='\033[0m'; BOLD='\033[1m'
 step()    { echo -e "\n${GREEN}${BOLD}==> $*${RESET}"; }
@@ -40,6 +45,7 @@ note()    { echo -e "${YELLOW}    $*${RESET}"; }
 elapsed() { echo -e "    done in ${BOLD}$(( SECONDS - $1 ))s${RESET}"; }
 
 DO_INGEST=true; DO_STARTLIST=true; DO_PTO=true; DO_MERGES=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_RECURRING=true; DO_AUTOCORR=true; DO_RATINGS=true
+EXTEND=false
 
 for arg in "$@"; do
     case $arg in
@@ -54,6 +60,7 @@ for arg in "$@"; do
         --skip-autocorr)  DO_AUTOCORR=false ;;
         --skip-ratings)   DO_RATINGS=false ;;
         --ratings-only)   DO_INGEST=false; DO_STARTLIST=false; DO_PTO=false; DO_MERGES=false; DO_STAGES=false; DO_IGNORED=false; DO_SERIES=false; DO_RECURRING=false ;;
+        --extend)         EXTEND=true ;;
     esac
 done
 
@@ -80,9 +87,17 @@ fi
 
 # ── 3. PTO scrape ─────────────────────────────────────────────────────────────
 if $DO_PTO; then
-    step "PTO - scrape stats.protriathletes.org for long-course results"
+    if $EXTEND; then
+        step "PTO - scrape stats.protriathletes.org (current year only)"
+    else
+        step "PTO - scrape stats.protriathletes.org for long-course results"
+    fi
     T=$SECONDS
-    python3 -m ptd_data.pto_ingest
+    if $EXTEND; then
+        python3 -m ptd_data.pto_ingest --recent 1
+    else
+        python3 -m ptd_data.pto_ingest
+    fi
     elapsed $T
 fi
 
@@ -139,9 +154,17 @@ fi
 
 # ── 10. Ratings + Rankings ────────────────────────────────────────────────────
 if $DO_RATINGS; then
-    step "Ratings + Rankings - load corrections.csv, recompute ELO + rankings"
+    if $EXTEND; then
+        step "Ratings + Rankings - extend from earliest new race date"
+    else
+        step "Ratings + Rankings - load corrections.csv, recompute ELO + rankings"
+    fi
     T=$SECONDS
-    python3 -m ptd_data.ratings
+    if $EXTEND; then
+        python3 -m ptd_data.ratings --extend
+    else
+        python3 -m ptd_data.ratings
+    fi
     elapsed $T
 fi
 

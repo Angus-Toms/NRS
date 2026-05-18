@@ -63,14 +63,25 @@ def _parse_program(program: str):
     return _PROGRAMS.get(program, _PROGRAMS['elite-short'])
 
 
-@router.get("/compare", response_class=HTMLResponse)
+@router.get("/compare", include_in_schema=False)
+@router.get("/compare/{rest:path}", include_in_schema=False)
+async def legacy_compare_redirect(request: Request, rest: str = ""):
+    """Old /compare URLs redirect to the new /athlete-compare path."""
+    from fastapi.responses import RedirectResponse
+    qs = request.url.query
+    suffix = f"/{rest}" if rest else ""
+    target = f"/athlete-compare{suffix}" + (f"?{qs}" if qs else "")
+    return RedirectResponse(url=target, status_code=301)
+
+
+@router.get("/athlete-compare", response_class=HTMLResponse)
 async def compare_page(request: Request):
     return templates.TemplateResponse("comparison.html", {
         "request": request, "active_page": "athletes",
     })
 
 
-@router.get("/compare/search")
+@router.get("/athlete-compare/search")
 async def search_athletes_for_compare(q: str = "", gender: str = "", programs: str = ""):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
@@ -83,16 +94,22 @@ async def search_athletes_for_compare(q: str = "", gender: str = "", programs: s
     return JSONResponse(results)
 
 
-@router.get("/compare/athlete/{athlete_id}")
-async def get_athlete_for_compare(athlete_id: int):
+@router.get("/athlete-compare/athlete/{athlete_id}")
+async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         return JSONResponse({"error": "Not found"}, status_code=404)
     programs = queries.get_athlete_programs(athlete_id)
-    # Pick a sensible default for the selection-card stats: favour elite-short,
-    # then elite-long, then ag.
-    default_program = programs[0] if programs else 'elite-short'
-    course, category = _parse_program(default_program)
+    # If caller passed ?program=, honour it (falling back if the athlete doesn't
+    # have that program). Otherwise pick the first available — favours
+    # elite-short, then elite-long, then ag per get_athlete_programs ordering.
+    if program in _PROGRAMS and program in programs:
+        active_program = program
+    elif programs:
+        active_program = programs[0]
+    else:
+        active_program = 'elite-short'
+    course, category = _parse_program(active_program)
     ratings = queries.get_athlete_current_ratings(athlete_id, category=category, course=course)
     stats   = queries.get_athlete_stats(athlete_id, category=category, course=course)
     return JSONResponse({
@@ -107,13 +124,16 @@ async def get_athlete_for_compare(athlete_id: int):
         "swim_rating":    int(round(ratings["swim_rating"])) if ratings and ratings.get("swim_rating") else None,
         "bike_rating":    int(round(ratings["bike_rating"])) if ratings and ratings.get("bike_rating") else None,
         "run_rating":     int(round(ratings["run_rating"]))  if ratings and ratings.get("run_rating")  else None,
-        "world_rank":     ratings["world_overall"] if (ratings and info.get("active")) else None,
+        # world_overall comes from the rankings table, which only carries
+        # currently-ranked athletes — no need for a separate active check.
+        "world_rank":     ratings.get("world_overall") if ratings else None,
         "wins":           stats["wins"] if stats else None,
         "programs":       programs,
+        "active_program": active_program,
     })
 
 
-@router.get("/compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
+@router.get("/athlete-compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
 async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int,
                               program: str = "elite-short"):
     if program not in _PROGRAMS:
@@ -123,7 +143,7 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     if not request.headers.get("X-Partial"):
         from fastapi.responses import RedirectResponse
         return RedirectResponse(
-            url=f"/compare?a1={athlete1_id}&a2={athlete2_id}&program={program}",
+            url=f"/athlete-compare?a1={athlete1_id}&a2={athlete2_id}&program={program}",
             status_code=302,
         )
     info1    = queries.get_athlete_info(athlete1_id)

@@ -102,7 +102,8 @@ def _course_signal_for_race(race_id, gender, models):
     results     = queries.get_race_results(race_id)
     pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
     race_info   = queries.get_race_info(race_id)
-    target_year = race_info['race_date'].year if race_info and race_info.get('race_date') else None
+    target_date = race_info.get('race_date') if race_info else None
+    target_year = target_date.year if target_date else None
     DISCS = ['overall', 'swim', 'bike', 'run']
     CONF_THRESHOLD = 10
 
@@ -112,10 +113,10 @@ def _course_signal_for_race(race_id, gender, models):
             return 0.0
         return min(1.0, (pr.get('prior_starts', 0) or 0) / CONF_THRESHOLD)
 
-    # Compute predicted times — include the year term so long-course era drift
-    # doesn't masquerade as a course-condition signal. Clamped to ≤ 0 (see
-    # _anchor_time docstring).
-    year_offset = min(target_year - YEAR_REF, 0) if target_year is not None else 0.0
+    # Use the same anchor as the race-page predictions (top-K pooled history
+    # quantile) so the "expected" baseline judging course speed matches the
+    # times shown on the race page. The raw population model overestimates
+    # leader speed by ~4-5% and was pushing nearly every race into "slow".
     preds = {}
     for disc in DISCS:
         m = models.get((gender, distance, disc))
@@ -126,7 +127,8 @@ def _course_signal_for_race(race_id, gender, models):
                                    else START_RATING)
                  for r in results}
         lr = max(field.values())
-        lt = m['slope'] * lr + m.get('year_coef', 0.0) * year_offset + m['intercept']
+        lt = _anchor_time(field, lr, distance, disc, m,
+                          target_year=target_year, target_date=target_date)
         for aid, rating in field.items():
             preds.setdefault(aid, {})[disc] = max(0, round(lt * (10 ** ((lr - rating) / SCALE))))
 
@@ -490,7 +492,10 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     raw_corrections = queries.get_race_corrections(race_id)
 
     finish_count = sum(1 for r in results if r["status"] not in DNF_STATUSES)
-    dnf_count    = len(results) - finish_count
+    # Per-status non-finisher tallies for the race header. Each category is
+    # shown separately so LAP/DQ/DNS/NC don't get lumped under "DNFs".
+    status_counts = {s: sum(1 for r in results if r["status"] == s) for s in DNF_STATUSES}
+    dnf_count     = len(results) - finish_count
 
     # Add race year for age calculation
     race_year = race["race_date"].year if hasattr(race["race_date"], "year") else int(str(race["race_date"])[:4])
@@ -551,12 +556,22 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
 
     thresholds = queries.get_race_standard_thresholds(race["gender"])
     def _classify(val, t):
+        if val is None: return None
         if val >= t["p95"]: return "expert"
         if val >= t["p85"]: return "advanced"
         if val >= t["p60"]: return "intermediate"
         if val >= t["p30"]: return "novice"
         return "beginner"
     race_standard_classes = {d: _classify(standards[d], thresholds[d]) for d in standards}
+
+    # Race rank within (gender, course) for each discipline. Total used for
+    # the "X of N" display so users see how the race sorts globally.
+    race_rank_row = queries.get_race_rankings(race_id)
+    race_rank_total = (queries.get_race_rankings_total(race_rank_row['gender'], race_rank_row['course'])
+                       if race_rank_row else 0)
+    race_ranks = {}
+    for d in ["overall", "swim", "bike", "run", "transition"]:
+        race_ranks[d] = race_rank_row.get(f"{d}_rank") if race_rank_row else None
 
     # Format best performances
     best_performances = {}
@@ -660,7 +675,8 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
 
     # Augment race dict with fields the template accesses directly on `race`
     race["date"]          = race["race_date"]   # template uses race.date.strftime(...)
-    race["athlete_count"] = finish_count
+    race["athlete_count"] = len(results)
+    race["status_counts"] = status_counts
     for disc in ["overall", "swim", "bike", "run", "transition"]:
         race[f"{disc}_increase_athlete_id"] = best_perf[f"{disc}_athlete_id"] or 0
 
@@ -678,6 +694,9 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "ignored_info":          ignored_info,
         "race_standards":        race_standards,
         "race_standard_classes": race_standard_classes,
+        "race_ranks":            race_ranks,
+        "race_rank_total":       race_rank_total,
+        "race_course":           race_rank_row['course'] if race_rank_row else None,
         "best_performances": best_performances,
         "splits_data":    splits_data,
         "ratings_data":   ratings_data,
@@ -710,8 +729,21 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
     from datetime import date
     race_id    = race['race_id']
     entries    = queries.get_upcoming_race_entries(race_id)
-    standards  = queries.get_upcoming_race_standards(race_id)
+    upcoming_distance = queries.get_upcoming_race_distance_type(race_id)
+    # AG races are bucketed separately in race_rankings so the rank reflects
+    # peer competition rather than mixing with elite short-course fields.
+    upcoming_course = ('ag' if race.get('category') == 'ag'
+                       else (queries.course_for_distance(upcoming_distance) or 'short'))
+    standards  = queries.get_upcoming_race_standards(race_id, course=upcoming_course)
     is_elite   = race.get('category') == 'elite'
+
+    # Live race rank vs the existing race_rankings universe for this
+    # (gender, course). No table row exists for the upcoming race yet, so we
+    # compute by counting historic races with a higher standard.
+    upcoming_race_ranks = queries.get_upcoming_race_ranks(
+        race['gender'], upcoming_course, standards,
+    )
+    upcoming_rank_total = queries.get_race_rankings_total(race['gender'], upcoming_course)
 
     predictions, pred_raw_times = _compute_upcoming_predictions(
         race, entries, queries.get_prediction_models()
@@ -746,6 +778,7 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
     race_standards = {d: format_rating(v) for d, v in standards.items()}
     thresholds = queries.get_race_standard_thresholds(race['gender'])
     def _classify(val, t):
+        if val is None: return None
         if val >= t['p95']: return 'expert'
         if val >= t['p85']: return 'advanced'
         if val >= t['p60']: return 'intermediate'
@@ -783,6 +816,9 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         "ignored_info":          None,
         "race_standards":        race_standards,
         "race_standard_classes": race_standard_classes,
+        "race_ranks":            upcoming_race_ranks,
+        "race_rank_total":       upcoming_rank_total,
+        "race_course":           upcoming_course,
         "splits_data":           [],
         "predictions":           predictions,
         "has_predictions":       predictions is not None,

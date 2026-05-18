@@ -66,7 +66,7 @@
     box-shadow: var(--box-shadow-hover);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .error-card {
         padding: var(--spacing-xl);
     }

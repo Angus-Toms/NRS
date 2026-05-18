@@ -1,40 +1,11 @@
-Data format for site APIs:
-- [X] Fix double data and rating NaNs
-- [X] Move race lookup construct to elo.py
-- [X] Add men and womens leaderboard and clean up filtering UI
-- [X] Add athlete search by name
-- [X] Add race search by name 
-- [X] Clean up ignored files handling
-- [X] Ensure stripping of location names
-- [X] Add more race info - QOF, hists etc.
-- [X] Add best performances section to race page
-- [X] Add athlete comparisons
-- [X] Catch -inf in single best performances
-- [X] Add 1 year changes and formatting
-- [ ] Capitalise all words in venue and location download, probably refactor whole data_access.py
-- [X] Fix 'Born 0' on Athlete page
-- [X] Fast image loading, either lazy load image size or static caching thingy. (Or all the above)
-- [X] Histogram labelling on small times? T1/T2
-- [X] Start maintaining ignored race list
-- [X] Add all countries to leaderboard filtering
-- [X] Add program to athlete results table
-- [X] Redo data access to check event id rather then prog (i.e. no request for seen events) 
-- [ ] Events leaderboard, will need a new cache
-- [ ] Remove histograms if no splits
-- [X] "Hot" athletes leaderboard
-- [ ] Limit comparisons to gender
-- [ ] Luis vs. KB - Why does KB not have a time for paris 
-- [ ] Move comparison button on thin athlete pages somewhere else / make smaller
-- [X] Palmares
-
-After launch:
-- [ ] Migrate backend to DuckDB
-- [ ] Collect races into programs 
-- [ ] Collect programs into long-running races e.g. Tongyeong WC
-- [ ] Add event web images
-- [ ] Add more athlete images
-
-Later:
-- [ ] Previous nationalities for athletes
-- [ ] Add Enum for active page 
-- [ ] Add colors for graphs to config (or somewhere else)
+Issues:
+- [X] Palmares double counting from multi-stage races
+- [X] Predictions being geared to the top-end 
+- [X] Course conditions being kind of bad? Seem to usually say course is too slow - would be good to see the distribution of conditions - should be fairly normal.
+    - [ ] For recurring long-course events, we can extend course conditions to calculate over many years.
+    - [ ] Leaderboard of fast and slow courses and time converter?
+- [ ] Race leaderboard 
+- [X] Better 'large' athlete widgets
+- [ ] More athlete and race photos
+- [X] Rivals ?
+- [X]  Race compare

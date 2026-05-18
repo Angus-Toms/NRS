@@ -48,7 +48,14 @@
                     <span class="logo-text">Pro Tri Data</span>
                 </a>
             </div>
-            <nav class="main-nav">
+            <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="main-nav">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="4" y1="6"  x2="20" y2="6"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="18" x2="20" y2="18"/>
+                </svg>
+            </button>
+            <nav class="main-nav" id="main-nav">
                 <a href="/" class="nav-link{{ ' active' if active_page == 'home' else '' }}">Home</a>
                 <a href="/athletes" class="nav-link{{ ' active' if active_page == 'athletes' else '' }}">Athletes</a>
                 <a href="/races" class="nav-link{{ ' active' if active_page == 'races' else '' }}">Races</a>
@@ -76,6 +83,30 @@
         </div>
     </footer>
     
+    <!-- Mobile nav toggle (hamburger). Self-contained so it runs on every page. -->
+    <script>
+    (function () {
+        const toggle = document.querySelector('.nav-toggle');
+        const nav = document.getElementById('main-nav');
+        if (!toggle || !nav) return;
+        const setOpen = (open) => {
+            toggle.setAttribute('aria-expanded', String(open));
+            nav.classList.toggle('open', open);
+        };
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+        nav.addEventListener('click', (e) => { if (e.target.closest('a')) setOpen(false); });
+        document.addEventListener('click', (e) => {
+            if (toggle.getAttribute('aria-expanded') === 'true' && !e.target.closest('.site-header')) setOpen(false);
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && toggle.getAttribute('aria-expanded') === 'true') setOpen(false);
+        });
+    })();
+    </script>
+
     <!-- Chart.js loaded here so it doesn't block initial render -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>

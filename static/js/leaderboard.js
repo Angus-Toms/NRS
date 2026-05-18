@@ -9,7 +9,7 @@ function initLoadMore() {
         params.append("offset", leaderboardOffset);
 
         try {
-            const res = await fetch(`/leaderboard/more?${params.toString()}`);
+            const res = await fetch(`/athlete-leaderboard/more?${params.toString()}`);
             const html = await res.text();
             document.querySelector(".leaderboard-grid").insertAdjacentHTML("beforeend", html);
             leaderboardOffset += 50;

@@ -110,7 +110,7 @@
                 {% endfor %}
             </div>
             {% endif %}
-            <a href="/compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em"><polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/></svg>Compare</a>
+            <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em"><polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/></svg>Compare</a>
         </div>
 
     </div>
@@ -156,81 +156,88 @@
 {% endif %}
 
 {% if has_ratings %}
-<!-- Current Ratings -->
-<div class="page-section-head">Current Ratings</div>
-<div class="race-stat-cards">
+{# Ratings: editorial table with column headers. Active athletes see a 1y
+   Change column (number + sparkline); retired/no-rank athletes get fewer
+   columns. On <=768 each row keeps Rating + Rank visible and collapses
+   Peak / Best Race behind a per-row chevron. #}
+{% set ag_prefix = 'AG ' if category == 'ag' else '' %}
+{% set has_change_col = current_rankings and rating_changes_1yr %}
+{% set has_rank_col   = current_rankings or peak_rankings %}
+{% set rank_col_label = ('Peak ' if not current_rankings and peak_rankings else '') ~ ag_prefix ~ 'World Rank' %}
+{% set _flags = ('-change' if has_change_col else '') ~ ('-rank' if has_rank_col else '') %}
+
+<div class="page-section-head"><span>Ratings</span></div>
+
+<div class="disc-table disc-table{{ _flags }}">
+    <div class="disc-head">
+        <span class="disc-th"></span>{# name col, no header #}
+        <span class="disc-th disc-th--rating">Rating</span>
+        {% if has_change_col %}<span class="disc-th disc-th--change">1y Change</span>{% endif %}
+        {% if has_rank_col   %}<span class="disc-th disc-th--rank">{{ rank_col_label }}</span>{% endif %}
+        <span class="disc-th disc-th--peak">Peak Rating</span>
+        <span class="disc-th disc-th--best">Best Race</span>
+        <span class="disc-th"></span>{# toggle col, mobile #}
+    </div>
+
     {% for disc, label in discs %}
-    <div class="race-stat-card">
-        <div class="race-stat-disc">{{ label }}</div>
-        <div class="race-stat-num">{{ current_ratings[disc~'_rating'] }}</div>
-        {% if rating_changes_1yr[disc~'_change_1yr'].formatted_str %}
-        <div class="race-stat-sub rating-change-1yr {{ rating_changes_1yr[disc~'_change_1yr'].css_class }}">
-            {{ rating_changes_1yr[disc~'_change_1yr'].formatted_str | safe }}
+    <div class="disc-row disc-row--{{ disc }}">
+        <span class="disc-name">{{ label }}</span>
+
+        <span class="disc-rating-num">{{ current_ratings[disc~'_rating'] }}</span>
+
+        {% if has_change_col %}
+        <div class="disc-change">
+            {% if rating_changes_1yr[disc~'_change_1yr'].formatted_str %}
+            <span class="disc-rating-change {{ rating_changes_1yr[disc~'_change_1yr'].css_class }}">
+                {{ rating_changes_1yr[disc~'_change_1yr'].formatted_str | safe }}
+            </span>
+            {% endif %}
+            {% if sparklines[disc] %}
+            <svg class="disc-spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline points="{{ sparklines[disc] }}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {% endif %}
         </div>
         {% endif %}
-    </div>
-    {% endfor %}
-</div>
 
-{% if show_rankings %}
-<!-- World Rankings -->
-<div class="page-section-head">Current {{ 'AG ' if category == 'ag' else '' }}World Rankings</div>
-<div class="race-stat-cards">
-    {% for disc, label in discs %}
-    <div class="race-stat-card">
-        <div class="race-stat-disc">{{ label }}</div>
-        <div class="race-stat-num ranking-num">
-            {% if current_rankings['world_'~disc] %}
-            <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">
+        {% if has_rank_col %}
+        <div class="disc-rank">
+            {% if current_rankings and current_rankings['world_'~disc] %}
+            <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">
                 {{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup>
             </a>
-            {% else %}-{% endif %}
-        </div>
-        {% if current_rankings['national_'~disc] %}
-        <div class="race-stat-sub">
-            <a href="/leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link">
-                {{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup>
-                <span class="ranking-national-label">national</span>
+            {% if current_rankings['national_'~disc] %}
+            <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link disc-cell-sub">
+                {{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup> national
             </a>
+            {% endif %}
+            {% elif peak_rankings and peak_rankings['world_'~disc] %}
+            {{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup>
+            {% else %}<span class="no-data">-</span>{% endif %}
         </div>
         {% endif %}
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 
-<!-- Peak Ratings -->
-<div class="page-section-head">Peak Ratings</div>
-<div class="race-stat-cards">
-    {% for disc, label in discs %}
-    <div class="race-stat-card">
-        <div class="race-stat-disc">{{ label }}</div>
-        <div class="race-stat-num">{{ rating_peaks['max_'~disc] }}</div>
-        <div class="race-stat-sub">
-            <a href="/race/{{ athlete['max_'~disc~'_race_id'] }}" class="small-link">
-                {{ rating_peaks['max_'~disc~'_race'] }}
-            </a>
+        <div class="disc-peak">
+            <span class="disc-cell-value">{{ rating_peaks['max_'~disc] }}</span>
+            <a href="/race/{{ athlete['max_'~disc~'_race_id'] }}" class="disc-cell-sub">{{ rating_peaks['max_'~disc~'_race'] }}</a>
         </div>
-    </div>
-    {% endfor %}
-</div>
 
-<!-- Best Single Performances -->
-<div class="page-section-head">Best Single Performances</div>
-<div class="race-stat-cards">
-    {% for disc, label in discs %}
-    <div class="race-stat-card">
-        <div class="race-stat-disc">{{ label }}</div>
-        <div class="race-stat-num {{ best_performances[disc~'_change'].css_class }}">
-            {{ best_performances[disc~'_change'].formatted_str | safe }}
+        <div class="disc-best">
+            {% if athlete[disc~'_increase_race_id'] != 0 %}
+            <a href="/race/{{ athlete[disc~'_increase_race_id'] }}" class="disc-cell-value disc-best-race">{{ best_performances[disc~'_race'] }}</a>
+            <span class="disc-cell-sub disc-best-badge {{ best_performances[disc~'_change'].css_class }}">
+                {{ best_performances[disc~'_change'].formatted_str | safe }}
+            </span>
+            {% else %}
+            <span class="disc-cell-value no-data">-</span>
+            {% endif %}
         </div>
-        {% if athlete[disc~'_increase_race_id'] != 0 %}
-        <div class="race-stat-sub">
-            <a href="/race/{{ athlete[disc~'_increase_race_id'] }}" class="small-link">
-                {{ best_performances[disc~'_race'] }}
-            </a>
-        </div>
-        {% endif %}
+
+        <button type="button" class="disc-toggle" aria-expanded="false" aria-label="Show {{ label }} details">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M5 3l6 5-6 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
     </div>
     {% endfor %}
 </div>
@@ -271,17 +278,20 @@
                     {% elif r.pred_pos %}<span class="pos-other">{{ r.pred_pos }}</span>
                     {% else %}<span class="pos-other">—</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ r.pred_swim or '' }}">
+                <td class="time-col split-col" data-value="{{ r.pred_swim or '' }}">
+                    <span class="time-disc-label">Swim</span>
                     <span class="time-cell-main{{ ' fastest' if r.pred_swim_behind == 'fastest' else '' }}">{{ r.pred_swim or '' }}</span>
                     {% if r.pred_swim_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
                     {% elif r.pred_swim_behind %}<span class="time-cell-gap">{{ r.pred_swim_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ r.pred_bike or '' }}">
+                <td class="time-col split-col" data-value="{{ r.pred_bike or '' }}">
+                    <span class="time-disc-label">Bike</span>
                     <span class="time-cell-main{{ ' fastest' if r.pred_bike_behind == 'fastest' else '' }}">{{ r.pred_bike or '' }}</span>
                     {% if r.pred_bike_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
                     {% elif r.pred_bike_behind %}<span class="time-cell-gap">{{ r.pred_bike_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ r.pred_run or '' }}">
+                <td class="time-col split-col" data-value="{{ r.pred_run or '' }}">
+                    <span class="time-disc-label">Run</span>
                     <span class="time-cell-main{{ ' fastest' if r.pred_run_behind == 'fastest' else '' }}">{{ r.pred_run or '' }}</span>
                     {% if r.pred_run_behind == 'fastest' %}<span class="time-cell-gap">fastest</span>
                     {% elif r.pred_run_behind %}<span class="time-cell-gap">{{ r.pred_run_behind }}</span>{% endif %}
@@ -290,6 +300,11 @@
                     <span class="overall-time">{{ r.pred_overall or '' }}</span>
                     {% if r.pred_overall_behind and r.pred_overall_behind != 'fastest' %}<span class="time-cell-gap">{{ r.pred_overall_behind }}</span>{% endif %}
                 </td>
+                <td class="splits-toggle-col" aria-hidden="true">
+                    <button type="button" class="splits-toggle" aria-label="Show splits" aria-expanded="false">
+                        <svg class="splits-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -297,7 +312,40 @@
 </div>
 {% endif %}
 
+{% if rivals %}
+<div class="page-section-head">Rivals</div>
+<div class="rivals-row">
+    {% for r in rivals %}
+    <div class="rival-card">
+        <a class="rival-link" href="/athlete/{{ r.athlete_id }}?course={{ course }}&category={{ category }}">
+            <img class="rival-img"
+                 src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ r.athlete_id ~ '.webp' if r.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
+                 alt="{{ r.name }}" loading="lazy" width="80" height="80">
+            <div class="rival-name">{{ r.name }} {{ r.country_emoji }}</div>
+            <div class="rival-record"><span class="rival-wins">{{ r.wins }}W</span> &middot; <span class="rival-losses">{{ r.losses }}L</span></div>
+        </a>
+        <a class="rival-compare"
+           href="/athlete-compare?a1={{ athlete.athlete_id }}&a2={{ r.athlete_id }}&program={{ category }}-{{ course }}"
+           aria-label="Compare with {{ r.name }}" title="Compare">
+            <svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/>
+            </svg>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="page-section-head">Race Results</div>
+<div class="results-sort-chips" role="tablist" aria-label="Sort race results">
+    <button class="sort-chip" data-sort-col="0" type="button">Date<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="9" type="button">Overall<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="4" type="button">Swim<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="5" type="button">T1<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="6" type="button">Bike<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="7" type="button">T2<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="8" type="button">Run<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+</div>
 <div class="table-section results-table">
     <table class="sortable-table">
         <thead>
@@ -327,7 +375,6 @@
                 </td>
                 <td class="race-col" data-value="{{ race.race_title }}">
                     <a href="/race/{{ race.race_id }}" class="link">{{ race.race_title }}</a>
-                    {% if race.is_multi_stage %}{% include "_multi_stage_badge.html" %}{% endif %}
                     <span class="std-pill std-pill--{{ race.standard_class }}">{{ race.standard_class|title }}</span>
                 </td>
                 <td class="program-col muted-col" data-value="{{ race.program }}">{{ race.program }}</td>
@@ -339,27 +386,32 @@
                     {% else %}<span class="pos-other">{{ race.position }}</span>
                     {% endif %}
                 </td>
-                <td class="time-col" data-value="{{ race.swim }}">
+                <td class="time-col split-col" data-value="{{ race.swim }}">
+                    <span class="time-disc-label">Swim</span>
                     <span class="time-cell-main{{ ' fastest' if race.swim_fastest }}">{{ race.swim }}</span>
                     {% if race.swim_fastest %}<span class="time-cell-gap">fastest</span>
                     {% elif race.swim_behind %}<span class="time-cell-gap">{{ race.swim_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ race.t1 }}">
+                <td class="time-col split-col" data-value="{{ race.t1 }}">
+                    <span class="time-disc-label">T1</span>
                     <span class="time-cell-main{{ ' fastest' if race.t1_fastest }}">{{ race.t1 }}</span>
                     {% if race.t1_fastest %}<span class="time-cell-gap">fastest</span>
                     {% elif race.t1_behind %}<span class="time-cell-gap">{{ race.t1_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ race.bike }}">
+                <td class="time-col split-col" data-value="{{ race.bike }}">
+                    <span class="time-disc-label">Bike</span>
                     <span class="time-cell-main{{ ' fastest' if race.bike_fastest }}">{{ race.bike }}</span>
                     {% if race.bike_fastest %}<span class="time-cell-gap">fastest</span>
                     {% elif race.bike_behind %}<span class="time-cell-gap">{{ race.bike_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ race.t2 }}">
+                <td class="time-col split-col" data-value="{{ race.t2 }}">
+                    <span class="time-disc-label">T2</span>
                     <span class="time-cell-main{{ ' fastest' if race.t2_fastest }}">{{ race.t2 }}</span>
                     {% if race.t2_fastest %}<span class="time-cell-gap">fastest</span>
                     {% elif race.t2_behind %}<span class="time-cell-gap">{{ race.t2_behind }}</span>{% endif %}
                 </td>
-                <td class="time-col" data-value="{{ race.run }}">
+                <td class="time-col split-col" data-value="{{ race.run }}">
+                    <span class="time-disc-label">Run</span>
                     <span class="time-cell-main{{ ' fastest' if race.run_fastest }}">{{ race.run }}</span>
                     {% if race.run_fastest %}<span class="time-cell-gap">fastest</span>
                     {% elif race.run_behind %}<span class="time-cell-gap">{{ race.run_behind }}</span>{% endif %}
@@ -368,14 +420,16 @@
                     <span class="overall-time">{{ race.overall }}</span>
                     {% if race.overall_behind %}<span class="time-cell-gap">{{ race.overall_behind }}</span>{% endif %}
                 </td>
+                <td class="splits-toggle-col" aria-hidden="true">
+                    <button type="button" class="splits-toggle" aria-label="Show splits" aria-expanded="false">
+                        <svg class="splits-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </td>
             </tr>
             {% for sub in race.sub_races | reverse %}
             <tr class="sub-race-row" data-parent="{{ race.race_id }}">
                 <td class="date-col muted-col sub-race-stage-col" data-value="{{ sub.race_date }}">
                     <svg class="sub-race-corner-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
-                    {% if sub.is_stage %}
-                    <span class="sub-race-stage-label">Stage {{ sub.stage_num }}</span>
-                    {% endif %}
                 </td>
                 <td class="race-col" data-value="{{ sub.race_title }}">
                     <a href="/race/{{ sub.race_id }}" class="link">{{ sub.race_title }}</a>
@@ -389,7 +443,40 @@
                     {% elif sub.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ sub.status }}</span>
                     {% else %}<span class="pos-other">{{ sub.position }}</span>{% endif %}
                 </td>
-                <td class="time-col" colspan="6"></td>
+                <td class="time-col split-col" data-value="{{ sub.swim }}">
+                    <span class="time-disc-label">Swim</span>
+                    <span class="time-cell-main{{ ' fastest' if sub.swim_fastest }}">{{ sub.swim }}</span>
+                    {% if sub.swim_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif sub.swim_behind %}<span class="time-cell-gap">{{ sub.swim_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col split-col" data-value="{{ sub.t1 }}">
+                    <span class="time-disc-label">T1</span>
+                    <span class="time-cell-main{{ ' fastest' if sub.t1_fastest }}">{{ sub.t1 }}</span>
+                    {% if sub.t1_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif sub.t1_behind %}<span class="time-cell-gap">{{ sub.t1_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col split-col" data-value="{{ sub.bike }}">
+                    <span class="time-disc-label">Bike</span>
+                    <span class="time-cell-main{{ ' fastest' if sub.bike_fastest }}">{{ sub.bike }}</span>
+                    {% if sub.bike_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif sub.bike_behind %}<span class="time-cell-gap">{{ sub.bike_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col split-col" data-value="{{ sub.t2 }}">
+                    <span class="time-disc-label">T2</span>
+                    <span class="time-cell-main{{ ' fastest' if sub.t2_fastest }}">{{ sub.t2 }}</span>
+                    {% if sub.t2_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif sub.t2_behind %}<span class="time-cell-gap">{{ sub.t2_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col split-col" data-value="{{ sub.run }}">
+                    <span class="time-disc-label">Run</span>
+                    <span class="time-cell-main{{ ' fastest' if sub.run_fastest }}">{{ sub.run }}</span>
+                    {% if sub.run_fastest %}<span class="time-cell-gap">fastest</span>
+                    {% elif sub.run_behind %}<span class="time-cell-gap">{{ sub.run_behind }}</span>{% endif %}
+                </td>
+                <td class="time-col overall-col" data-value="{{ sub.overall }}">
+                    <span class="overall-time">{{ sub.overall }}</span>
+                    {% if sub.overall_behind %}<span class="time-cell-gap">{{ sub.overall_behind }}</span>{% endif %}
+                </td>
             </tr>
             {% endfor %}
             {% else %}
@@ -401,6 +488,15 @@
 
 {% if has_ratings %}
 <div class="page-section-head">Rating History</div>
+<div class="ratings-sort-chips" role="tablist" aria-label="Sort rating history">
+    <button class="sort-chip" data-sort-col="0" data-sort-axis="date"       type="button">Date<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="3" data-sort-axis="position"   type="button">Position<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="8" data-sort-axis="discipline" type="button">Overall<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="4" data-sort-axis="discipline" type="button">Swim<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="5" data-sort-axis="discipline" type="button">Bike<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="6" data-sort-axis="discipline" type="button">Run<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="sort-chip" data-sort-col="7" data-sort-axis="discipline" type="button">Transition<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+</div>
 <div class="table-section rating-table">
     <table class="sortable-table">
         <thead>
@@ -433,23 +529,32 @@
                     {% else %}<span class="pos-other">{{ rating.position }}</span>
                     {% endif %}
                 </td>
-                <td data-value="{{ rating.swim_rating }}">
+                <td class="split-col" data-value="{{ rating.swim_rating }}" data-change="{{ rating.swim_change.raw if rating.swim_change.raw is not none else '' }}">
+                    <span class="time-disc-label">Swim</span>
                     <div class="rating-cell">{{ rating.swim_rating }}<span class="rating-change {{ rating.swim_change.css_class }}">{{ rating.swim_change.formatted_str | safe }}</span></div>
                 </td>
-                <td data-value="{{ rating.bike_rating }}">
+                <td class="split-col" data-value="{{ rating.bike_rating }}" data-change="{{ rating.bike_change.raw if rating.bike_change.raw is not none else '' }}">
+                    <span class="time-disc-label">Bike</span>
                     <div class="rating-cell">{{ rating.bike_rating }}<span class="rating-change {{ rating.bike_change.css_class }}">{{ rating.bike_change.formatted_str | safe }}</span></div>
                 </td>
-                <td data-value="{{ rating.run_rating }}">
+                <td class="split-col" data-value="{{ rating.run_rating }}" data-change="{{ rating.run_change.raw if rating.run_change.raw is not none else '' }}">
+                    <span class="time-disc-label">Run</span>
                     <div class="rating-cell">{{ rating.run_rating }}<span class="rating-change {{ rating.run_change.css_class }}">{{ rating.run_change.formatted_str | safe }}</span></div>
                 </td>
-                <td data-value="{{ rating.transition_rating }}">
+                <td class="split-col" data-value="{{ rating.transition_rating }}" data-change="{{ rating.transition_change.raw if rating.transition_change.raw is not none else '' }}">
+                    <span class="time-disc-label">Trans</span>
                     <div class="rating-cell">{{ rating.transition_rating }}<span class="rating-change {{ rating.transition_change.css_class }}">{{ rating.transition_change.formatted_str | safe }}</span></div>
                 </td>
-                <td class="overall-col" data-value="{{ rating.overall_rating }}">
+                <td class="overall-col" data-value="{{ rating.overall_rating }}" data-change="{{ rating.overall_change.raw if rating.overall_change.raw is not none else '' }}">
                     <div class="rating-cell">
                         <span class="overall-time">{{ rating.overall_rating }}</span>
                         <span class="rating-change {{ rating.overall_change.css_class }}">{{ rating.overall_change.formatted_str | safe }}</span>
                     </div>
+                </td>
+                <td class="splits-toggle-col" aria-hidden="true">
+                    <button type="button" class="splits-toggle" aria-label="Show discipline ratings" aria-expanded="false">
+                        <svg class="splits-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                 </td>
             </tr>
             {% else %}

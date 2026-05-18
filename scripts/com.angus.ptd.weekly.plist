@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.angus.ptd.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/mungo/Personal/PTD/scripts/weekly.sh</string>
+    </array>
+
+    <!-- Weekday: 0=Sun, 1=Mon, 2=Tue, 4=Thu. Hour/Minute in local time. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Weekday</key><integer>0</integer>
+            <key>Hour</key><integer>0</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>1</integer>
+            <key>Hour</key><integer>0</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>2</integer>
+            <key>Hour</key><integer>0</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>4</integer>
+            <key>Hour</key><integer>0</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+    </array>
+
+    <!-- If the Mac is asleep at the scheduled time, launchd queues the run
+         and fires it as soon as it wakes. pmset repeat (see scripts/README
+         in commit message) wakes it 5min early. -->
+
+    <!-- Fallback redirects in case weekly.sh fails before its own exec >>
+         redirect (e.g. PATH busted, bash missing). -->
+    <key>StandardOutPath</key>
+    <string>/Users/mungo/Personal/PTD/scripts/weekly.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/mungo/Personal/PTD/scripts/weekly.log</string>
+</dict>
+</plist>

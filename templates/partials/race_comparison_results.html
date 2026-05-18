@@ -1,0 +1,267 @@
+{% macro pos_span(pos, status) %}
+  {%- if pos == 1 -%}<span class="pos-circle gold">1</span>
+  {%- elif pos == 2 -%}<span class="pos-circle silver">2</span>
+  {%- elif pos == 3 -%}<span class="pos-circle bronze">3</span>
+  {%- elif pos -%}<span class="pos-other">{{ pos }}</span>
+  {%- elif status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] -%}<span class="pos-dnf">{{ status }}</span>
+  {%- else -%}-{%- endif -%}
+{% endmacro %}
+
+{% macro podium_card(race) %}
+<div class="rc-podium-card">
+    {% if race.podium %}
+    <ol class="event-race-podium">
+        {% for p in race.podium %}
+        <li class="event-race-entry">
+            <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
+            <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}"
+                 alt="{{ p.name }}" class="event-race-entry-img" loading="lazy" width="32" height="32">
+            <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.country_emoji }}</a>
+            {% if p.position == 1 and p.time %}
+                <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
+            {% elif p.gap %}
+                <span class="event-entry-time event-entry-time--diff">{{ p.gap }}</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Value row comparing two values with optional pill / context. higher_better
+   controls which side gets the "winner" highlight (true for ratings/standards,
+   false for course conditions where lower delta = slower). #}
+{% macro rc_stat_row(label, v1, v2, raw1=none, raw2=none, pill1='', pill2='', ctx1='', ctx2='', higher_better=true) %}
+  {% if raw1 is none %}{% set _r1 = v1 %}{% else %}{% set _r1 = raw1 %}{% endif %}
+  {% if raw2 is none %}{% set _r2 = v2 %}{% else %}{% set _r2 = raw2 %}{% endif %}
+  {% set has_both = _r1 is not none and _r2 is not none %}
+  {% if has_both %}
+    {% if higher_better %}
+      {% set w1 = _r1 > _r2 %}{% set w2 = _r2 > _r1 %}
+    {% else %}
+      {% set w1 = _r1 < _r2 %}{% set w2 = _r2 < _r1 %}
+    {% endif %}
+  {% else %}{% set w1 = false %}{% set w2 = false %}{% endif %}
+  <div class="h2h-stat-row">
+    <div class="h2h-stat-cell {{ 'is-winner' if w1 else 'is-loser' if w2 else '' }}">
+      <span class="h2h-stat-val">{{ v1 if v1 not in (none, '') else '—' }}</span>
+      {% if pill1 %}<span class="h2h-stat-delta">{{ pill1 | safe }}</span>{% endif %}
+      {% if ctx1 %}<span class="rc-stat-ctx">{{ ctx1 | safe }}</span>{% endif %}
+    </div>
+    <div class="h2h-stat-label">{{ label }}</div>
+    <div class="h2h-stat-cell {{ 'is-winner' if w2 else 'is-loser' if w1 else '' }}">
+      <span class="h2h-stat-val">{{ v2 if v2 not in (none, '') else '—' }}</span>
+      {% if pill2 %}<span class="h2h-stat-delta">{{ pill2 | safe }}</span>{% endif %}
+      {% if ctx2 %}<span class="rc-stat-ctx">{{ ctx2 | safe }}</span>{% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
+<!-- Podium -->
+<div class="page-section-head">Podiums</div>
+<div class="rc-header-row">
+    {{ podium_card(race1) }}
+    {{ podium_card(race2) }}
+</div>
+
+<!-- Standards comparison -->
+<div class="page-section-head">Standards</div>
+<div class="h2h-stats-card">
+    <div class="h2h-stats-header">
+        <div class="h2h-stats-athlete">{{ race1.race_title }}</div>
+        <div class="h2h-stats-vs">vs</div>
+        <div class="h2h-stats-athlete">{{ race2.race_title }}</div>
+    </div>
+
+    <div class="h2h-stats-group">
+        {% for row in standard_rows %}
+        {%- set rank_pill1 = ('<span class="race-rank-pill">#' ~ row.rank1 ~ (' of ' ~ row.rank_total1 if row.rank_total1 else '') ~ '</span>') if row.rank1 else '' -%}
+        {%- set rank_pill2 = ('<span class="race-rank-pill">#' ~ row.rank2 ~ (' of ' ~ row.rank_total2 if row.rank_total2 else '') ~ '</span>') if row.rank2 else '' -%}
+        {{ rc_stat_row(
+            row.label, row.value1, row.value2,
+            raw1=row.raw1, raw2=row.raw2,
+            pill1='<span class="std-pill std-pill--' ~ row.class1 ~ '">' ~ row.class1|title ~ '</span>' ~ rank_pill1,
+            pill2='<span class="std-pill std-pill--' ~ row.class2 ~ '">' ~ row.class2|title ~ '</span>' ~ rank_pill2,
+            higher_better=true
+        ) }}
+        {% endfor %}
+    </div>
+
+    <div class="h2h-stats-group">
+        {{ rc_stat_row('Athletes',  race1.athletes,  race2.athletes,  higher_better=true) }}
+        {{ rc_stat_row('Finishers', race1.finishers, race2.finishers, higher_better=true) }}
+        {{ rc_stat_row('DNFs',      race1.dnfs,      race2.dnfs,      higher_better=false) }}
+    </div>
+</div>
+
+{% if has_course_conditions %}
+<!-- Course conditions -->
+<div class="page-section-head">Course conditions</div>
+<div class="h2h-stats-card">
+    <div class="h2h-stats-header">
+        <div class="h2h-stats-athlete">{{ race1.race_title }}</div>
+        <div class="h2h-stats-vs">vs</div>
+        <div class="h2h-stats-athlete">{{ race2.race_title }}</div>
+    </div>
+    <div class="h2h-stats-group">
+        {% for row in course_condition_rows %}
+        {{ rc_stat_row(
+            row.label,
+            row.value1 or '—', row.value2 or '—',
+            pill1=('<span class="cond-pill cond-pill--' ~ row.cat1 ~ '">' ~ row.cat1.replace('_', ' ').title() ~ '</span>') if row.cat1 else '',
+            pill2=('<span class="cond-pill cond-pill--' ~ row.cat2 ~ '">' ~ row.cat2.replace('_', ' ').title() ~ '</span>') if row.cat2 else '',
+            higher_better=false
+        ) }}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Best performances -->
+<div class="page-section-head">Best Performances</div>
+<div class="h2h-stats-card">
+    <div class="h2h-stats-header">
+        <div class="h2h-stats-athlete">{{ race1.race_title }}</div>
+        <div class="h2h-stats-vs">vs</div>
+        <div class="h2h-stats-athlete">{{ race2.race_title }}</div>
+    </div>
+    <div class="h2h-stats-group">
+        {% for row in best_perf_rows %}
+        <div class="rc-bp-row">
+            {% if row.name1 %}
+            <a href="/athlete/{{ row.athlete1_id }}" class="rc-bp-name rc-bp-name--left link">{{ row.name1 }}</a>
+            {% else %}<span class="rc-bp-name rc-bp-name--left"></span>{% endif %}
+            <span class="rc-bp-val rc-bp-val--left rating-increase">{% if row.change1 %}{{ row.change1.formatted_str | safe }}{% else %}—{% endif %}</span>
+            <div class="rc-bp-label">{{ row.label }}</div>
+            <span class="rc-bp-val rc-bp-val--right rating-increase">{% if row.change2 %}{{ row.change2.formatted_str | safe }}{% else %}—{% endif %}</span>
+            {% if row.name2 %}
+            <a href="/athlete/{{ row.athlete2_id }}" class="rc-bp-name rc-bp-name--right link">{{ row.name2 }}</a>
+            {% else %}<span class="rc-bp-name rc-bp-name--right"></span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Common athletes -->
+<div class="page-section-head">Common athletes</div>
+{% if common_athletes %}
+<div class="rc-wins-caption" id="rc-wins-caption">Athletes with the faster overall split</div>
+<div class="h2h-wins-summary" id="rc-wins-summary">
+    <div class="h2h-wins-block">
+        {% for d in ['overall', 'swim', 'bike', 'run'] %}
+        <span class="h2h-wins-num rc-wins-val {{ 'rc-wins-val--active' if d == 'overall' else '' }} {{ 'h2h-wins-leader' if disc_summary[d].r1_wins > disc_summary[d].r2_wins else '' }}" data-disc="{{ d }}">{{ disc_summary[d].r1_wins }}</span>
+        {% endfor %}
+        <span class="h2h-wins-lbl">at {{ race1.race_title }}</span>
+    </div>
+    <div class="h2h-wins-block h2h-wins-total">
+        {% for d in ['overall', 'swim', 'bike', 'run'] %}
+        <span class="h2h-wins-num rc-wins-val {{ 'rc-wins-val--active' if d == 'overall' else '' }}" data-disc="{{ d }}">{{ disc_summary[d].with_both }}</span>
+        {% endfor %}
+        <span class="h2h-wins-lbl">with both splits</span>
+    </div>
+    <div class="h2h-wins-block">
+        {% for d in ['overall', 'swim', 'bike', 'run'] %}
+        <span class="h2h-wins-num rc-wins-val {{ 'rc-wins-val--active' if d == 'overall' else '' }} {{ 'h2h-wins-leader' if disc_summary[d].r2_wins > disc_summary[d].r1_wins else '' }}" data-disc="{{ d }}">{{ disc_summary[d].r2_wins }}</span>
+        {% endfor %}
+        <span class="h2h-wins-lbl">at {{ race2.race_title }}</span>
+    </div>
+</div>
+
+{% macro split_cell(s) -%}
+  {%- if s.time -%}
+    {{ s.time }}
+    {%- if s.gap %}<span class="time-behind">{{ s.gap }}</span>{% endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+<div class="h2h-disc-picker">
+    <div class="radio-chips" id="rc-common-disc-chips">
+        {% for d in ['overall', 'swim', 'bike', 'run'] %}
+        <input type="radio" name="rc-common-disc" id="rc-common-disc-{{ d }}" value="{{ d }}" {% if d == 'overall' %}checked{% endif %}>
+        <label for="rc-common-disc-{{ d }}">{{ d.capitalize() }}</label>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="h2h-table rc-common-table" id="rc-common-table" data-disc="overall">
+        <thead>
+            <tr>
+                <th>Athlete</th>
+                <th class="h2h-pos-th">Pos</th>
+                <th class="h2h-ath-header">{{ race1.race_title }}</th>
+                <th class="h2h-pos-th">Pos</th>
+                <th class="h2h-ath-header">{{ race2.race_title }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in common_athletes %}
+            <tr>
+                <td><a href="/athlete/{{ a.athlete_id }}" class="link">{{ a.name }} {{ a.country_emoji }}</a></td>
+                <td class="position-col h2h-pos-cell">{{ pos_span(a.r1_position, a.r1_status) }}</td>
+                <td class="rc-split-cell">
+                    {% for d in ['overall', 'swim', 'bike', 'run'] %}
+                    <span class="rc-split-side {{ 'rc-split-side--active' if d == 'overall' else '' }} {{ 'h2h-winner' if a.splits[d].r1.winner else '' }}" data-disc="{{ d }}">{{ split_cell(a.splits[d].r1) }}</span>
+                    {% endfor %}
+                </td>
+                <td class="position-col h2h-pos-cell">{{ pos_span(a.r2_position, a.r2_status) }}</td>
+                <td class="rc-split-cell">
+                    {% for d in ['overall', 'swim', 'bike', 'run'] %}
+                    <span class="rc-split-side {{ 'rc-split-side--active' if d == 'overall' else '' }} {{ 'h2h-winner' if a.splits[d].r2.winner else '' }}" data-disc="{{ d }}">{{ split_cell(a.splits[d].r2) }}</span>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p style="text-align:center;color:var(--text-light);margin-bottom:2rem">No athletes raced both events.</p>
+{% endif %}
+
+<!-- Rating distribution -->
+<div class="page-section-head" id="rc-rating-section-title">
+    <span>Rating distribution - Overall</span>
+</div>
+<div class="rc-dist-card">
+    <div class="rc-dist-main">
+        <canvas id="rc-rating-main-canvas"></canvas>
+    </div>
+    <div class="rc-mini-row">
+        <div class="radio-chips" id="rc-rating-disc-chips">
+            {% for disc in ['overall', 'swim', 'bike', 'run', 'transition'] %}
+            <input type="radio" name="rc-rating-disc" id="rc-rating-disc-{{ disc }}" value="{{ disc }}" {% if disc == 'overall' %}checked{% endif %}>
+            <label for="rc-rating-disc-{{ disc }}">{{ disc.capitalize() }}</label>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<!-- Time distribution -->
+<div class="page-section-head" id="rc-time-section-title">
+    <span>Time distribution - Overall</span>
+</div>
+<div class="rc-dist-card">
+    <div class="rc-dist-main">
+        <canvas id="rc-time-main-canvas"></canvas>
+    </div>
+    <div class="rc-mini-row">
+        <div class="radio-chips" id="rc-time-disc-chips">
+            {% for disc in ['overall', 'swim', 'bike', 'run'] %}
+            <input type="radio" name="rc-time-disc" id="rc-time-disc-{{ disc }}" value="{{ disc }}" {% if disc == 'overall' %}checked{% endif %}>
+            <label for="rc-time-disc-{{ disc }}">{{ disc.capitalize() }}</label>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% block race_comparison_specific_js %}
+<script id="rc-overall-rating-data" type="application/json">{{ overall_rating_hist | tojson }}</script>
+<script id="rc-swim-rating-data"    type="application/json">{{ swim_rating_hist | tojson }}</script>
+<script id="rc-bike-rating-data"    type="application/json">{{ bike_rating_hist | tojson }}</script>
+<script id="rc-run-rating-data"     type="application/json">{{ run_rating_hist | tojson }}</script>
+<script id="rc-transition-rating-data" type="application/json">{{ transition_rating_hist | tojson }}</script>
+<script id="rc-overall-time-data" type="application/json">{{ overall_time_hist | tojson }}</script>
+<script id="rc-swim-time-data"    type="application/json">{{ swim_time_hist | tojson }}</script>
+<script id="rc-bike-time-data"    type="application/json">{{ bike_time_hist | tojson }}</script>
+<script id="rc-run-time-data"     type="application/json">{{ run_time_hist | tojson }}</script>
+{% endblock %}

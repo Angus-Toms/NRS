@@ -57,7 +57,7 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
         }
 
         try {
-            let url = `/compare/search?q=${encodeURIComponent(query)}`;
+            let url = `/athlete-compare/search?q=${encodeURIComponent(query)}`;
             if (genderFilter) {
                 const gender = genderFilter();
                 if (gender) url += `&gender=${encodeURIComponent(gender)}`;
@@ -129,6 +129,56 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
     });
 }
 
+function statsBlockHtml(data) {
+    if (data == null || data.overall_rating == null) return '';
+    return `
+        <div class="sel-athlete-stats">
+            <div class="sel-stat">
+                <span class="sel-stat-num">${data.overall_rating}</span>
+                <span class="sel-stat-lbl">Rating</span>
+            </div>
+            <div class="sel-stat-divider"></div>
+            <div class="sel-stat">
+                <span class="sel-stat-num">${data.world_rank != null ? '#' + data.world_rank : '-'}</span>
+                <span class="sel-stat-lbl">World rank</span>
+            </div>
+            <div class="sel-stat-divider"></div>
+            <div class="sel-stat">
+                <span class="sel-stat-num">${data.wins ?? '-'}</span>
+                <span class="sel-stat-lbl">Career wins</span>
+            </div>
+        </div>`;
+}
+
+// Refetch stats for the selected athlete under `program` and swap them into
+// the existing widget in-place. Called when the user toggles the course
+// selector, or when athlete 2's selection restricts the shared programs.
+async function refreshAthleteStats(athleteKey, program) {
+    const athlete = selectedAthletes[athleteKey];
+    if (!athlete) return;
+    const selectedDiv = document.getElementById(athleteKey === 'athlete1' ? 'selected1' : 'selected2');
+    const statsHost   = selectedDiv?.querySelector('.sel-athlete-details');
+    if (!statsHost) return;
+    const url = program
+        ? `/athlete-compare/athlete/${athlete.id}?program=${encodeURIComponent(program)}`
+        : `/athlete-compare/athlete/${athlete.id}`;
+    try {
+        const res  = await fetch(url);
+        const full = await res.json();
+        full.id = athlete.id;
+        // Preserve programs list from the original fetch — it's program-agnostic
+        // and we don't want a transient refresh to drop it.
+        selectedAthletes[athleteKey] = { ...athlete, ...full, programs: athlete.programs || full.programs };
+        const existing = statsHost.querySelector('.sel-athlete-stats');
+        const newHtml  = statsBlockHtml(full);
+        if (existing) {
+            existing.outerHTML = newHtml;
+        } else if (newHtml) {
+            statsHost.insertAdjacentHTML('beforeend', newHtml);
+        }
+    } catch (_) { /* leave existing stats in place */ }
+}
+
 async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selectedDiv, searchWrapper) {
     selectedAthletes[athleteKey] = athlete;
 
@@ -144,10 +194,15 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
     const imgSrc       = `${baseUrl}athlete_imgs/128/${athlete.id}.webp`;
     const defaultImg   = `${baseUrl}imgs/default_user.jpg`;
 
-    // Fetch full data (rating, world rank, wins, programs)
+    // Fetch full data (rating, world rank, wins, programs). Use the currently
+    // selected program if one is set — otherwise the endpoint picks its own
+    // default and returns the `active_program` it chose.
     let full = athlete;
     try {
-        const res = await fetch(`/compare/athlete/${athlete.id}`);
+        const url = selectedProgram
+            ? `/athlete-compare/athlete/${athlete.id}?program=${encodeURIComponent(selectedProgram)}`
+            : `/athlete-compare/athlete/${athlete.id}`;
+        const res = await fetch(url);
         full = await res.json();
         full.id = athlete.id;
         selectedAthletes[athleteKey] = { ...athlete, ...full };
@@ -158,26 +213,7 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
     const countryName  = escapeHtml(full.country_name || athlete.country_name  || '');
     const yob          = full.year_of_birth            || athlete.year_of_birth || '';
 
-    const statsHtml = (full.overall_rating != null) ? `
-        <div class="sel-athlete-stats">
-            <div class="sel-stat">
-                <span class="sel-stat-num">${full.overall_rating}</span>
-                <span class="sel-stat-lbl">Rating</span>
-            </div>
-            <div class="sel-stat-divider"></div>
-            <div class="sel-stat">
-                <span class="sel-stat-num">${full.world_rank != null ? '#' + full.world_rank : '-'}</span>
-                <span class="sel-stat-lbl">World rank</span>
-            </div>
-            <div class="sel-stat-divider"></div>
-            <div class="sel-stat">
-                <span class="sel-stat-num">${full.wins ?? '-'}</span>
-                <span class="sel-stat-lbl">Career wins</span>
-            </div>
-        </div>` : '';
-
     selectedDiv.innerHTML = `
-        <button class="sel-remove-btn" aria-label="Clear selection">&times;</button>
         <div class="sel-athlete-card">
             <img class="sel-athlete-img"
                 src="${imgSrc}"
@@ -185,14 +221,15 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
                 alt="${name}">
             <div class="sel-athlete-details">
                 <div class="sel-athlete-name">${name} ${countryEmoji}</div>
-                ${statsHtml}
+                ${statsBlockHtml(full)}
             </div>
         </div>
     `;
 
-    selectedDiv.querySelector('.sel-remove-btn').addEventListener('click', () => {
-        clearSelectedAthlete(athleteKey, searchInput, selectedDiv, searchWrapper);
-    });
+    // Mark the parent .search-box as populated so the close-button in the navy
+    // header becomes visible (CSS gates display on .has-selection).
+    const searchBox = selectedDiv.closest('.search-box');
+    if (searchBox) searchBox.classList.add('has-selection');
 
     refreshProgramPicker();
 }
@@ -201,11 +238,29 @@ function clearSelectedAthlete(athleteKey, searchInput, selectedDiv, searchWrappe
     selectedAthletes[athleteKey] = null;
     selectedDiv.classList.remove('active');
     selectedDiv.innerHTML = '';
+    const searchBox = selectedDiv.closest('.search-box');
+    if (searchBox) searchBox.classList.remove('has-selection');
     if (searchWrapper) searchWrapper.classList.remove('hidden');
     searchInput.value = '';
     searchInput.focus();
     refreshProgramPicker();
 }
+
+// Wire the header close-buttons (rendered once in the template) once the DOM is ready.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.search-box .sel-remove-btn').forEach(btn => {
+        const box = btn.closest('.search-box');
+        if (!box) return;
+        const key = box.dataset.athleteKey;
+        if (!key) return;
+        btn.addEventListener('click', () => {
+            const searchInput   = box.querySelector('.search-input');
+            const selectedDiv   = box.querySelector(`#selected${key === 'athlete1' ? 1 : 2}`);
+            const searchWrapper = box.querySelector('.search-input-wrapper');
+            clearSelectedAthlete(key, searchInput, selectedDiv, searchWrapper);
+        });
+    });
+});
 
 // Intersection of both athletes' available programs. Returns [] until both selected.
 function sharedPrograms() {
@@ -248,8 +303,15 @@ function refreshProgramPicker() {
     }
 
     // Keep a previously-picked program if still valid, else default to first.
+    const prevSelected = selectedProgram;
     if (!selectedProgram || !shared.includes(selectedProgram)) {
         selectedProgram = shared[0];
+    }
+    // Whenever the active program changes, refresh both widgets' stats so the
+    // displayed rating / rank / wins reflect the current course.
+    if (selectedProgram !== prevSelected) {
+        refreshAthleteStats('athlete1', selectedProgram);
+        refreshAthleteStats('athlete2', selectedProgram);
     }
 
     if (shared.length === 1) {
@@ -265,7 +327,11 @@ function refreshProgramPicker() {
     `).join('');
     chips.querySelectorAll('input[name="compare-program"]').forEach(r => {
         r.addEventListener('change', () => {
-            if (r.checked) selectedProgram = r.value;
+            if (r.checked) {
+                selectedProgram = r.value;
+                refreshAthleteStats('athlete1', selectedProgram);
+                refreshAthleteStats('athlete2', selectedProgram);
+            }
         });
     });
     picker.hidden = false;
@@ -299,7 +365,7 @@ async function prefillFromUrl() {
 
     if (!a1) return;
 
-    const fetchAthlete = id => fetch(`/compare/athlete/${encodeURIComponent(id)}`).then(r => r.ok ? r.json() : null);
+    const fetchAthlete = id => fetch(`/athlete-compare/athlete/${encodeURIComponent(id)}`).then(r => r.ok ? r.json() : null);
 
     try {
         if (a1 && a2) {
@@ -349,7 +415,7 @@ async function performComparison(pushState = true) {
     const program = selectedProgram;
 
     try {
-        const response = await fetch(`/compare/${id1}/${id2}?program=${encodeURIComponent(program)}`,
+        const response = await fetch(`/athlete-compare/${id1}/${id2}?program=${encodeURIComponent(program)}`,
                                      { headers: { 'X-Partial': '1' } });
 
         if (!response.ok) {

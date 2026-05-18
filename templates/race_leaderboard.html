@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{{ gender | title }} {{ course | title }} Course Race Leaderboard - {{ disc | title }} | Pro Tri Data{% endblock %}
+
+{% block meta %}
+{% set desc %}Race leaderboard for {{ gender }} {{ course }} course triathlons, ranked by {{ disc }} race standard. Find the toughest fields ever assembled.{% endset %}
+<meta name="description" content="{{ desc }}">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ gender | title }} {{ course | title }} Course Race Leaderboard | Pro Tri Data">
+<meta property="og:description" content="{{ desc }}">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_leaderboard.css">
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1>Race Leaderboard</h1>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="filters-card">
+    <form method="get" action="/race-leaderboard" class="filters-form">
+        <div class="filters-primary">
+
+            <!-- Course -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Course</span>
+                <div class="radio-chips">
+                    <input type="radio" name="course" value="short" id="course-short"
+                        {% if course == 'short' %}checked{% endif %}>
+                    <label for="course-short">Short</label>
+                    <input type="radio" name="course" value="long" id="course-long"
+                        {% if course == 'long' %}checked{% endif %}>
+                    <label for="course-long">Long</label>
+                    <input type="radio" name="course" value="ag" id="course-ag"
+                        {% if course == 'ag' %}checked{% endif %}>
+                    <label for="course-ag">Age Group</label>
+                </div>
+            </div>
+
+            <div class="filter-v-divider"></div>
+
+            <!-- Gender -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Gender</span>
+                <div class="radio-chips">
+                    <input type="radio" name="gender" value="male" id="gender-male"
+                        {% if gender == 'male' %}checked{% endif %}>
+                    <label for="gender-male">Male</label>
+                    <input type="radio" name="gender" value="female" id="gender-female"
+                        {% if gender == 'female' %}checked{% endif %}>
+                    <label for="gender-female">Female</label>
+                </div>
+            </div>
+
+            <div class="filter-v-divider"></div>
+
+            <!-- Discipline -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Sort by</span>
+                <div class="radio-chips">
+                    <input type="radio" name="disc" value="overall" id="disc-overall"
+                        {% if disc == "overall" %}checked{% endif %}>
+                    <label for="disc-overall">Overall</label>
+                    <input type="radio" name="disc" value="swim" id="disc-swim"
+                        {% if disc == "swim" %}checked{% endif %}>
+                    <label for="disc-swim">Swim</label>
+                    <input type="radio" name="disc" value="bike" id="disc-bike"
+                        {% if disc == "bike" %}checked{% endif %}>
+                    <label for="disc-bike">Bike</label>
+                    <input type="radio" name="disc" value="run" id="disc-run"
+                        {% if disc == "run" %}checked{% endif %}>
+                    <label for="disc-run">Run</label>
+                    <input type="radio" name="disc" value="transition" id="disc-transition"
+                        {% if disc == "transition" %}checked{% endif %}>
+                    <label for="disc-transition">Transition</label>
+                </div>
+            </div>
+
+            <div class="filter-v-divider"></div>
+
+            <!-- Year -->
+            <div class="filter-chip-group">
+                <span class="filter-chip-label">Year</span>
+                <select name="year" id="year" class="filter-select">
+                    <option value="" {% if not year %}selected{% endif %}>All-time</option>
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if year and year|string == y|string %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-spacer"></div>
+
+            <!-- Filter icon (advanced filters toggle) -->
+            <button type="button" class="btn-filter-icon" id="toggleAdvanced" title="More filters">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            </button>
+
+            <a href="/race-leaderboard" class="btn-reset">Reset</a>
+            <button type="submit" class="btn-search">Search</button>
+        </div>
+
+        <!-- Advanced filters (collapsed by default) -->
+        <div class="filters-advanced" id="advancedFilters">
+            <div class="filter-group">
+                <label for="country">Country</label>
+                <select name="country" id="country">
+                    <option value="all" {% if country == "all" %}selected{% endif %}>All Countries</option>
+                    {% for c in countries %}
+                    <option value="{{ c }}" {% if country == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="level">Level</label>
+                <select name="level" id="level">
+                    <option value="all" {% if level == "all" %}selected{% endif %}>All Levels</option>
+                    {% for key, label in levels %}
+                    <option value="{{ key }}" {% if level == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="leaderboard-grid race-leaderboard-grid">
+    {% include "partials/race_leaderboard_rows.html" %}
+</div>
+
+{% if races|length == 50 %}
+<div class="load-more-container">
+    <button id="loadMoreBtn" class="btn-search">Load More</button>
+</div>
+{% endif %}
+
+{% if not races %}
+<div class="no-results">
+    <p>No races found matching your filters.</p>
+    <a href="/race-leaderboard" class="btn-search">Reset Filters</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ STATIC_BASE_URL }}js/race_leaderboard.js"></script>
+{% endblock %}

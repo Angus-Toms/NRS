@@ -6,19 +6,15 @@ Usage:
     python -m ptd_data.pto_ingest                      # full 1979-present
     python -m ptd_data.pto_ingest --year 2024          # single year
     python -m ptd_data.pto_ingest --athletes-only      # backfill athlete profiles
-    python -m ptd_data.pto_ingest --athletes-only --reset-enrichment
-                                                       # re-enrich every athlete from scratch
 
 Each new PTO athlete's profile is fetched inline during race ingest so that
 yob/height/weight/nickname are available at match-time (otherwise two
 same-name same-country athletes can be conflated — the 1972 vs 1995 Thomas
-Davies bug). The per-athlete fetch is cached in memory for the run and also
-recorded in `ptd_data/.pto_enrich_checkpoint.txt`, so the `--athletes-only`
-backfill pass skips anything already fetched. Ctrl+C exits cleanly and the
-next run picks up where the last left off.
+Davies bug). The per-athlete fetch is cached in memory for the run.
 """
 
 import argparse
+import csv
 import re
 import time
 import unicodedata
@@ -32,11 +28,6 @@ from ptd_data import db
 
 BASE_URL = "https://stats.protriathletes.org"
 SCRAPE_DELAY = .3  # seconds between requests
-
-# Append-only checkpoint of athlete slugs we've attempted to enrich. Lets
-# `enrich_athletes` resume after a Ctrl+C without re-fetching profiles that
-# returned no data (those otherwise look identical to un-attempted rows).
-_ENRICH_CHECKPOINT = Path(__file__).parent / ".pto_enrich_checkpoint.txt"
 
 _session = requests.Session()
 _session.headers.update({
@@ -156,6 +147,10 @@ class PTOIngester:
         # Per-run in-memory cache of profile fetches so an athlete showing up
         # in multiple races in the same run is only fetched once.
         self._profile_cache: dict[str, dict] = {}
+        # Same-name same-country WT athletes we suspected but refused to
+        # auto-merge (usually because PTO had no yob). Written to
+        # data/merge_candidates.csv at end of run for manual review.
+        self._merge_candidates: list[dict] = []
 
     def _load_wt_athletes(self):
         """Build a country-keyed lookup of unmatched WT athletes for fuzzy name+yob matching.
@@ -237,7 +232,30 @@ class PTOIngester:
         print("=" * 60)
         print(f"DONE  ingested={ingested}  skipped={skipped}")
         print("=" * 60)
+        self._dump_merge_candidates()
         db.reconcile_athlete_nationality(self.conn)
+
+    def _dump_merge_candidates(self):
+        """Write same-name same-country WT/PTO pairs we refused to auto-merge.
+
+        Reviewer copies confirmed rows into athlete_merges.csv. Overwritten
+        each run so the file always reflects the latest ingest's findings.
+        """
+        path = Path(__file__).parent / 'data' / 'merge_candidates.csv'
+        if not self._merge_candidates:
+            if path.exists():
+                path.unlink()
+            return
+        cols = ["wt_athlete_id", "wt_name", "wt_yob", "pto_name", "pto_yob",
+                "country_full", "similarity", "reason"]
+        # Sort by similarity descending so the strongest candidates surface first.
+        rows = sorted(self._merge_candidates, key=lambda x: -x["similarity"])
+        with open(path, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=cols)
+            w.writeheader()
+            for r in rows:
+                w.writerow(r)
+        print(f"Wrote {len(rows)} merge candidates to {path.name} for manual review")
 
     def _skip_reason(self, race, known_race_ids):
         """Why would we skip this race? Returns None if we'd ingest it."""
@@ -621,72 +639,49 @@ class PTOIngester:
     # ------------------------------------------------------------------
 
     def enrich_athletes(self):
-        """Fetch profile pages for all athletes with pto_slug but missing meta.
-
-        Resumable: every attempted slug is appended to `_ENRICH_CHECKPOINT` and
-        skipped on subsequent runs. Delete the file (or pass --reset-enrichment)
-        to re-enrich everyone. Ctrl+C exits cleanly with progress persisted.
-        """
-        attempted = _load_enrichment_checkpoint()
-        rows = self.conn.execute(
+        """Fetch profile pages for all athletes with pto_slug but missing meta."""
+        todo = self.conn.execute(
             "SELECT athlete_id, pto_slug FROM athletes "
             "WHERE pto_slug IS NOT NULL AND (height_cm IS NULL OR year_of_birth = 0)"
         ).fetchall()
 
-        todo = [r for r in rows if r[1] not in attempted]
-        skipped_from_checkpoint = len(rows) - len(todo)
-        print(f"\nAthletes needing profile enrichment: {len(rows)}"
-              f"  (already attempted: {skipped_from_checkpoint}, to do: {len(todo)})")
+        print(f"\nAthletes needing profile enrichment: {len(todo)}")
 
         enriched = 0
         failed = 0
-        interrupted = False
-        # Line-buffered so each slug hits disk immediately — safe if we crash.
-        with open(_ENRICH_CHECKPOINT, "a", buffering=1) as ckpt:
+        for i, (athlete_id, pto_slug) in enumerate(todo, 1):
+            print(f"  [{i}/{len(todo)}] Fetching /athlete/{pto_slug} ...")
             try:
-                for i, (athlete_id, pto_slug) in enumerate(todo, 1):
-                    print(f"  [{i}/{len(todo)}] Fetching /athlete/{pto_slug} ...")
-                    try:
-                        meta = self._fetch_athlete_meta(pto_slug)
-                        db.upsert_athlete_pto_fields(
-                            self.conn, athlete_id,
-                            pto_slug=pto_slug,
-                            height_cm=meta.get("height_cm"),
-                            weight_kg=meta.get("weight_kg"),
-                            nickname=meta.get("nickname", ""),
-                        )
-                        if meta.get("yob") and meta["yob"] > 0:
-                            self.conn.execute(
-                                "UPDATE athletes SET year_of_birth=? WHERE athlete_id=? AND year_of_birth=0",
-                                [meta["yob"], athlete_id],
-                            )
-                        enriched += 1
-                        yob = meta.get("yob", "?")
-                        h = meta.get("height_cm", "?")
-                        w = meta.get("weight_kg", "?")
-                        nick = meta.get("nickname", "")
-                        print(f"    yob={yob}  height={h}cm  weight={w}kg  nickname={nick!r}")
-                    except Exception as e:
-                        print(f"    FAILED: {e}")
-                        failed += 1
-                    # Record the attempt regardless of outcome so we don't
-                    # re-fetch empty-profile athletes next run.
-                    ckpt.write(pto_slug + "\n")
-            except KeyboardInterrupt:
-                interrupted = True
-                print("\n  Interrupted — progress saved to checkpoint. "
-                      "Re-run `python -m ptd_data.pto_ingest --athletes-only` to resume.")
+                meta = self._fetch_athlete_meta(pto_slug)
+                db.upsert_athlete_pto_fields(
+                    self.conn, athlete_id,
+                    pto_slug=pto_slug,
+                    height_cm=meta.get("height_cm"),
+                    weight_kg=meta.get("weight_kg"),
+                    nickname=meta.get("nickname", ""),
+                )
+                if meta.get("yob") and meta["yob"] > 0:
+                    self.conn.execute(
+                        "UPDATE athletes SET year_of_birth=? WHERE athlete_id=? AND year_of_birth=0",
+                        [meta["yob"], athlete_id],
+                    )
+                enriched += 1
+                yob = meta.get("yob", "?")
+                h = meta.get("height_cm", "?")
+                w = meta.get("weight_kg", "?")
+                nick = meta.get("nickname", "")
+                print(f"    yob={yob}  height={h}cm  weight={w}kg  nickname={nick!r}")
+            except Exception as e:
+                print(f"    FAILED: {e}")
+                failed += 1
 
-        print(f"  Enriched: {enriched}  Failed: {failed}"
-              f"{'  (interrupted)' if interrupted else ''}")
+        print(f"  Enriched: {enriched}  Failed: {failed}")
 
     def _get_profile(self, pto_slug):
         """Return profile meta for a PTO slug, fetching on first ask and caching.
 
-        Records the attempt in the on-disk enrichment checkpoint so a later
-        `--athletes-only` pass doesn't re-fetch empty profiles. Swallows
-        HTTP errors and returns an empty dict so one bad profile doesn't
-        abort a race ingest.
+        Swallows HTTP errors and returns an empty dict so one bad profile
+        doesn't abort a race ingest.
         """
         if pto_slug in self._profile_cache:
             return self._profile_cache[pto_slug]
@@ -696,12 +691,6 @@ class PTOIngester:
             print(f"    [profile-fetch FAILED] {pto_slug}: {e}")
             meta = {}
         self._profile_cache[pto_slug] = meta
-        # Record even empty attempts so the backfill pass doesn't retry endlessly.
-        try:
-            with open(_ENRICH_CHECKPOINT, "a", buffering=1) as ckpt:
-                ckpt.write(pto_slug + "\n")
-        except OSError:
-            pass
         return meta
 
     def _fetch_athlete_meta(self, pto_slug):
@@ -843,11 +832,39 @@ class PTOIngester:
         - Within country+yob (±1), require name similarity ≥ 0.70 and a
           clear margin over the runner-up (≥ _NAME_SIM_GAP). If no single
           winner, skip — conservative by design.
+
+        When we refuse due to missing yob, a high-similarity same-country
+        WT match is recorded as a merge candidate for manual review (see
+        self._merge_candidates).
         """
         candidates = self._wt_athletes.get(country_full, [])
         if not candidates:
             return None, None
         if not yob:
+            # Still scan for namesake to suggest as a merge candidate. We
+            # don't auto-merge (the safety rationale is unchanged), but flag
+            # the pair so a human can confirm and put it in athlete_merges.csv.
+            scored = sorted(
+                ((c, _name_similarity(c[1], name)) for c in candidates),
+                key=lambda x: -x[1],
+            )
+            if scored and scored[0][1] >= 0.85:
+                top, top_sim = scored[0]
+                runner_up_sim = scored[1][1] if len(scored) > 1 else 0.0
+                if top_sim - runner_up_sim >= _NAME_SIM_GAP:
+                    self._merge_candidates.append({
+                        "wt_athlete_id": top[0],
+                        "wt_name":       top[1],
+                        "wt_yob":        top[2] or 0,
+                        "pto_name":      name,
+                        "pto_yob":       0,
+                        "country_full":  country_full,
+                        "similarity":    round(top_sim, 3),
+                        "reason":        "pto_yob_missing",
+                    })
+                    print(f"    MERGE CANDIDATE: '{name}' (PTO yob=?) ~ "
+                          f"WT '{top[1]}' (id={top[0]}, yob={top[2] or '?'}) "
+                          f"sim={top_sim:.2f}")
             return None, None
 
         yob_close = [c for c in candidates if c[2] and abs(c[2] - yob) <= 1]
@@ -914,21 +931,6 @@ def _split_location(text):
         city, country = text.rsplit(",", 1)
         return city.strip(), country.strip()
     return "", text.strip()
-
-
-def _load_enrichment_checkpoint():
-    """Return the set of PTO slugs already attempted in a prior enrichment run."""
-    if not _ENRICH_CHECKPOINT.exists():
-        return set()
-    with open(_ENRICH_CHECKPOINT) as f:
-        return {line.strip() for line in f if line.strip()}
-
-
-def _reset_enrichment_checkpoint():
-    """Delete the enrichment checkpoint so the next run starts from scratch."""
-    if _ENRICH_CHECKPOINT.exists():
-        _ENRICH_CHECKPOINT.unlink()
-        print(f"Cleared enrichment checkpoint: {_ENRICH_CHECKPOINT}")
 
 
 def _dump_races_csv(races, path):
@@ -1138,15 +1140,13 @@ def insert_results_bulk(conn, rows):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape PTO long-course results into DB")
     parser.add_argument("--year", type=int, help="Single year to ingest")
+    parser.add_argument("--recent", type=int, metavar="N",
+                            help="Only scrape the last N years of listings (default: all from 1979). "
+                                 "Race pages are always fetched only for unseen races; this just trims "
+                                 "the per-year listing fetches for incremental weekly runs.")
     parser.add_argument("--athletes-only", action="store_true",
                             help="Skip race ingestion; only enrich athlete profiles")
-    parser.add_argument("--reset-enrichment", action="store_true",
-                            help="Clear the athlete enrichment checkpoint before running "
-                                 "(re-fetches every profile; ignored otherwise)")
     args = parser.parse_args()
-
-    if args.reset_enrichment:
-        _reset_enrichment_checkpoint()
 
     conn = db.get_conn(read_only=False)
     ingester = PTOIngester(conn)
@@ -1156,6 +1156,9 @@ if __name__ == "__main__":
     else:
         if args.year:
             years = [args.year]
+        elif args.recent:
+            current = date.today().year
+            years = list(range(current - args.recent + 1, current + 1))
         else:
             years = None  # defaults to full history 1979-present
 

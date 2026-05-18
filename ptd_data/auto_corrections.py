@@ -163,6 +163,23 @@ def apply(conn):
                     overall = 0
                     summary['overall_recomputed'] += 1
 
+            # Step A0b - overall MAD when no splits are available to cross-check.
+            # Old races often record only an overall time, so the A0 splits-sum
+            # check above can't fire. Fall back to comparing overall against the
+            # field's overall distribution and zero implausible values.
+            if (is_finisher and s['overall'] > 0
+                    and s['swim'] == 0 and s['bike'] == 0 and s['run'] == 0
+                    and (aid, 'overall') in mad_flags):
+                direction = mad_flags[(aid, 'overall')]
+                if direction == 'fast':
+                    reason = 'Overall implausibly fast vs field; removed'
+                else:
+                    reason = 'Overall far off field pace; removed'
+                insert_batch.append((race_id, aid, 'overall', 0.0, 'auto', reason))
+                s['overall'] = 0
+                overall = 0
+                summary['overall_recomputed'] += 1
+
             # Step C - MAD outlier (runs after A0 so its split-zeroing can't
             # mask a broken overall; uses corrected overall for consistency).
             for leg in ('swim', 'bike', 'run', 't1', 't2'):
@@ -281,7 +298,7 @@ def _compute_mad_flags(results):
         return flagged
 
     # Positions of each discipline in the row tuple.
-    cols = {'swim': 3, 'bike': 4, 'run': 5, 't1': 6, 't2': 7}
+    cols = {'overall': 2, 'swim': 3, 'bike': 4, 'run': 5, 't1': 6, 't2': 7}
     for disc, idx in cols.items():
         vals = [r[idx] for r in finisher_rows if r[idx] > 0]
         if len(vals) < MIN_GROUP:

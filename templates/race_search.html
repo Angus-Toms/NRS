@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete_search.css">
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css">
 {% endblock %}
 
@@ -79,6 +80,16 @@
     </div>
 
     <div id="rs-results" class="as-results"></div>
+</div>
+
+<!-- ── Race Compare CTA ── -->
+<div class="page-section-head">Compare Races</div>
+<div class="as-compare-widget">
+    <div class="as-compare-copy">
+        <p class="as-compare-lead">Stack two races side by side</p>
+        <p class="as-compare-desc">Compare field standards, course conditions, time and rating distributions, and head-to-head results from athletes who raced both.</p>
+    </div>
+    <a href="/race-compare" class="as-compare-btn">Open race comparison</a>
 </div>
 
 <!-- ── Recent Races ── -->

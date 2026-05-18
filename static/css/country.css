@@ -448,7 +448,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
     .country-index-grid { grid-template-columns: 1fr; }
 }
 
@@ -456,7 +456,7 @@
 /* ============================================================
    Mobile
    ============================================================ */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .country-hero-inner {
         flex-direction: column;
         align-items: flex-start;

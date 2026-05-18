@@ -34,7 +34,7 @@ def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, off
     return athletes
 
 
-@router.get("/leaderboard")
+@router.get("/athlete-leaderboard")
 async def leaderboard(
     request: Request,
     gender:      str           = Query("female", regex="^(male|female)$"),
@@ -67,7 +67,16 @@ async def leaderboard(
     })
 
 
-@router.get("/leaderboard/more")
+@router.get("/leaderboard")
+async def leaderboard_legacy(request: Request):
+    """Back-compat redirect from the old /leaderboard URL."""
+    from fastapi.responses import RedirectResponse
+    qs = request.url.query
+    url = "/athlete-leaderboard" + (f"?{qs}" if qs else "")
+    return RedirectResponse(url=url, status_code=301)
+
+
+@router.get("/athlete-leaderboard/more")
 async def leaderboard_more(
     request: Request,
     gender:      str           = Query("female", regex="^(male|female)$"),

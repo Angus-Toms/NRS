@@ -295,26 +295,6 @@ html, body {
     padding: 20px 0;
 }
 
-.section-title {
-    margin: 0;
-    color: var(--text-light);
-    font-size: 1.05rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    width: 100%;
-}
-
-.section-title::after {
-    content: "";
-    height: 1px;
-    flex: 1;
-    background: linear-gradient(90deg, rgba(53, 122, 189, 0.35), rgba(53, 122, 189, 0.05));
-    border-radius: 999px;
-}
-
 /* ============================================
    PAGE HERO HEADER (shared full-bleed hero)
    ============================================ */
@@ -356,23 +336,32 @@ html, body {
    ============================================ */
 
 .site-header {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
     background-color: var(--navy);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     position: sticky;
     top: 0;
     z-index: 1000;
+    /* body is a flex column, so this stretches to body width automatically.
+       Avoid `width: 100vw` here because 100vw includes the scrollbar gutter
+       and would overflow the visible area on pages with a scrollbar. */
 }
 
 .header-container {
+    width: 100%;
+    box-sizing: border-box;   /* no global * { box-sizing }, so padding would otherwise add to the 100% and overflow */
     margin: 0 auto;
     padding: 0 var(--spacing-xl);
     display: flex;
-    justify-content: space-between;
+    flex-wrap: nowrap;
     align-items: center;
     height: 52px;
+    /* No justify-content; logo is the first flex item (flush left), and the
+       right-hand item (.main-nav on desktop, .nav-toggle on mobile) uses
+       margin-left: auto to push itself flush right. */
+}
+
+.logo {
+    flex: 0 0 auto;
 }
 
 .logo a {
@@ -396,7 +385,9 @@ html, body {
 
 .main-nav {
     display: flex;
+    flex-wrap: nowrap;
     gap: 1.75rem;
+    margin-left: auto;
 }
 
 .nav-link {
@@ -419,97 +410,83 @@ html, body {
     border-bottom-color: var(--primary-color);
 }
 
-/* ============================================
-   METADATA GRID - for athlete and race info
-   ============================================ */
-.meta-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+/* Mobile nav toggle (hamburger). Hidden on desktop, shown at <=768. */
+.nav-toggle {
+    display: none;
+    background: transparent;
+    border: 0;
+    color: rgba(255,255,255,0.7);
+    padding: 0.5rem;
+    margin: 0;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+.nav-toggle:hover,
+.nav-toggle[aria-expanded="true"] { color: #fff; }
+.nav-toggle:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
+@media (max-width: 768px) {
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;       /* push to far right; main-nav goes absolute */
+    }
+
+    /* Collapse the inline nav into a full-width dropdown panel below the header. */
+    .main-nav {
+        position: absolute;
+        top: 52px;            /* sits directly under the 52px header */
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        background: var(--navy);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        box-shadow: var(--box-shadow-lg);
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height var(--transition-base);
+    }
+    .main-nav.open {
+        max-height: calc(100vh - 52px);
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 var(--spacing-xl);
+        font-size: 0.9rem;
+        letter-spacing: 0.04em;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-link.active {
+        color: #fff;
+        border-bottom-color: rgba(255,255,255,0.06);
+        box-shadow: inset 3px 0 0 var(--primary-color);
+    }
+}
+
+/* Inline metadata row item (athlete-meta dot-separated row). */
 .meta-item {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.meta-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-lighter);
-    font-weight: 500;
-}
-
-.meta-value {
-    font-size: 1rem;
-    color: var(--text-color);
-    font-weight: 500;
-}
-
-/* Responsive: single column on very small screens */
-@media (max-width: 480px) {
-    .meta-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ============================================
-   STATS BAR - for race and athlete key stats
-   ============================================ */
-.stats-bar {
-    display: flex;
-    gap: 2rem;
-    padding-top: 1.5rem;
-    margin-top: 1.5rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.stat-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-lighter);
-    font-weight: 600;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .stats-bar {
-        gap: 1.5rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-bar {
-        flex-wrap: wrap;
-    }
-}
-
 /* ============================================
    FOOTER
    ============================================ */
 .site-footer {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
     background-color: var(--navy);
     color: rgba(255,255,255,0.5);
     margin-top: auto;
+    /* See .site-header re: avoiding the 100vw / negative-margin breakout. */
 }
 
 .footer-container {
@@ -551,28 +528,32 @@ html, body {
 
 .footer-ext-link:hover { color: #fff; }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .footer-container {
-        grid-template-columns: 1fr;
-        gap: 0.4rem;
+        grid-template-columns: auto 1fr;
+        gap: 0.25rem 1.25rem;
+        align-items: start;
+        padding: 1rem var(--spacing-lg);
+    }
+    /* Title sits on the left, spanning both rows so it gets vertical breathing
+       room and never wraps. Attribution + copy stack on the right. */
+    .footer-site-name {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        align-self: center;
+        white-space: nowrap;
     }
     .footer-attribution,
-    .footer-copy { text-align: left; }
+    .footer-copy {
+        grid-column: 2;
+        text-align: left;
+    }
+    .footer-copy { white-space: normal; }
 }
 
 /* ============================================
    COLLAPSIBLE SECTIONS
    ============================================ */
-.card-title {
-    margin: 0 0 1rem 0;
-    font-size: 1rem;
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 0.2rem;
-}
 
 .collapsible-card {
     background: var(--white);
@@ -617,7 +598,6 @@ html, body {
     width: 100%;
 }
 
-.data-table,
 table {
     width: 100%;
     border-collapse: collapse;
@@ -627,7 +607,6 @@ table {
     box-sizing: border-box;
 }
 
-.data-table th,
 table th {
     background-color: var(--navy);
     color: rgba(255,255,255,0.6);
@@ -641,15 +620,15 @@ table th {
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
+    /* Match td below. With table-layout:fixed the column width is taken from
+       the first row (the th), so without border-box the declared width
+       excludes padding and every column ends up 32px wider than intended. */
+    box-sizing: border-box;
 }
 
-.data-table th:first-child,
 table th:first-child { padding-left: 1.25rem; }
-
-.data-table th:last-child,
 table th:last-child  { padding-right: 1.25rem; }
 
-.data-table td,
 table td {
     padding: 0.65rem 1rem;
     text-align: left;
@@ -659,19 +638,14 @@ table td {
     font-size: 0.875rem;
 }
 
-.data-table td:first-child,
 table td:first-child { padding-left: 1.25rem; }
-
-.data-table td:last-child,
 table td:last-child  { padding-right: 1.25rem; }
 
 /* Border on the row, not each cell - cleaner with border-collapse */
-.data-table tbody tr,
 table tbody tr {
     border-bottom: 1px solid var(--border-color);
 }
 
-.data-table tbody tr:last-child,
 table tbody tr:last-child {
     border-bottom: none;
 }
@@ -681,13 +655,11 @@ tbody tr:nth-child(even) td {
     background: #f2f4f6;
 }
 
-.data-table th:hover,
 table th:hover {
     background-color: #252545;
     color: #fff;
 }
 
-.data-table tr:hover td,
 table tr:hover td {
     background-color: var(--highlight) !important;
 }
@@ -799,6 +771,7 @@ table td a.link:hover   { color: var(--primary-color); }
     color: #fff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+    text-align: right;        /* keep wrapped numbers right-aligned, matching the column */
 }
 
 .hero-stat-lbl {
@@ -807,6 +780,7 @@ table td a.link:hover   { color: var(--primary-color); }
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 600;
+    text-align: right;        /* default; without this, multi-line labels left-align inside the column */
 }
 
 .hero-stat-sep {
@@ -816,6 +790,16 @@ table td a.link:hover   { color: var(--primary-color); }
     flex-shrink: 0;
 }
 
+/* Mobile (481-768): left-align the stats so they line up with the title
+   above them (the hero stacks vertically at this width). At <=480 the
+   hero-stats group is hidden by the page-specific CSS. */
+@media (max-width: 768px) {
+    .hero-stats { justify-content: flex-start; }
+    .hero-stat { align-items: flex-start; }
+    .hero-stat-num,
+    .hero-stat-lbl { text-align: left; }
+}
+
 /* ============================================
    SHARED TABLE CARD WRAPPER
    ============================================ */
@@ -823,7 +807,7 @@ table td a.link:hover   { color: var(--primary-color); }
     background: var(--white);
     border-radius: 8px;
     border: 1px solid var(--border-color);
-    overflow: hidden;
+    overflow-x: auto;
     margin-bottom: 2rem;
 }
 
@@ -861,6 +845,87 @@ table td a.link:hover   { color: var(--primary-color); }
     font-size: 0.7rem;
     font-weight: 600;
     color: var(--text-lighter);
+}
+
+/* ============================================
+   LEADERBOARD WIDGET (shared between homepage + athlete-search)
+   Markup:
+     .lb-widget                      card wrapper
+       a.lb-widget-header            navy header band, links to leaderboard
+       ol.lb-widget-list > li.lb-widget-item
+         .pos-circle / .pos-other    shared with race tables
+         img.lb-widget-img           round profile pic
+         a.lb-widget-name            links to athlete page
+         .lb-widget-rating           tabular int rating
+   ============================================ */
+.lb-widget {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.lb-widget:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
+}
+.lb-widget-header {
+    background: var(--navy);
+    padding: 0.55rem 1.25rem;
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #fff;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.lb-widget:hover .lb-widget-header { color: var(--primary-color); }
+
+.lb-widget-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.lb-widget-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.lb-widget-item:last-child { border-bottom: none; }
+
+.lb-widget-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--border-color);
+    flex-shrink: 0;
+}
+.lb-widget-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+    transition: color var(--transition-fast);
+}
+.lb-widget-name:hover { color: var(--primary-color); }
+.lb-widget-rating {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
 }
 
 .pos-dnf {
@@ -905,14 +970,17 @@ table td a.link:hover   { color: var(--primary-color); }
 /* ============================================
    STAT CARD GRID (race + athlete summary cards)
    ============================================ */
+/* "Stat strip" pattern: a row of compact stat cells with no card chrome.
+   The 1px gap + parent border-colour background makes the gap render as a
+   thin separator line between cells (and between rows when wrapped). */
 .race-stat-cards {
     display: grid;
     /* minmax(0, 1fr) lets each column shrink below its content's
        min-width, so a single long race name in .race-stat-sub can't
-       force the whole row wider than the page. The sub already has
-       white-space:nowrap + text-overflow:ellipsis below to truncate. */
+       force the whole row wider than the page. */
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.625rem;
+    gap: 1px;
+    background: var(--border-color);
     margin-bottom: 2rem;
 }
 .race-stat-cards--4 {
@@ -920,12 +988,22 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 
 .race-stat-card {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: var(--bg-color);
     padding: 0.875rem 0.625rem;
     text-align: center;
     min-width: 0;
+}
+
+@media (max-width: 768px) {
+    /* 2-col grid; 5-card variant gives Overall the full width on row 1
+       so the 4 disciplines split cleanly into a 2x2 below. The 4-card
+       variant just becomes a plain 2x2. */
+    .race-stat-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .race-stat-cards:not(.race-stat-cards--4) > .race-stat-card:first-child {
+        grid-column: 1 / -1;
+    }
 }
 
 .race-stat-disc {
@@ -970,6 +1048,32 @@ table td a.link:hover   { color: var(--primary-color); }
 .std-pill--advanced   { background: rgba(239, 68,  68,  0.12); color: #dc2626; }
 .std-pill--expert { background: rgba(15,  23,  42,  0.08); color: #0f172a; }
 
+/* Race rank pill: links to race-leaderboard scoped to this race's gender+course */
+.race-rank-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+    margin-left: 0.35rem;
+    background: rgba(59, 130, 246, 0.10);
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: background var(--transition-fast);
+}
+.race-rank-pill:hover { background: rgba(59, 130, 246, 0.22); }
+
+/* Inline race-rank link used inside the race page's discipline substat column */
+.race-rank-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.race-rank-link:hover { color: var(--primary-color); }
+
 /* ── Course condition pill ── */
 .cond-pill {
     display: inline-block;
@@ -992,9 +1096,14 @@ table td a.link:hover   { color: var(--primary-color); }
     margin-top: 0.4rem;
     font-size: 0.72rem;
     color: var(--text-light);
-    white-space: nowrap;
+    /* Allow up to 2 lines, ellipsised after. -webkit-line-clamp is the
+       cross-browser way to do multi-line truncation; widely supported. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;     /* break very long unbroken tokens */
+    line-height: 1.3;
 }
 
 /* Race name links inside stat cards - muted, not orange, inherit sub size */
@@ -1007,6 +1116,179 @@ table td a.link:hover   { color: var(--primary-color); }
     color: var(--primary-color);
 }
 
+/* ============================================
+   DISCIPLINE ROWS - shared multi-stat-per-discipline pattern
+   Used on the athlete page (Ratings) and race page (Performance) to show
+   each discipline as a single row containing a headline number + a group
+   of sub-stats. See STYLE.md §11 for the conventions.
+   ============================================ */
+.disc-list {
+    margin-bottom: 2rem;
+}
+
+.disc-row {
+    display: grid;
+    /* Fixed rating column width so the larger Overall number doesn't push
+       its substats further right than the discipline rows below. */
+    grid-template-columns: 110px 260px 1fr;
+    gap: 0 1.75rem;
+    align-items: center;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+}
+.disc-row:first-child { border-top: none; }
+
+/* Header row above the discipline list — one set of column labels instead
+   of repeating the substat-label inside every cell. */
+.disc-list-head {
+    padding: 0 0 0.5rem;
+    align-items: end;
+}
+.disc-list-head + .disc-row { border-top: 1px solid var(--border-color); }
+.disc-head-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+}
+
+.disc-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-lighter);
+}
+
+.disc-rating {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-variant-numeric: tabular-nums;
+    flex-wrap: wrap;
+}
+.disc-rating-num {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+.disc-rating-change {
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+}
+.disc-rating-change.positive,
+.disc-rating-change.rating-increase { color: var(--success-color); }
+.disc-rating-change.negative,
+.disc-rating-change.rating-decrease { color: var(--error-color);   }
+.disc-rating-change.neutral,
+.disc-rating-change.rating-neutral  { color: var(--text-light);    }
+
+/* Default 3 substat columns; use .disc-list--cols-N on the parent to
+   change to N columns when fewer substats are present. */
+.disc-substats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0 1.25rem;
+    align-items: baseline;
+    min-width: 0;
+}
+.disc-list--cols-2 .disc-substats { grid-template-columns: repeat(2, 1fr); }
+.disc-list--cols-1 .disc-substats { grid-template-columns: 1fr; }
+
+.substat { min-width: 0; }
+.substat-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-lighter);
+    margin-bottom: 0.15rem;
+}
+.substat-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+}
+.substat-value sup.ordinal-suffix {
+    font-size: 0.6em;
+    font-weight: 600;
+    color: var(--text-light);
+}
+.substat-value.rating-increase { color: var(--success-color); }
+.substat-value.rating-decrease { color: var(--error-color);   }
+.substat-value.rating-neutral,
+.substat-value.no-data         { color: var(--text-lighter);  }
+.substat-value a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.substat-value a:hover { color: var(--primary-color); }
+
+.substat-context {
+    font-size: 0.72rem;
+    color: var(--text-light);
+    line-height: 1.3;
+    margin-top: 0.15rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+.substat-context a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.substat-context a:hover { color: var(--primary-color); }
+
+@media (max-width: 1024px) {
+    /* Tighten name + rating columns to give substats more horizontal room
+       on tablet-width screens. */
+    .disc-row {
+        grid-template-columns: 90px 200px 1fr;
+        gap: 0 1.25rem;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Stack substats below name+rating on mobile. Used by the race page
+       Performance section; athlete page overrides this further with the
+       collapsible variant below. */
+    .disc-row {
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+            "name    rating"
+            "subs    subs";
+        gap: 0.3rem 1rem;
+        padding: 1rem 0;
+        align-items: center;
+    }
+    .disc-name     { grid-area: name; align-self: center; }
+    .disc-rating   { grid-area: rating; justify-self: end; }
+    .disc-substats {
+        grid-area: subs;
+        grid-template-columns: 1fr !important;
+        gap: 0.6rem;
+    }
+    .substat-value { justify-content: flex-start; }
+}
+
+@media (max-width: 480px) {
+    .disc-rating-num { font-size: 1.4rem; }
+}
+
 /* Muted column cells - date, program, YOB */
 .muted-col {
     font-size: 0.75rem;
@@ -1017,88 +1299,11 @@ table td a.link:hover   { color: var(--primary-color); }
     text-decoration: none;
 }
 
-/* ============================================
-   RATINGS GRID
-   ============================================ */
-.ratings-overview {
-    display: grid;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
 .ratings-section {
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.ratings-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
-}
-
-.rating-box {
-    padding: 1rem;
-    text-align: center;
-    position: relative;
-}
-
-.rating-box:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: -0.5rem;
-    top: 15%;
-    height: 70%;
-    width: 1px;
-    background: var(--border-color);
-}
-
-.rating-discipline {
-    font-size: 0.75rem;
-    color: var(--text-light);
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
-}
-
-.rating-number {
-    font-size: 1.8rem;
-    font-weight: bold;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    gap: 0.25em;
-}
-
-/* Text under current rating value */
-.rating-rank {
-        color: var(--text-light);
-    font-size: var(--font-size-sm);
-    margin-top: var(--spacing-xs);
-}
-
-.ranking-world {
-    font-size: 1.8rem;
-    font-weight: bold;
-    line-height: 1;
-}
-
-.ranking-national {
-    color: var(--text-light);
-    font-size: var(--font-size-sm);
-    margin-top: var(--spacing-xs);
-}
-
-.rating-race {
-    font-size: 0.7rem;
-    color: var(--text-lighter);
-    margin-top: 0.5rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /* ============================================
@@ -1112,7 +1317,12 @@ table td a.link:hover   { color: var(--primary-color); }
     flex-shrink: 0;
 }
 
-/* ── Profile image shadow - applied globally to all circular athlete photos ── */
+/* ── Profile image base utility ─────────────────────────────────────────────
+   Use .profile-img on any new circular athlete photo. The legacy class names
+   below are aliased into the same rule so existing templates keep working;
+   per-context width/height stays defined in each page's CSS.
+   ─────────────────────────────────────────────────────────────────────────── */
+.profile-img,
 .result-avatar,
 .as-result-avatar,
 .as-champ-img,
@@ -1123,41 +1333,22 @@ table td a.link:hover   { color: var(--primary-color); }
 .sel-athlete-img,
 .podium-row-img,
 .pred-result-avatar,
-.lb-img {
+.lb-img,
+.athlete-hero-img {
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
-.result-country {
-    font-size: var(--font-size-sm);
-    color: var(--text-light);
-    margin-top: var(--spacing-xs);
-}
-
-.result-divider {
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: var(--spacing-xs) 0;
-}
-
-.result-yob {
-    font-size: var(--font-size-sm);
-    color: var(--text-lighter);
-}
-
-/* Rating changes */
-.rating-increase {
-    color: var(--success-color);
-    font-weight: bold;
-}
-
-.rating-decrease {
-    color: var(--error-color);
-    font-weight: bold;
-}
-
-.rating-neutral {
-    color: var(--text-light);
-    font-weight: bold;
+/* On-dark modifier: translucent white ring + deeper shadow so the photo edge
+   stays visible against navy/dark surfaces. Apply with .profile-img--on-dark
+   alongside .profile-img, or rely on .athlete-hero-img which is on-dark by
+   default (it sits inside the navy hero band). */
+.profile-img--on-dark,
+.athlete-hero-img {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 /* Box containing rating and rating change to the right */
@@ -1173,40 +1364,6 @@ table td a.link:hover   { color: var(--primary-color); }
     height: 0.6em;
     width: 0.6em;
     flex-shrink: 0;
-}
-
-/* Time-behind span: always takes up one line of height so the fastest split
-   remains top-aligned with split cells that do have a time-behind value. */
-.time-cell .time-behind {
-    display: block;
-    min-height: 1.1em;
-}
-
-/* ============================================
-   CHARTS
-   ============================================ */
-.chart-section {
-    background: var(--white);
-    padding: 25px;
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--box-shadow);
-    margin-bottom: 30px;
-}
-
-.chart-section h2 {
-    margin: 0 0 20px 0;
-    color: var(--text-color);
-}
-
-.chart-section h3 {
-    margin: 0 0 15px 0;
-    color: var(--text-light);
-    font-size: 16px;
-}
-
-.chart-container {
-    position: relative;
-    height: 400px;
 }
 
 /* Rating history section - card is .collapsible-card, this just controls internals */
@@ -1340,35 +1497,41 @@ table td a.link:hover   { color: var(--primary-color); }
     width: 70px;
 }
 
+/* Shared between athlete + race pages so both look identical. Wider than the
+   bare circle so the pos-diff "vs prediction" badge sits next to it inline
+   without wrapping. The mobile-stack media block below overrides with a
+   smaller min-width since on phones pos sits alone in its flex cell. */
+.results-table .position-col,
+.rating-table  .position-col { width: 90px; }
+
+/* Discipline labels (e.g. "Swim", "Bike") above each split cell only show in
+   the mobile stacked layout - they're redundant when there's a real column
+   header. Mobile media block below re-enables them. */
+.time-disc-label { display: none; }
+
+/* Sort chips above the results / rating tables - mobile only. Re-enabled in
+   the mobile media block below. */
+.results-sort-chips,
+.ratings-sort-chips { display: none; }
+
 /* ============================================
    POSITION HIGHLIGHTING
    ============================================ */
-.position-cell {
-    font-weight: 600;
-}
+/* Inline position text (history tables, leaderboards). Top-3 use .pos-circle
+   with .gold/.silver/.bronze modifiers; the only plain inline class is .pos-other. */
+.pos-other { font-weight: 400; color: var(--text-lighter); }
 
-/* Row-level tints for race results */
-.position-gold   td { background-color: #fffbf0; }
-.position-silver td { background-color: #fafafa; }
-.position-bronze td { background-color: #fdf8f5; }
-
-/* Inline position text (history tables, leaderboards) */
-.pos-1st, .pos-first  { font-weight: 700; color: var(--gold);   }
-.pos-2nd, .pos-second { font-weight: 600; color: var(--silver); }
-.pos-3rd, .pos-third  { font-weight: 600; color: var(--bronze); }
-.pos-other            { font-weight: 400; color: var(--text-lighter); }
-
-.pos-dns, .pos-dnf, .pos-dq {
+.pos-dnf {
     font-weight: 400;
     font-style: italic;
     color: var(--text-lighter);
     font-size: 0.8rem;
 }
 
-/* Rating change indicators */
-.rating-increase, .change-pos { color: var(--success-color); font-weight: 500; }
-.rating-decrease, .change-neg { color: var(--error-color);   font-weight: 500; }
-.rating-neutral               { color: var(--text-lighter);  font-weight: 500; }
+/* Rating change indicators (css_class is set in router_utils.py). */
+.rating-increase { color: var(--success-color); font-weight: 500; }
+.rating-decrease { color: var(--error-color);   font-weight: 500; }
+.rating-neutral  { color: var(--text-lighter);  font-weight: 500; }
 
 /* ============================================
     HINT WIDGET STYLES
@@ -1910,18 +2073,9 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 
 @media (max-width: 768px) {
-    .header-container {
-        flex-direction: column;
-        gap: var(--spacing-md);
-        padding: var(--spacing-md) var(--spacing-lg);
-    }
-    
-    .main-nav {
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
+    /* .header-container and .main-nav mobile rules live alongside the desktop
+       definitions further up — the hamburger collapses everything into one row. */
+
     .page-container {
         width: 95%;
         padding: var(--spacing-md) 0;
@@ -2123,3 +2277,273 @@ table td a.link:hover   { color: var(--primary-color); }
     white-space: nowrap;
 }
 .multi-stage-badge svg { flex-shrink: 0; }
+
+/* Splits-toggle TD only exists for the mobile accordion - hide on desktop.
+   It's an extra cell with no matching <th>; table-layout:fixed reads widths
+   from the thead row so this cell having no width is fine. */
+.results-table .splits-toggle-col,
+.rating-table  .splits-toggle-col { display: none; }
+
+/* base.css elsewhere collapses .rating-cell to flex-direction:column on
+   screens <=1024px to stack the change pill under the value. Inside the
+   rating-table contexts (athlete + race + upcoming-race ratings) we want
+   the pill side-by-side at all widths, so undo that here and tighten the
+   gap a touch - 8px from the default rule feels loose at small sizes. */
+.rating-table .rating-cell { flex-direction: row; gap: 5px; }
+
+/* ============================================
+   RESULTS / RATING TABLE - MOBILE STACKED LAYOUT
+   Shared by the athlete page and the race page. Selectors target both:
+     - athlete page: `.results-table` / `.rating-table` is on the *wrapper*
+       div, so the inner <table> needs to be flipped to block layout via
+       descendant matches (`.results-table table`).
+     - race page: the class is on the <table> itself, so we also match
+       `table.results-table` / `table.rating-table` directly, and use
+       `.race-table-section` for the outer wrapper overrides.
+   ============================================ */
+@media (max-width: 768px) {
+    /* Chip rows: horizontal scroll if too wide. */
+    .results-sort-chips,
+    .ratings-sort-chips {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        overflow-x: auto;
+        padding: 0.2rem 0 0.35rem;
+        margin-bottom: 0.35rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    .sort-chip {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--white);
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-color);
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .sort-chip .chip-chevron {
+        display: none;
+        transition: transform 0.15s ease;
+    }
+    .sort-chip.selected {
+        background: var(--primary-color);
+        color: var(--white);
+        border-color: var(--primary-color);
+    }
+    .sort-chip.selected .chip-chevron { display: inline-block; }
+    .sort-chip.desc .chip-chevron { transform: rotate(0deg); }
+    .sort-chip.asc  .chip-chevron { transform: rotate(180deg); }
+
+    /* Tighten card spacing for both wrapper variants. */
+    .results-table.table-section,
+    .rating-table.table-section,
+    .race-table-section { margin-bottom: 1rem; }
+
+    /* Disable horizontal scroll on the wrapper - the table now lays out as
+       a stack of flex rows so it never overflows. .race-table-section also
+       has `overflow: hidden` from desktop, so use `overflow: visible`. */
+    .results-table.table-section,
+    .rating-table.table-section { overflow-x: visible; }
+    .race-table-section          { overflow: visible; }
+
+    /* Flip the whole table from table-layout to block/flex.
+       The first selector handles athlete-page tables (the class is on the
+       wrapper). The `table.results-table, table.rating-table` selectors
+       handle race-page tables (where the class lives on the <table>). */
+    .results-table table,
+    .rating-table  table,
+    table.results-table,
+    table.rating-table {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+    .results-table thead,
+    .rating-table  thead { display: none; }
+    .results-table tbody,
+    .rating-table  tbody { display: block; }
+
+    /* Row becomes a flex container; pos/overall/toggle hug their content,
+       race-col / athlete-col flex to fill. Splits wrap onto a new flex line
+       only when the row is expanded (see ::after pseudo and split-col rules
+       below). row-gap is 0 - splits use padding-top instead. */
+    .results-table tr,
+    .rating-table  tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 0.2rem;
+        row-gap: 0;
+        padding: 0.55rem 0 0.55rem 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .results-table tr:last-child,
+    .rating-table  tr:last-child { border-bottom: 0; }
+
+    /* DOM order interleaves splits between race/athlete and overall. Use
+       `order` to lay out as: pos | race | overall | toggle, then splits on
+       a new wrapped line via tr.expanded::after. */
+    .results-table td,
+    .rating-table  td                       { order: 0; }
+    .results-table td.position-col,
+    .rating-table  td.position-col          { order: -1; }
+    .results-table td.overall-col,
+    .rating-table  td.overall-col           { order: 1; }
+    .results-table td.splits-toggle-col,
+    .rating-table  td.splits-toggle-col     { order: 2; }
+    .results-table td.split-col,
+    .rating-table  td.split-col             { order: 4; }
+
+    /* Wrap-forcing flex item: takes the whole line so splits land beneath
+       the header. Only emitted when the row is expanded. */
+    .results-table tr.expanded::after,
+    .rating-table  tr.expanded::after {
+        content: '';
+        flex-basis: 100%;
+        height: 0;
+        order: 3;
+    }
+
+    /* Header layout: [pos] [race/athlete ............] [overall][▶]. */
+    .results-table td,
+    .rating-table  td {
+        display: block;
+        width: auto !important;
+        padding: 0;
+        border: 0;
+        flex: 0 0 auto;
+    }
+    .results-table td.date-col,
+    .rating-table  td.date-col      { display: none; }
+    .results-table td.program-col,
+    .rating-table  td.program-col   { display: none; }
+    .results-table td.yob-col,
+    .rating-table  td.yob-col       { display: none; }
+    /* Fixed min-width so DNF / DNS / LAP labels fit and the column stays
+       aligned row-to-row (the circle and the text otherwise size very
+       differently). */
+    .results-table td.position-col,
+    .rating-table  td.position-col {
+        flex: 0 0 auto;
+        min-width: 42px;
+        padding: 0 0.3rem;
+        text-align: center;
+    }
+    /* flex-basis: 0 (not auto) so the wide identifier column doesn't claim
+       content width up front - it only grows into whatever's left after
+       pos/overall/toggle. padding-right keeps a visible gutter from overall. */
+    .results-table td.race-col,
+    .results-table td.athlete-col,
+    .rating-table  td.race-col,
+    .rating-table  td.athlete-col   { flex: 1 1 0; min-width: 0; padding-right: 0.75rem; }
+    .results-table td.overall-col,
+    .rating-table  td.overall-col   { text-align: right; }
+    /* Overall in rating tables wraps its value + change in a flex-row
+       .rating-cell, which ignores text-align - push it right explicitly. */
+    .rating-table td.overall-col .rating-cell { justify-content: flex-end; }
+    .results-table td.splits-toggle-col,
+    .rating-table  td.splits-toggle-col { display: block; }
+
+    .splits-toggle {
+        background: none;
+        border: 0;
+        padding: 4px 0;
+        margin: 0;
+        cursor: pointer;
+        color: var(--text-lighter);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 0;
+    }
+    .splits-toggle-chevron {
+        transition: transform 0.15s ease;
+        display: block;
+        /* SVG draws a chevron-down; closed state points right. */
+        transform: rotate(-90deg);
+    }
+    .results-table tr.expanded .splits-toggle-chevron,
+    .rating-table  tr.expanded .splits-toggle-chevron { transform: rotate(0deg); }
+
+    /* Splits collapsed by default - revealed when row has .expanded. They
+       wrap onto a new flex line below the header. Default = 5 equal columns
+       (race results with all five splits); upcoming-races and rating-table
+       override below. */
+    .results-table td.split-col,
+    .rating-table  td.split-col { display: none; }
+    .results-table tr.expanded td.split-col,
+    .rating-table  tr.expanded td.split-col {
+        flex: 0 0 calc((100% - 4 * 0.2rem) / 5);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        text-align: center;
+        padding-top: 0.4rem;
+        line-height: 1.2;
+    }
+    /* Upcoming races: 3 splits (swim/bike/run, no transitions). */
+    .upcoming-races-table tr.expanded td.split-col {
+        flex: 0 0 calc((100% - 2 * 0.2rem) / 3);
+    }
+    /* Rating history: 4 splits (swim, bike, run, transition). */
+    .rating-table tr.expanded td.split-col {
+        flex: 0 0 calc((100% - 3 * 0.2rem) / 4);
+    }
+    .results-table td.split-col .time-disc-label,
+    .rating-table  td.split-col .time-disc-label {
+        display: block;
+        font-size: 0.58rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 500;
+        color: var(--text-lighter);
+    }
+    .results-table td.split-col .time-cell-main { font-size: 0.8rem; }
+    .results-table td.split-col .time-cell-gap  { font-size: 0.65rem; }
+
+    /* Striping + hover: cells no longer span the row (they're individual
+       flex items with gaps between), so per-td backgrounds leave holes.
+       Null out the inherited per-td shades (covers both stripe sources:
+       `tbody tr:nth-child(even) td` from base.css site-wide, plus the
+       JS-applied `.stripe-even` class on athlete page). */
+    .results-table tbody tr:nth-child(even) td,
+    .rating-table  tbody tr:nth-child(even) td,
+    .results-table tbody tr.stripe-even td,
+    .rating-table  tbody tr.stripe-even td,
+    .results-table tr.sub-race-row td,
+    .results-table tr:hover td,
+    .rating-table  tr:hover td {
+        background: transparent !important;
+    }
+    /* Athlete page (wrapper has .table-section) uses the JS-applied
+       .stripe-even class so re-sorts restripe correctly while skipping
+       sub-race rows. CSS nth-child(even) is suppressed there (athlete.css
+       sets `background: unset` on the td-level rule, and we don't add a
+       tr-level nth-child stripe so JS is the only source). */
+    .table-section.results-table tbody tr.stripe-even,
+    .table-section.rating-table  tbody tr.stripe-even { background: #f2f4f6; }
+    /* Race page (wrapper has .race-table-section) has no sub-race rows
+       and no re-stripe JS, so plain nth-child(even) is fine. */
+    .race-table-section tbody tr:nth-child(even) { background: #f2f4f6; }
+
+    .results-table tr.sub-race-row { background: #f2f4f6; }
+    .results-table tr:hover,
+    .rating-table  tr:hover        { background: var(--highlight); }
+    .results-table tr.sub-race-row:hover { background: #e6eaef; }
+
+    /* Sub-races (athlete page only) are hidden in the compact layout for
+       now along with their toggle button. */
+    .results-table tr.sub-race-row,
+    .results-table tr.sub-race-row.visible { display: none; }
+    .results-table .sub-race-toggle { display: none; }
+}

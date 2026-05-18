@@ -211,6 +211,28 @@ def create_schema(conn):
         )
     """)
 
+    # Race rankings: each race ranked vs all other races of the same
+    # (gender, course) by its pre-race standard (EXP-weighted average of
+    # finishers' pre-race ratings). Standards/ranks per discipline are NULL
+    # when no finisher in the race had a split for that discipline.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS race_rankings (
+            race_id              INTEGER PRIMARY KEY REFERENCES races(race_id),
+            gender               gender_enum NOT NULL,
+            course               VARCHAR NOT NULL,
+            overall_std          DOUBLE,
+            swim_std             DOUBLE,
+            bike_std             DOUBLE,
+            run_std              DOUBLE,
+            transition_std       DOUBLE,
+            overall_rank         INTEGER,
+            swim_rank            INTEGER,
+            bike_rank            INTEGER,
+            run_rank             INTEGER,
+            transition_rank      INTEGER
+        )
+    """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS prediction_models (
             gender      gender_enum NOT NULL,
@@ -289,6 +311,7 @@ def create_schema(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_results_athlete_id ON results(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_athlete_id ON ratings(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rankings_athlete_id ON rankings(athlete_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_race_rankings_gc ON race_rankings(gender, course)")
 
 
 # --- Country resolution ---

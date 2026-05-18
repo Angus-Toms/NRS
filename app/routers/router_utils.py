@@ -42,34 +42,20 @@ def format_rating(rating):
 
 def format_rating_change(change: float) -> dict:
     """
-    Format rating change to str and provide css-class based on cardinality
+    Format rating change to str and provide css-class based on cardinality.
+    `raw` is included so templates can expose the numeric value (e.g. via a
+    data attribute) for sorting on change instead of value.
     """
-    if change is None: return {
-        "formatted_str": "",
-        "css_class": "no-data"
-    }
+    if change is None or change == float('-inf'):
+        return {"formatted_str": "", "css_class": "no-data",     "raw": None}
 
-    # For races, returned when there is no split data for particular leg
-    if change == float('-inf'): return {
-        "formatted_str": "",
-        "css_class": "no-data"
-    }
-    
-    if change == 0: return {
-        "formatted_str": "",
-        "css_class": "rating-neutral"
-    }
-    
+    if change == 0:
+        return {"formatted_str": "",                              "css_class": "rating-neutral",  "raw": 0}
+
     if change > 0:
-        return {
-            "formatted_str": f"{_SVG_UP}{int(round(change))}",
-            "css_class": "rating-increase"
-        }
+        return {"formatted_str": f"{_SVG_UP}{int(round(change))}", "css_class": "rating-increase", "raw": change}
 
-    return {
-        "formatted_str": f"{_SVG_DOWN}{int(round(-change))}",
-        "css_class": "rating-decrease"
-    }
+    return     {"formatted_str": f"{_SVG_DOWN}{int(round(-change))}", "css_class": "rating-decrease", "raw": change}
 
 def format_1yr_rating_change(change: float) -> dict:
     """
@@ -86,11 +72,11 @@ def format_1yr_rating_change(change: float) -> dict:
 
     if change > 0:
         return {
-            "formatted_str": f"{_SVG_UP}{change:.1f} last year",
+            "formatted_str": f"{_SVG_UP}{int(round(change))}",
             "css_class": "positive"
         }
 
     return {
-        "formatted_str": f"{_SVG_DOWN}{-change:.1f} last year",
+        "formatted_str": f"{_SVG_DOWN}{int(round(-change))}",
         "css_class": "negative"
     }

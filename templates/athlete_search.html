@@ -183,32 +183,38 @@
         <p class="as-compare-lead">Compare two athletes across their careers</p>
         <p class="as-compare-desc">Pick any two athletes to line up ratings, head-to-head results, and performance trends over time.</p>
     </div>
-    <a href="/compare" class="as-compare-btn">Open comparison</a>
+    <a href="/athlete-compare" class="as-compare-btn">Open comparison</a>
 </div>
 
 <!-- ── All-time Leaderboards ── -->
 <div class="page-section-head">All-time Leaderboards</div>
 <div class="as-lb-grid">
-    {% for athletes, href, label in [
-        (female_lb_short, '/leaderboard?gender=female&course=short', 'Women · Short Course'),
-        (male_lb_short,   '/leaderboard?gender=male&course=short',   'Men · Short Course'),
-        (female_lb_long,  '/leaderboard?gender=female&course=long',  'Women · Long Course'),
-        (male_lb_long,    '/leaderboard?gender=male&course=long',    'Men · Long Course')
+    {% for athletes, href, label, crs, cat in [
+        (male_lb_short,   '/athlete-leaderboard?gender=male&course=short&category=elite',   'Men · Short Course',   'short', 'elite'),
+        (female_lb_short, '/athlete-leaderboard?gender=female&course=short&category=elite', 'Women · Short Course', 'short', 'elite'),
+        (male_lb_long,    '/athlete-leaderboard?gender=male&course=long&category=elite',    'Men · Long Course',    'long',  'elite'),
+        (female_lb_long,  '/athlete-leaderboard?gender=female&course=long&category=elite',  'Women · Long Course',  'long',  'elite'),
+        (male_lb_ag,      '/athlete-leaderboard?gender=male&course=short&category=ag',      'Men · Age Group',      'short', 'ag'),
+        (female_lb_ag,    '/athlete-leaderboard?gender=female&course=short&category=ag',    'Women · Age Group',    'short', 'ag'),
     ] %}
-    <a href="{{ href }}" class="as-lb-card">
-        <div class="as-lb-card-header">
-            <span class="as-lb-card-title">{{ label }}</span>
-        </div>
-        <ul class="as-lb-list">
+    <div class="lb-widget">
+        <a href="{{ href }}" class="lb-widget-header">{{ label }}</a>
+        <ol class="lb-widget-list">
             {% for a in athletes %}
-            <li class="as-lb-item">
-                <span class="as-lb-pos{{ ' as-lb-pos--' ~ loop.index if loop.index <= 3 else '' }}">{{ loop.index }}</span>
-                <span class="as-lb-name">{{ a.name }} {{ a.country_emoji }}</span>
-                <span class="as-lb-rating">{{ a.overall_rating }}</span>
+            {% set pos = loop.index %}
+            <li class="lb-widget-item">
+                {% if pos == 1 %}<span class="pos-circle gold">1</span>
+                {% elif pos == 2 %}<span class="pos-circle silver">2</span>
+                {% elif pos == 3 %}<span class="pos-circle bronze">3</span>
+                {% else %}<span class="pos-other">{{ pos }}</span>{% endif %}
+                <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img_exists else 'imgs/default_user_64.webp' }}"
+                     alt="{{ a.name }}" class="lb-widget-img" loading="lazy" width="32" height="32">
+                <a href="/athlete/{{ a.athlete_id }}?course={{ crs }}&category={{ cat }}" class="lb-widget-name">{{ a.name }} {{ a.country_emoji }}</a>
+                <span class="lb-widget-rating">{{ a.overall_rating }}</span>
             </li>
             {% endfor %}
-        </ul>
-    </a>
+        </ol>
+    </div>
     {% endfor %}
 </div>
 

@@ -18,7 +18,6 @@ import re
 import unicodedata
 from collections import Counter, defaultdict
 from difflib import SequenceMatcher
-from pathlib import Path
 
 from ptd_data import db
 
@@ -26,8 +25,6 @@ from ptd_data import db
 SIMILARITY_THRESHOLD = 0.94
 NEAR_MISS_BAND = 0.04        # pairs within [threshold - band, threshold) are flagged
 LOW_INTERNAL_PAIR = 0.96     # within accepted clusters, flag any internal pair below this
-
-REPORT_PATH = Path(__file__).parent / "recurring_fallback_report.txt"
 
 SHORT_DISTANCES = {"sprint", "standard"}
 LONG_DISTANCES  = {"middle", "t100", "long"}
@@ -203,10 +200,7 @@ def apply_fallback(conn):
         if slug in existing_slugs:
             # Defensive: don't collide with an existing rule-based group.
             cluster_reports.append({
-                "course": course, "slug": slug, "name": canonical_name,
                 "size": len(eids), "min_internal": None, "skipped_collision": True,
-                "members": [(eid, name_lookup[eid]) for eid in eids],
-                "name_variants": len(set(norms)),
             })
             continue
 
@@ -226,11 +220,8 @@ def apply_fallback(conn):
         min_internal = min(pair_ratios) if pair_ratios else None
 
         cluster_reports.append({
-            "course": course, "slug": slug, "name": canonical_name,
             "size": len(eids), "min_internal": min_internal,
             "skipped_collision": False,
-            "members": [(eid, name_lookup[eid]) for eid in eids],
-            "name_variants": len(set(norms)),
         })
 
     if recurring_rows:
@@ -246,9 +237,6 @@ def apply_fallback(conn):
             event_recurring_rows,
         )
 
-    _write_report(cluster_reports, all_near_misses, name_lookup,
-                  skipped_no_course, skipped_empty_norm)
-
     n_low = sum(1 for c in cluster_reports
                 if (not c["skipped_collision"]) and c["min_internal"] is not None
                 and c["min_internal"] < LOW_INTERNAL_PAIR)
@@ -261,70 +249,6 @@ def apply_fallback(conn):
           f"{skipped_empty_norm} skipped empty-name, "
           f"{len(all_near_misses)} near-misses, "
           f"{n_low} clusters with internal pair < {LOW_INTERNAL_PAIR})")
-    print(f"  Report: {REPORT_PATH}")
-
-
-def _write_report(clusters, near_misses, name_lookup,
-                  skipped_no_course, skipped_empty_norm):
-    lines = []
-    lines.append("Recurring-event fallback report")
-    lines.append(f"Threshold: {SIMILARITY_THRESHOLD}   "
-                 f"Near-miss band: {NEAR_MISS_BAND}   "
-                 f"Internal-pair flag: {LOW_INTERNAL_PAIR}")
-    n_real = sum(1 for c in clusters if not c["skipped_collision"])
-    lines.append(f"Clusters created: {n_real}    "
-                 f"Events grouped: {sum(c['size'] for c in clusters if not c['skipped_collision'])}    "
-                 f"Skipped (no/mixed course): {skipped_no_course}    "
-                 f"Skipped (empty norm): {skipped_empty_norm}")
-    lines.append("")
-
-    flagged = [c for c in clusters
-               if (not c["skipped_collision"]) and c["min_internal"] is not None
-               and c["min_internal"] < LOW_INTERNAL_PAIR]
-    if flagged:
-        lines.append(f"-- Clusters with worryingly-low internal pair (< {LOW_INTERNAL_PAIR}) --")
-        for c in sorted(flagged, key=lambda c: c["min_internal"]):
-            lines.append(f"  [{c['course']:>5}] min_pair={c['min_internal']:.3f}  "
-                         f"{c['name']}  ({c['size']} events)")
-        lines.append("")
-
-    multi_variant = [c for c in clusters
-                     if (not c["skipped_collision"]) and c["name_variants"] > 1]
-    if multi_variant:
-        lines.append("-- Clusters with name variants (different normalized forms grouped together) --")
-        for c in sorted(multi_variant, key=lambda c: -c["size"]):
-            lines.append(f"  [{c['course']:>5}] {c['name']}  ({c['size']} events, "
-                         f"{c['name_variants']} variants)")
-        lines.append("")
-
-    collisions = [c for c in clusters if c["skipped_collision"]]
-    if collisions:
-        lines.append("-- Skipped clusters (slug already exists from rule-based pass) --")
-        for c in collisions:
-            lines.append(f"  [{c['course']:>5}] slug={c['slug']}  ({c['size']} events)")
-        lines.append("")
-
-    lines.append("-- All clusters created --")
-    for c in sorted(clusters, key=lambda c: (c["course"], -c["size"], c["name"])):
-        if c["skipped_collision"]:
-            continue
-        flag = ""
-        if c["min_internal"] is not None and c["min_internal"] < LOW_INTERNAL_PAIR:
-            flag = f"  [LOW INTERNAL PAIR {c['min_internal']:.3f}]"
-        if c["name_variants"] > 1:
-            flag += f"  [{c['name_variants']} name variants]"
-        lines.append(f"[{c['course']:>5}] {c['name']}  "
-                     f"({c['size']} events, slug={c['slug']}){flag}")
-        for eid, name in sorted(c["members"], key=lambda m: m[1]):
-            lines.append(f"    {eid}  {name}")
-        lines.append("")
-
-    lines.append("-- Near-miss pairs (just under threshold; not grouped) --")
-    for course, a, b, r in sorted(near_misses, key=lambda x: -x[3]):
-        lines.append(f"  [{course:>5}] {r:.3f}  {name_lookup[a]}  ||  {name_lookup[b]}")
-    lines.append("")
-
-    REPORT_PATH.write_text("\n".join(lines))
 
 
 if __name__ == "__main__":

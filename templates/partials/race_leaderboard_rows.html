@@ -1,0 +1,31 @@
+{% for race in races %}
+<a href="/race/{{ race.race_id }}" class="athlete-card race-card {{ 'rank-' ~ race.display_rank if race.display_rank <= 3 else '' }}">
+    <div class="rank-badge {{ 'rank-' ~ race.display_rank ~ '-text' if race.display_rank <= 3 else '' }}">#{{ race.display_rank }}</div>
+    <div class="athlete-card-content">
+        <div class="athlete-main-info">
+            <div class="athlete-details">
+                <div class="athlete-name">{{ race.race_title }}</div>
+                <div class="athlete-meta">
+                    <span class="meta-item">{{ race.race_date_str }}</span>
+                    {% if race.venue or race.country %}
+                    <span class="meta-item">{{ race.venue }}{% if race.venue and race.country %}, {% endif %}{{ race.country }}</span>
+                    {% endif %}
+                    <span class="meta-item">{{ race.prog_name }}</span>
+                    {% if race.winner_name %}
+                    <span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ race.winner_country_emoji or '' }}</span></span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="athlete-ratings">
+            {% for d, label in [('overall','Overall'), ('swim','Swim'), ('bike','Bike'), ('run','Run'), ('transition','Transition')] %}
+            <div class="rating-item">
+                <span class="rating-label">{{ label }}</span>
+                <span class="rating-value {% if disc == d %}rating-highlight{% endif %}">{{ race[d ~ '_std_fmt'] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</a>
+{% endfor %}

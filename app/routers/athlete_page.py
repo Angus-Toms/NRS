@@ -307,12 +307,19 @@ async def get_athlete(request: Request, athlete_id: int,
     _active   = bool(has_ratings and _cat_last and _cat_last >= (date.today() - timedelta(days=int(18 * 30.44))))
 
     current_rankings = {}
+    peak_rankings    = {}
     if _active:
         active_ranks = queries.get_athlete_active_rankings(athlete_id, category, course=course)
         if active_ranks:
             for disc in ["overall", "swim", "bike", "run", "transition"]:
                 current_rankings[f"world_{disc}"]    = _make_ranking(active_ranks.get(f"world_{disc}"))
                 current_rankings[f"national_{disc}"] = _make_ranking(active_ranks.get(f"national_{disc}"))
+    elif has_ratings:
+        # Retired athletes: show their best-ever world ranking instead of a (now empty) current rank.
+        peak_ranks = queries.get_athlete_peak_rankings(athlete_id, category, course=course)
+        if peak_ranks:
+            for disc in ["overall", "swim", "bike", "run", "transition"]:
+                peak_rankings[f"world_{disc}"] = _make_ranking(peak_ranks.get(f"world_{disc}"))
 
     # --- 1yr changes card ---
     rating_changes_1yr = {}
@@ -337,6 +344,38 @@ async def get_athlete(request: Request, athlete_id: int,
             change = best[f"{disc}_change"]
             best_performances[f"{disc}_change"] = format_rating_change(change) if change else no_best
             best_performances[f"{disc}_race"]   = best[f"{disc}_race"]
+
+    # --- 1y sparklines per discipline ---
+    # Inline SVG polyline normalised into a 100x28 viewBox. To stay consistent
+    # with the "1y change" number, the sparkline window is anchored on the
+    # same reference race that change uses: the most recent race at least 365
+    # days old. We include that anchor as the first point so the line starts
+    # at the same rating the change calculation starts from. If no race that
+    # old exists, fall back to the full history.
+    sparklines: dict = {}
+    if rating_hist:
+        cutoff = date.today() - timedelta(days=365)
+        # rating_hist is DESC by race_date. Walk it newest -> oldest, keeping
+        # races up to and including the first race at/before the cutoff.
+        recent = []
+        for r in rating_hist:
+            recent.append(r)
+            if r["race_date"] <= cutoff:
+                break
+        if len(recent) >= 2:
+            chrono = list(reversed(recent))  # ASC: anchor first, current last
+            n = len(chrono)
+            W, H, PAD = 100.0, 28.0, 3.0
+            for disc in ["overall", "swim", "bike", "run", "transition"]:
+                vals = [r[f"{disc}_rating"] for r in chrono]
+                lo, hi = min(vals), max(vals)
+                span = (hi - lo) or 1.0
+                pts = []
+                for i, v in enumerate(vals):
+                    x = (i / (n - 1)) * W
+                    y = PAD + (1 - (v - lo) / span) * (H - 2 * PAD)
+                    pts.append(f"{x:.1f},{y:.1f}")
+                sparklines[disc] = " ".join(pts)
 
     # --- athlete dict: merge info + stats + computed fields expected by template ---
     race_starts = stats["race_starts"]
@@ -633,7 +672,8 @@ async def get_athlete(request: Request, athlete_id: int,
         "athlete":        athlete_dict,
         "has_ratings":          has_ratings,
         "show_charts":          has_ratings and race_starts > 1,
-        "show_rankings":        _active,
+        "show_rankings":        bool(current_rankings) or bool(peak_rankings),
+        "is_active_athlete":    _active,
         "category":             category,
         "course":               course,
         "available_courses":    available_courses,
@@ -649,11 +689,14 @@ async def get_athlete(request: Request, athlete_id: int,
         "long_notable_col2":   long_notable_col2,
         "current_ratings":     current_ratings,
         "current_rankings":    current_rankings,
+        "peak_rankings":       peak_rankings,
         "rating_changes_1yr":  rating_changes_1yr,
         "rating_peaks":        rating_peaks,
         "best_performances":   best_performances,
+        "sparklines":          sparklines,
         "nationality_history": queries.get_athlete_nationality_history(athlete_id),
         "upcoming_races":      upcoming_races,
+        "rivals":              queries.get_athlete_rivals(athlete_id, category, course) if has_ratings else [],
         "race_history":        race_history,
         "rating_history":      rating_history,
         "ratings_chart":           ratings_chart,

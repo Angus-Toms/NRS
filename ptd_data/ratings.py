@@ -140,53 +140,92 @@ def _self_k_mult(race_count):
     return 1.0 + 2.0 * max(0.0, 1.0 - race_count / CONF_THRESHOLD)
 
 
-def compute_all(conn):
-    """Full recompute: clear computed tables, ratings, rankings. Uses whatever
-    corrections rows are already in the DB (manual from corrections.csv wins
-    over auto per the COALESCE in _compute_ratings)."""
-    conn.execute("DELETE FROM rankings")
-    conn.execute("DELETE FROM ratings")
-    for category in ('elite', 'ag'):
-        for course in COURSES:
-            _compute_ratings(conn, category, course)
-    for category in ('elite', 'ag'):
-        for course in COURSES:
-            _compute_rankings(conn, category, course)
-    conn.execute("DELETE FROM prediction_models")
-    _fit_prediction_models(conn)
-
-
 # ---------------------------------------------------------------------------
 # Phase 1: ELO ratings
 # ---------------------------------------------------------------------------
 
-def _compute_ratings(conn, category, course):
+def _compute_ratings(conn, category, course, clear=True):
     """Process all races chronologically for one (category, course), compute confidence-weighted pairwise ELO.
 
     Ratings are tracked independently per course: an athlete's short-course
     trajectory does not influence their long-course trajectory (different
     skillsets, different race densities).
+
+    With clear=False, find the earliest unprocessed race (with >=2 results) in
+    this (category, course), wipe all ratings rows from that date onward, then
+    rebuild from there. Handles late-arriving backdated results cleanly: their
+    date sets the cutoff and everything downstream gets recomputed.
     """
     ignored = set(
         r[0] for r in conn.execute("SELECT race_id FROM ignored_races").fetchall()
     )
 
     distances = COURSES[course]['distances']
+    in_sql    = _in_sql(distances)
     k_factor  = COURSES[course]['k_factor']
     era_k_mult = _era_k_multiplier_table(conn, distances)
 
+    current_ratings = {}   # athlete_id -> [overall, swim, bike, run, transition]
+    race_counts = {}       # athlete_id -> number of races completed so far
+    processed_race_ids = set()
+
+    if not clear:
+        cutoff_date = conn.execute(f"""
+            SELECT MIN(r.race_date)
+            FROM races r
+            JOIN (SELECT race_id FROM results GROUP BY race_id HAVING COUNT(*) >= 2) res
+              ON res.race_id = r.race_id
+            WHERE r.category = ? AND r.distance IN {in_sql}
+              AND r.race_id NOT IN (SELECT race_id FROM ratings WHERE category = ?)
+              AND r.race_id NOT IN (SELECT race_id FROM ignored_races)
+        """, [category, category]).fetchone()[0]
+
+        if cutoff_date is None:
+            print(f"  {category} {course}: no new races to process")
+            return
+
+        conn.execute(f"""
+            DELETE FROM ratings
+            WHERE category = ? AND race_id IN (
+                SELECT race_id FROM races
+                WHERE distance IN {in_sql} AND race_date >= ?
+            )
+        """, [category, cutoff_date])
+        print(f"  {category} {course}: extending from {cutoff_date}")
+
+        for athlete_id, overall, swim, bike, run, transition in conn.execute(f"""
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE ra.category = ? AND r.distance IN {in_sql}
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+        """, [category]).fetchall():
+            current_ratings[athlete_id] = [overall, swim, bike, run, transition]
+
+        for athlete_id, cnt in conn.execute(f"""
+            SELECT ra.athlete_id, COUNT(*) FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE ra.category = ? AND r.distance IN {in_sql}
+            GROUP BY ra.athlete_id
+        """, [category]).fetchall():
+            race_counts[athlete_id] = cnt
+
+        processed_race_ids = set(r[0] for r in conn.execute(f"""
+            SELECT DISTINCT ra.race_id FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE ra.category = ? AND r.distance IN {in_sql}
+        """, [category]).fetchall())
+
     races = conn.execute(f"""
-        SELECT race_id, EXTRACT(YEAR FROM race_date)::INTEGER AS yr
+        SELECT race_id, EXTRACT(YEAR FROM race_date)::INTEGER AS yr, race_date
         FROM races
-        WHERE category = ? AND distance IN {_in_sql(distances)}
+        WHERE category = ? AND distance IN {in_sql}
         ORDER BY race_date, race_id
     """, [category]).fetchall()
 
-    current_ratings = {}   # athlete_id -> [overall, swim, bike, run, transition]
-    race_counts = {}       # athlete_id -> number of races completed so far
-
-    for race_id, race_year in tqdm(races, desc=f"Computing {category} {course} ratings", unit="race"):
-        if race_id in ignored:
+    for race_id, race_year, _ in tqdm(races, desc=f"Computing {category} {course} ratings", unit="race"):
+        if race_id in ignored or race_id in processed_race_ids:
             continue
 
         # Corrections are per-discipline, long-format. Manual rows win over auto;
@@ -320,11 +359,15 @@ def _logtime_elo(rating1, rating2, time1, time2):
 # Phase 2: Rankings
 # ---------------------------------------------------------------------------
 
-def _compute_rankings(conn, category, course):
+def _compute_rankings(conn, category, course, clear=True):
     """Compute world and national rankings for one (category, course) from the ratings table.
 
     Rankings are course-scoped: being #1 in short course says nothing about
     your long-course rank.
+
+    With clear=False, find the earliest ratings row (in this category, course)
+    that has no rankings entry yet, wipe all rankings rows from that race date
+    onward, then rebuild from there. Mirrors the ratings extend strategy.
     """
     athlete_info = {}  # athlete_id -> (gender, country_full)
     for athlete_id, gender, country in conn.execute(
@@ -335,6 +378,52 @@ def _compute_rankings(conn, category, course):
     distances = COURSES[course]['distances']
     in_sql = _in_sql(distances)
 
+    gender_state = {
+        'male': _RankingState(),
+        'female': _RankingState(),
+    }
+    processed_race_ids = set()
+
+    if not clear:
+        cutoff_date = conn.execute(f"""
+            SELECT MIN(r.race_date)
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE ra.category = ? AND r.distance IN {in_sql}
+              AND ra.race_id NOT IN (SELECT race_id FROM rankings WHERE category = ?)
+        """, [category, category]).fetchone()[0]
+
+        if cutoff_date is None:
+            print(f"  {category} {course}: no new ratings to rank")
+            return
+
+        conn.execute(f"""
+            DELETE FROM rankings
+            WHERE category = ? AND race_id IN (
+                SELECT race_id FROM races
+                WHERE distance IN {in_sql} AND race_date >= ?
+            )
+        """, [category, cutoff_date])
+        print(f"  {category} {course}: extending rankings from {cutoff_date}")
+
+        processed_race_ids = set(r[0] for r in conn.execute(f"""
+            SELECT DISTINCT rk.race_id FROM rankings rk
+            JOIN races r ON rk.race_id = r.race_id
+            WHERE rk.category = ? AND r.distance IN {in_sql}
+        """, [category]).fetchall())
+
+        for athlete_id, overall, swim, bike, run, transition, race_date in conn.execute(f"""
+            SELECT DISTINCT ON (ra.athlete_id)
+                   ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition, r.race_date
+            FROM ratings ra
+            JOIN races r ON ra.race_id = r.race_id
+            WHERE ra.category = ? AND r.distance IN {in_sql}
+              AND ra.race_id IN (SELECT race_id FROM rankings WHERE category = ?)
+            ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
+        """, [category, category]).fetchall():
+            gender, country = athlete_info.get(athlete_id, ('male', ''))
+            gender_state[gender].update(athlete_id, [overall, swim, bike, run, transition], country, race_date)
+
     entries = conn.execute(f"""
         SELECT ra.race_id, ra.athlete_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
                r.race_date
@@ -344,16 +433,10 @@ def _compute_rankings(conn, category, course):
         ORDER BY r.race_date, ra.race_id
     """, [category]).fetchall()
 
-    gender_state = {
-        'male': _RankingState(),
-        'female': _RankingState(),
-    }
+    if not clear and processed_race_ids:
+        entries = [e for e in entries if e[0] not in processed_race_ids]
 
-    n_races = conn.execute(f"""
-        SELECT COUNT(DISTINCT ra.race_id)
-        FROM ratings ra JOIN races r ON ra.race_id = r.race_id
-        WHERE ra.category = ? AND r.distance IN {in_sql}
-    """, [category]).fetchone()[0]
+    n_races = len({e[0] for e in entries})
 
     ranking_rows = []
     current_race_id = None
@@ -717,33 +800,157 @@ def _fit_prediction_models(conn):
     print(f"Saved {len(model_rows)} prediction models")
 
 
+# ---------------------------------------------------------------------------
+# Phase 4: Race rankings
+# ---------------------------------------------------------------------------
+
+def _compute_race_rankings(conn):
+    """Compute per-race standards and rank each race vs same (gender, course).
+
+    Standard for a discipline = EXP-decay-weighted avg of finishers' pre-race
+    ratings (k=0.1), matching queries.get_race_standards. A discipline is set
+    NULL on a race when no finisher recorded a split for it (transition needs
+    both t1 and t2). Ranks are computed within each (gender, course) bucket;
+    rank 1 = highest standard. Races with NULL std for a discipline get
+    NULL rank for that discipline.
+    """
+    conn.execute("DELETE FROM race_rankings")
+
+    rows = conn.execute("""
+        WITH split_flags AS (
+            SELECT race_id,
+                   BOOL_OR(swim_s > 0)                       AS has_swim,
+                   BOOL_OR(bike_s > 0)                       AS has_bike,
+                   BOOL_OR(run_s  > 0)                       AS has_run,
+                   BOOL_OR(t1_s > 0 AND t2_s > 0)            AS has_transition
+            FROM results
+            GROUP BY race_id
+        ),
+        std AS (
+            SELECT r.race_id, r.gender,
+                   CASE
+                       WHEN r.category = 'ag' THEN 'ag'
+                       WHEN r.distance IN ('sprint','standard') THEN 'short'
+                       ELSE 'long'
+                   END AS course,
+                   SUM((ra.overall    - ra.overall_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS overall_std,
+                   SUM((ra.swim       - ra.swim_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS swim_std,
+                   SUM((ra.bike       - ra.bike_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS bike_std,
+                   SUM((ra.run        - ra.run_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS run_std,
+                   SUM((ra.transition - ra.transition_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS transition_std
+            FROM races r
+            JOIN results res ON res.race_id = r.race_id
+            JOIN ratings ra  ON ra.race_id  = res.race_id AND ra.athlete_id = res.athlete_id
+            WHERE res.status = 'Finished'
+              AND res.position IS NOT NULL
+            GROUP BY r.race_id, r.gender, r.category, r.distance
+            HAVING COUNT(*) >= 2
+        )
+        SELECT std.race_id, std.gender, std.course,
+               std.overall_std,
+               CASE WHEN sf.has_swim       THEN std.swim_std       END,
+               CASE WHEN sf.has_bike       THEN std.bike_std       END,
+               CASE WHEN sf.has_run        THEN std.run_std        END,
+               CASE WHEN sf.has_transition THEN std.transition_std END
+        FROM std
+        JOIN split_flags sf ON sf.race_id = std.race_id
+    """).fetchall()
+
+    if not rows:
+        print("No race standards computed.")
+        return
+
+    # Build per-(gender, course) sorted lists per discipline to assign ranks.
+    DISCS = ['overall', 'swim', 'bike', 'run', 'transition']
+    by_bucket = {}  # (gender, course) -> list of dicts
+    for race_id, gender, course, *stds in rows:
+        rec = {'race_id': race_id, 'gender': gender, 'course': course}
+        for d, v in zip(DISCS, stds):
+            rec[d] = v
+        by_bucket.setdefault((gender, course), []).append(rec)
+
+    ranked_rows = []
+    for (gender, course), recs in by_bucket.items():
+        rank_maps = {}
+        for d in DISCS:
+            ordered = sorted(
+                [r for r in recs if r[d] is not None],
+                key=lambda r: r[d],
+                reverse=True,
+            )
+            rank_maps[d] = {r['race_id']: i + 1 for i, r in enumerate(ordered)}
+        for r in recs:
+            ranked_rows.append((
+                r['race_id'], gender, course,
+                r['overall'], r['swim'], r['bike'], r['run'], r['transition'],
+                rank_maps['overall'].get(r['race_id']),
+                rank_maps['swim'].get(r['race_id']),
+                rank_maps['bike'].get(r['race_id']),
+                rank_maps['run'].get(r['race_id']),
+                rank_maps['transition'].get(r['race_id']),
+            ))
+
+    conn.executemany(
+        """
+        INSERT INTO race_rankings
+            (race_id, gender, course,
+             overall_std, swim_std, bike_std, run_std, transition_std,
+             overall_rank, swim_rank, bike_rank, run_rank, transition_rank)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        ranked_rows,
+    )
+    print(f"Computed race rankings for {len(ranked_rows)} races across "
+          f"{len(by_bucket)} (gender, course) buckets")
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ratings-only", action="store_true", help="Recompute ratings only, leave rankings untouched")
-    parser.add_argument("--rankings-only", action="store_true", help="Recompute rankings only, leave ratings untouched")
-    parser.add_argument("--models-only", action="store_true", help="Refit prediction models only, leave ratings and rankings untouched")
+    parser.add_argument("--phase", choices=["all", "ratings", "rankings", "models"], default="all",
+                        help="Which phase to run. Default 'all' runs ratings, then rankings, then models.")
+    parser.add_argument("--extend", action="store_true",
+                        help="Incrementally extend ratings/rankings: find the earliest "
+                             "unprocessed race per (category, course), wipe ratings/rankings "
+                             "from that date forward, then rebuild. Handles backdated "
+                             "late-arriving results. Ignored for --phase models "
+                             "(models are always a full refit).")
     args = parser.parse_args()
 
+    clear = not args.extend
     conn = db.get_conn(read_only=False)
-    if args.rankings_only:
-        print("Recomputing rankings only...")
-        conn.execute("DELETE FROM rankings")
+
+    # Any race that now has results is no longer "upcoming". Purge stale rows so
+    # extend runs don't leave completed races sitting in the upcoming table.
+    conn.execute("DELETE FROM start_list_entries WHERE race_id IN (SELECT race_id FROM races)")
+    conn.execute("DELETE FROM upcoming_races WHERE race_id IN (SELECT race_id FROM races)")
+
+    if args.phase in ("ratings", "all"):
+        print(f"{'Extending' if not clear else 'Recomputing'} ratings...")
+        if clear:
+            conn.execute("DELETE FROM ratings")
         for category in ('elite', 'ag'):
             for course in COURSES:
-                _compute_rankings(conn, category, course)
-    elif args.ratings_only:
-        print("Recomputing ratings only...")
-        conn.execute("DELETE FROM ratings")
+                _compute_ratings(conn, category, course, clear=clear)
+
+    if args.phase in ("rankings", "all"):
+        print(f"{'Extending' if not clear else 'Recomputing'} rankings...")
+        if clear:
+            conn.execute("DELETE FROM rankings")
         for category in ('elite', 'ag'):
             for course in COURSES:
-                _compute_ratings(conn, category, course)
-    elif args.models_only:
-        print("Refitting prediction models only...")
+                _compute_rankings(conn, category, course, clear=clear)
+
+        # Race rankings always recompute fully — they're a global sort over
+        # standards, so an incremental update would need to shift ranks across
+        # every race anyway. Cheap relative to the ELO pass.
+        print("Recomputing race rankings...")
+        _compute_race_rankings(conn)
+
+    if args.phase in ("models", "all"):
+        print("Refitting prediction models...")
         conn.execute("DELETE FROM prediction_models")
         _fit_prediction_models(conn)
-    else:
-        print("Computing ratings and rankings...")
-        compute_all(conn)
+
     conn.close()
     print("Done.")

@@ -52,23 +52,6 @@
     border-color: var(--primary-color);
 }
 
-/* Back link - subtle white on navy */
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.5);
-    text-decoration: none;
-    margin-bottom: 0.6rem;
-    transition: color var(--transition-fast);
-}
-
-.back-link:hover {
-    color: rgba(255, 255, 255, 0.85);
-}
-
 /* Context pills — series + recurring groupings the race belongs to.
    All pills sit above the race title; tier drives the colour. */
 .race-context-pills {
@@ -189,6 +172,36 @@
     font-size: 0.78rem;
     color: rgba(255, 255, 255, 0.4);
     margin-top: 0.25rem;
+}
+
+.race-hero-actions {
+    margin-top: 0.75rem;
+}
+.race-hero-podium .race-hero-actions {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.race-compare-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.race-compare-link:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.7);
 }
 
 .race-multi-stage-note {
@@ -335,11 +348,19 @@
     border-radius: 8px;
     padding: 0;
     border: 1px solid var(--border-color);
-    overflow: hidden;
+    overflow-x: auto;
     margin-bottom: 2rem;
 }
 
 .race-table-section table { margin-top: 0; border-radius: 0; }
+
+/* Min-widths so split columns stay readable; below this the wrapper scrolls
+   horizontally. Scoped to >=769px so the mobile stacked layout (which sets
+   min-width: 0 on the table in base.css) isn't fought. */
+@media (min-width: 769px) {
+    .race-table-section table.results-table { width: 100%; min-width: 880px; }
+    .race-table-section table.rating-table  { width: 100%; min-width: 820px; }
+}
 
 /* Position circles + time cells are in base.css */
 
@@ -356,13 +377,11 @@
 
 .results-table .athlete-col  { width: 190px; }
 .results-table .yob-col      { width: 90px; }
-.results-table .position-col { width: 52px; }
-.results-table .time-col     { width: calc((100% - 332px) / 6); }
+.results-table .time-col     { width: calc((100% - 360px) / 6); }
 
 .rating-table .athlete-col   { width: 190px; }
 .rating-table .yob-col       { width: 90px; }
-.rating-table .position-col  { width: 52px; }
-.rating-table .time-col      { width: calc((100% - 332px) / 5); }
+.rating-table .time-col      { width: calc((100% - 360px) / 5); }
 
 .rating-change {
     font-size: 0.7rem;
@@ -390,13 +409,6 @@
     justify-content: space-between;
     margin-bottom: 1rem;
     gap: 1rem;
-}
-
-/* Title + toggle on the same baseline */
-.results-section-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
 }
 
 .results-section-head .page-section-head {
@@ -638,26 +650,15 @@
         font-size: 1.375rem;
     }
 
-    .race-stat-cards {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .data-table {
-        font-size: var(--font-size-sm);
-    }
-
     .time-col, .rating-col {
         font-size: 0.75rem;
     }
+    /* .race-stat-cards responsive layout lives in base.css */
 }
 
 @media (max-width: 480px) {
     .race-hero-left {
         padding: 1rem 1.25rem 1.5rem;
-    }
-
-    .race-stat-cards {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -757,29 +758,26 @@
 .corr-new     { display: block; font-weight: 600; color: var(--text-color); }
 .corr-unchanged { color: var(--text-lighter); }
 
-/* ── Other editions at this venue ───────────────────────────────── */
-.other-editions-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+/* Performance disc-list overrides: tighter rows, vertically centred pills.
+   Scoped via .disc-list--perf so the athlete page layout is untouched. */
+.disc-list--perf .disc-row { padding: 0.55rem 0; }
+.disc-list--perf.disc-list { margin-bottom: 1.5rem; }
+.disc-list--perf .disc-list-head { padding: 0 0 0.4rem; }
+
+.disc-list--perf .disc-rating {
+    align-items: center;
+    gap: 0.55rem;
 }
-.other-edition-pill {
+.disc-list--perf .disc-rating .std-pill,
+.disc-list--perf .disc-rating .race-rank-pill { margin-top: 0; }
+
+.disc-list--perf .disc-substats { align-items: center; }
+.disc-list--perf .substat-value {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 999px;
-    background: var(--card-bg, #fff);
-    color: var(--text-color);
-    text-decoration: none;
-    font-size: 0.8125rem;
-    transition: border-color 0.15s, background 0.15s;
+    flex-wrap: wrap;
+    gap: 0.45rem;
 }
-.other-edition-pill:hover { border-color: #1a1a2e; background: #f5f5f7; }
-.other-edition-year {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-.other-edition-name { color: var(--text-lighter); }
+.disc-list--perf .substat-value .std-pill,
+.disc-list--perf .substat-value .cond-pill { margin-top: 0; }
+.disc-list--perf .substat-context { margin-top: 0.15rem; }

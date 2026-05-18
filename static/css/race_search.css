@@ -93,7 +93,7 @@ a.race-pill:hover {
 }
 
 /* ── Responsive ── */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .hero-stats {
         display: none;
     }
