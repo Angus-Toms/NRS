@@ -158,137 +158,7 @@
 
 
 /* ── SECTION 1: CHAMPION CARDS ── */
-.champs-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-}
-
-.champ-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.champ-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
-}
-
-/* Navy header band: just the badge label. min-height fits two lines so all
-   four cards stay even when one badge wraps and others don't. */
-.champ-card-header {
-    background: var(--navy);
-    padding: 0.4rem 0.75rem;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.4rem;
-}
-
-.champ-badge {
-    font-size: 0.62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #fff;
-    transition: color var(--transition-fast);
-}
-
-.champ-card:hover .champ-badge {
-    color: var(--primary-color);
-}
-
-/* White body: vertical layout — photo on top, name, stats below */
-.champ-card-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 1.25rem 0.75rem 1.1rem;
-    flex: 1;
-}
-
-.champ-img {
-    width: 112px;
-    height: 112px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: var(--border-color);
-}
-
-.champ-namerow {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    min-width: 0;
-    max-width: 100%;
-    justify-content: center;
-}
-
-.champ-flag {
-    font-size: 1rem;
-    flex-shrink: 0;
-    line-height: 1;
-}
-
-.champ-name {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin: 0;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    text-align: center;
-}
-
-
-.champ-stats-row {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    margin-top: 0.15rem;
-}
-
-.champ-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    align-items: center;
-}
-
-.champ-stat-num {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--text-color);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
-.champ-stat-lbl {
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-lighter);
-}
-
-.champ-stat-divider {
-    width: 1px;
-    height: 1.6rem;
-    background: var(--border-color);
-    flex-shrink: 0;
-}
+/* Card + grid styles are shared via .champ-* / .champs-grid in base.css. */
 
 
 /* ── SECTION 2: RECENT EVENTS ── */
@@ -326,16 +196,30 @@
     z-index: 1;
     pointer-events: none;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* Header-inline meta (date · venue): shown only at <=768px (info column carries them on desktop) */
+.event-card-header-meta {
+    display: none;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #9aa3ae;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-card-header-meta-sep {
+    margin: 0 0.4rem;
+    color: #6b7280;
 }
 
 .event-card-title {
     font-size: 0.9rem;
     font-weight: 700;
     color: #fff;
-    transition: color var(--transition-fast);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -351,9 +235,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-.event-card:hover .event-card-title {
-    color: var(--primary-color);
-}
+/* Title stays white on hover - border + shadow signal the card is clickable. */
 
 /* Body: info panel left, races right */
 .event-card-body {
@@ -400,7 +282,7 @@
 .event-race {
     flex: 1;
     min-width: 0;
-    padding: 0.75rem 1rem;
+    padding: 0.45rem 1rem 0.75rem;
 }
 
 .event-race + .event-race {
@@ -653,10 +535,6 @@
         width: 100%;
     }
 
-    .champs-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
     .home-lb-grid {
         grid-template-columns: 1fr;
         gap: 0.85rem;
@@ -664,6 +542,23 @@
 
     .about-preview {
         grid-template-columns: 1fr;
+    }
+
+    /* Event card: meta moves into the navy header; left info column is dropped */
+    .event-card-header {
+        padding: 0.55rem 1rem 0.6rem;
+    }
+
+    .event-card-header-meta {
+        display: block;
+    }
+
+    .event-card-info {
+        display: none;
+    }
+
+    .event-race {
+        padding: 0.4rem 0.85rem 0.7rem;
     }
 }
 
@@ -676,14 +571,6 @@
         display: none;
     }
 
-    .champs-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-    .champ-card-body { padding: 0.9rem 0.5rem 0.85rem; gap: 0.5rem; }
-    .champ-img { width: 84px; height: 84px; }
-    .champ-name { font-size: 0.9rem; }
-    .champ-badge { font-size: 0.55rem; letter-spacing: 0.05em; }
-    .champ-stats-row { gap: 0.45rem; }
-    .champ-stat-num { font-size: 0.85rem; }
-    .champ-stat-lbl { font-size: 0.55rem; }
     .home-intro { font-size: 0.94rem; margin-top: 1.4rem; }
 
     .compare-widget {
@@ -693,5 +580,37 @@
     .compare-widget-visual {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    /* Event card: stack races into single column; drop the inter-podium divider
+       (the .event-race-header::after rule under each PRO MEN/WOMEN label is enough). */
+    .event-races {
+        flex-direction: column;
+    }
+
+    .event-race {
+        padding: 0.35rem 0.85rem 0.65rem;
+    }
+
+    .event-race + .event-race::before {
+        display: none;
+    }
+
+    .event-card-title {
+        font-size: 0.82rem;
+        white-space: normal;
+    }
+
+    .event-race-entry-img {
+        width: 22px;
+        height: 22px;
+    }
+
+    .event-entry-name {
+        font-size: 0.85rem;
+    }
+
+    .event-entry-time--winner {
+        font-size: 0.82rem;
     }
 }

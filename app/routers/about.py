@@ -31,6 +31,10 @@ def load_qa_items() -> list[dict]:
     return items
 
 
+# Blog convention: each post in static/about/blogs/ is a trio identified by slug.
+#   <slug>.html  body fragment (no <html>/<head>; KaTeX $...$ supported)
+#   <slug>.json  required metadata: { "title": str, "teaser": str }
+#   <slug>.js    optional; auto-loaded by the detail template when present
 def load_blogs() -> list[dict]:
     posts = []
     for path in sorted(BLOG_DIR.glob("*.html")):
@@ -38,16 +42,10 @@ def load_blogs() -> list[dict]:
         if not meta_path.exists():
             continue
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        body = path.read_text(encoding="utf-8")
-        # Teaser: first non-tag content up to the first full stop
-        import re
-        plain = re.sub(r"<[^>]+>", "", body).strip()
-        teaser = (plain.split(".")[0] + ".") if plain else "More on this soon."
         posts.append({
-            "slug":     path.stem,
-            "title":    meta.get("title", path.stem.replace("-", " ").title()),
-            "teaser":   meta.get("teaser", teaser),
-            "body_html": body,
+            "slug":   path.stem,
+            "title":  meta.get("title", path.stem.replace("-", " ").title()),
+            "teaser": meta.get("teaser", "More on this soon."),
         })
     return posts
 
@@ -63,6 +61,7 @@ def load_blog_by_slug(slug: str) -> dict | None:
         "slug":      slug,
         "title":     meta.get("title", slug.replace("-", " ").title()),
         "body_html": body,
+        "has_js":    path.with_suffix(".js").exists(),
     }
 
 

@@ -111,19 +111,25 @@ function renderResults(athletes, disc, order) {
             </div>`).join('');
 
         // Meta row - flag · country · YOB · races · wins · [tags]
-        const yobItem  = a.year_of_birth ? `<span class="meta-item">b. ${a.year_of_birth}</span>` : '';
+        // Each meta-item is preceded by a `<span class="meta-item-sep"> · </span>`;
+        // CSS hides the leading one via :first-child so conditional items don't
+        // produce an orphan separator.
+        const SEP = '<span class="meta-item-sep"> · </span>';
+        const yobItem = a.year_of_birth
+            ? `${SEP}<span class="meta-item">b. ${a.year_of_birth}</span>`
+            : '';
         const tags = [];
         if (a.has_elite_short) tags.push('<span class="ptd-tag ptd-tag--sc">SC</span>');
         if (a.has_elite_long)  tags.push('<span class="ptd-tag ptd-tag--lc">LC</span>');
         if (a.has_ag)          tags.push('<span class="ptd-tag ptd-tag--ag">AG</span>');
         const tagsItem = tags.length
-            ? `<span class="meta-item ptd-tag-row">${tags.join('')}</span>`
+            ? `${SEP}<span class="meta-item ptd-tag-row">${tags.join('')}</span>`
             : '';
         const metaHtml = `
-            <span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>
+            ${SEP}<span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>
             ${yobItem}
-            <span class="meta-item"><span class="meta-val">${a.race_starts}</span> races</span>
-            <span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>
+            ${SEP}<span class="meta-item"><span class="meta-val">${a.race_starts}</span> races</span>
+            ${SEP}<span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>
             ${tagsItem}`;
 
         // When course is 'all' we don't have a clean course to hand off to

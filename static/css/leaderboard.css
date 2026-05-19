@@ -10,6 +10,13 @@
     margin-top: 1.25rem;
 }
 
+/* Active-filter summary line: hidden on desktop, shown at <=768 in the primary
+   row so the user can see what's currently selected when the chip groups are
+   collapsed behind the filter-icon button. */
+.filter-summary {
+    display: none;
+}
+
 /* Primary row - all main filters on one line */
 .filters-primary {
     display: flex;
@@ -100,8 +107,8 @@
     box-shadow: var(--box-shadow-hover);
 }
 
-.athlete-card:hover .athlete-name { color: var(--primary-color); }
-.athlete-card:hover .rank-badge   { color: var(--primary-color); }
+/* Name + rank stay default colour on hover - border + shadow signal that the
+   whole card is the link. */
 
 /* Soft podium tints */
 .athlete-card.rank-1 { background-color: #fffdf0; border-color: #e0c040; }
@@ -138,7 +145,21 @@
     gap: 0.875rem;
     align-items: center;
     flex: 1;
+    min-width: 14rem;
+}
+
+/* Let the ratings block compress when the main-info's 14rem floor squeezes
+   the row. Without this, .athlete-ratings inherits flex-shrink:0 from
+   base.css and overflows the card's right edge between ~769px and whatever
+   width fits the natural rating-item × 5 layout. */
+.athlete-card .athlete-ratings {
     min-width: 0;
+    flex-shrink: 1;
+    box-sizing: border-box;
+}
+.athlete-card .rating-item {
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 .athlete-profile-img {
@@ -201,18 +222,97 @@
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
-    .filters-primary { gap: 0.5rem; }
     .filter-v-divider { display: none; }
     .filter-spacer { display: none; }
 
+    /* Move all chip groups into the advanced-filters dropdown by collapsing
+       them off the primary row and only showing them when the filter icon is
+       toggled open. The filter icon, Reset button, and active-filter summary
+       stay visible in the primary row. */
+    .filters-primary {
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .filter-summary {
+        display: block;
+        order: 0;
+        flex: 1;
+        min-width: 0;
+        font-size: 0.78rem;
+        color: var(--text-light);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .filter-summary-sep {
+        color: var(--text-lighter);
+        margin: 0 0.3rem;
+    }
+
+    .btn-filter-icon { order: 1; }
+    .filters-primary .btn-reset { order: 2; }
+    .filters-primary .btn-search { order: 3; }
+
+    /* Hide chip groups in the primary row by default; reveal when the filter
+       icon is in its `.open` state (the existing JS toggle). */
+    .filters-primary .filter-chip-group {
+        display: none;
+    }
+    .filters-primary:has(.btn-filter-icon.open) .filter-chip-group {
+        display: flex;
+        order: 4;
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+    }
+
+    /* Hide the Search button until filters are open - it's only useful when
+       editing filter state. */
+    .filters-primary:not(:has(.btn-filter-icon.open)) .btn-search {
+        display: none;
+    }
+
     .filters-primary .btn-reset,
     .filters-primary .btn-search,
-    .filters-primary .btn-filter-icon,
-    .filters-primary .filter-toggle {
+    .filters-primary .btn-filter-icon {
         align-self: auto;
         margin-bottom: 0;
     }
 
-    .athlete-card-content { flex-direction: column; align-items: flex-start; }
-    .athlete-ratings { width: 100%; }
+    /* Allow the ratings block to shrink with the card on narrow screens so its
+       grey background doesn't bleed past the card's right edge. The inner
+       .rating-item children also need min-width:0 + flex-shrink:1 so the wrap
+       actually kicks in - their default `width: 4.75rem; flex-shrink: 0` is
+       what was forcing the parent box wider than the card. */
+    .athlete-card-content { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+    .athlete-main-info { min-width: 0; }    /* reset the desktop floor; full-width in column layout */
+    .athlete-ratings {
+        width: 100%;
+        box-sizing: border-box;       /* site has no global border-box; without
+                                         this, width:100% + padding overflows. */
+        min-width: 0;
+        flex-shrink: 1;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        row-gap: 0.4rem;
+    }
+    .athlete-ratings .rating-item {
+        width: auto;
+        min-width: 0;
+        flex: 1 1 4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Drop the transition column on phones - it's the least-glanceable of the
+       five and reclaims ~20% of the row's horizontal budget for the other four.
+       The 5th rating-item is consistently transition across athlete- and
+       race-leaderboard markup; athlete-search renders 4 items so :nth-child(5)
+       naturally doesn't apply there. */
+    .athlete-ratings .rating-item:nth-child(5) {
+        display: none;
+    }
 }

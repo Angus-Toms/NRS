@@ -61,135 +61,12 @@
     text-align: center;
 }
 
-/* ── Currently Trending (champ-cards) ── */
-.as-champs-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem;
+/* ── Currently Trending ── */
+/* Card styling is shared via .champ-* in base.css. The grid spans four cards
+   (men/women x short/long) and matches the home page champion-card layout.
+   Bottom margin matches the other top-level blocks on this page (2rem). */
+.champs-grid {
     margin-bottom: 2rem;
-}
-
-.as-champ-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.as-champ-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--box-shadow-hover);
-}
-
-.as-champ-header {
-    background: var(--navy);
-    padding: 0.55rem 1.25rem;
-}
-
-.as-champ-badge {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #fff;
-    transition: color var(--transition-fast);
-}
-
-.as-champ-card:hover .as-champ-name {
-    color: var(--primary-color);
-}
-
-.as-champ-body {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 1.25rem 1.5rem;
-    flex: 1;
-}
-
-.as-champ-img {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.as-champ-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.as-champ-namerow {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin-bottom: 0.75rem;
-    min-width: 0;
-}
-
-.as-champ-flag {
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    line-height: 1;
-}
-
-.as-champ-name {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--text-color);
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-}
-
-.as-champ-stats {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
-
-.as-champ-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-}
-
-.as-champ-stat-num {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--text-color);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
-.as-champ-stat-num.positive {
-    color: var(--success-color);
-}
-
-.as-champ-stat-lbl {
-    font-size: 0.67rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-lighter);
-    font-weight: 600;
-}
-
-.as-champ-stat-div {
-    width: 1px;
-    height: 1.8rem;
-    background: var(--border-color);
-    flex-shrink: 0;
 }
 
 /* ── Head-to-Head widget ── */
@@ -257,10 +134,6 @@
         grid-template-columns: 1fr;
     }
 
-    .as-champs-grid {
-        grid-template-columns: 1fr;
-    }
-
     .as-compare-widget {
         flex-direction: column;
         align-items: flex-start;
@@ -281,13 +154,21 @@
         display: none;
     }
 
-    .as-result-item .athlete-ratings {
-        display: none;
+    /* Stack ratings under the name+meta row instead of hiding them outright.
+       flex-wrap on the parent lets the 100%-width ratings child drop to its
+       own line; avatar + info stay on the first row. min-width:0 + flex-shrink:1
+       overrides the base.css `flex-shrink:0` so the block can shrink with the
+       row instead of overflowing the card on narrow screens. */
+    .as-result-item {
+        flex-wrap: wrap;
     }
-
-    .as-champ-img {
-        width: 52px;
-        height: 52px;
+    .as-result-item .athlete-ratings {
+        width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
+        flex-shrink: 1;
+        flex-wrap: wrap;
+        justify-content: flex-start;
     }
 }
 

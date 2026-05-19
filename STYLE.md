@@ -131,7 +131,7 @@ All tabular numbers use `font-variant-numeric: tabular-nums` so columns align. L
 ### Casing rules
 
 - **UPPERCASE** (with letter-spacing): table headers, eyebrow/meta labels (`.meta-label`, `.stat-label`, `.filter-chip-label`), `.card-title`, badge text (`.multi-stage-badge`, classification pills), filter section labels.
-- **Sentence case**: section headings, card titles that aren't `.card-title`, body copy, athlete names.
+- **Sentence / title case**: section headings, card titles that aren't `.card-title`, navy-band **widget headers** (`.lb-widget-header`, `.champ-badge`, event-card titles), body copy, athlete names. Uppercase is reserved for micro-labels (table heads, eyebrows, stat captions) where the letter-spacing actually aids hierarchy at small sizes; it does not belong on full-size widget headers, where it reads as shouting and hurts scannability.
 - **lowercase**: never apply `text-transform: lowercase`. Source case wins.
 
 ---
@@ -165,7 +165,7 @@ Used on athlete, race, country, leaderboard, etc. as a top anchor below the site
 
 ### Section heading (in-page)
 
-The standard introducer for a content section. **4px** orange left border (not 3px) is the primary visual anchor. Used as a flex row so a "see more" link can sit at the right (`justify-content: space-between`).
+The standard introducer for a content section. **4px** orange left border (not 3px) is the primary visual anchor. Used as a flex row so a "See more" link can sit at the right (`justify-content: space-between`).
 
 ```html
 <div class="page-section-head">
@@ -261,7 +261,7 @@ Cards (`--white` surface, `1px solid var(--border-color)`, `border-radius: 8px`)
 .card:hover { border-color: var(--primary-color); box-shadow: var(--box-shadow-hover); }
 ```
 
-The card's title transitions to `--primary-color` on hover. Never use a background-colour change as the hover signal; never use `transform: translateY(...)` - the border + shadow is sufficient.
+The card title does **not** colour-shift on hover - the border + shadow alone signal hover. See §21 "Orange-on-hover is reserved for clearly actionable text" for the rationale. Never use a background-colour change as the hover signal; never use `transform: translateY(...)` - the border + shadow is sufficient.
 
 ### Overlay link pattern (whole card clickable + nested links)
 
@@ -569,6 +569,48 @@ Athlete names truncate with `text-overflow: ellipsis` - never wrap.
 
 Podium avatars use **gold/silver/bronze `box-shadow` rings** on positions 1/2/3. This is the one exception to the otherwise neutral profile-photo treatment - the colour directly encodes finishing position.
 
+### Event-card "race overview" widget
+
+The home and country pages use a richer composite: `.event-card` is a navy-header card whose body is split into a **150px info column** (date, venue) on the left and a **two-podium races column** on the right. This is the canonical layout for any "what happened at this event" surface.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ NAVY HEADER · event name                                  │
+├──────────────┬──────────────────────┬─────────────────────┤
+│ 📅 date      │ MEN'S RACE           │ WOMEN'S RACE        │
+│ 📍 venue     │ 🥇 ...               │ 🥇 ...              │
+│              │ 🥈 ...               │ 🥈 ...              │
+│              │ 🥉 ...               │ 🥉 ...              │
+└──────────────┴──────────────────────┴─────────────────────┘
+```
+
+Men's race goes on the left, women's on the right (site-wide convention). The dividers between info / men / women all use the same 1px `var(--border-color)`. Race title uses an `.event-race-header::after` flex-spacer to draw a partial trailing rule after the label.
+
+**Responsive behaviour** (applies wherever this widget is used; same classes are styled in `index.css`):
+
+| Breakpoint | Layout |
+| --- | --- |
+| Desktop (default) | Info column 150px left, two races side-by-side right. Header is a single row (event name only). |
+| `≤ 768px` | Left info column is dropped (`display: none`) and the meta moves **into the navy header** as a single muted-grey line under the event name: `date · venue, country`, ellipsis-truncated. Both races stay side-by-side below. |
+| `≤ 480px` | Races stack to a single column. The vertical `::before` divider between races is removed entirely - the `.event-race-header::after` trailing rule under each PRO MEN / PRO WOMEN label is enough to separate them. Avatar 24px → 22px, name 0.9rem → 0.85rem, winner time 0.9rem → 0.82rem. Title's `white-space: nowrap` is lifted so long event names can wrap. |
+
+Header markup carries both presentations at all sizes; visibility is toggled in CSS:
+
+```html
+<div class="event-card-header">
+    <div class="event-card-title">{{ event.name }}</div>
+    <div class="event-card-header-meta">                          <!-- hidden ≥769px -->
+        <span>{{ date }}</span>
+        <span class="event-card-header-meta-sep">·</span>
+        <span>{{ venue }}, {{ country }}</span>
+    </div>
+</div>
+```
+
+Race padding is asymmetric (`padding-top` < `padding-bottom`) so the PRO MEN / PRO WOMEN label sits close to the divider above it rather than floating in dead space - tighten further at each smaller breakpoint.
+
+The pattern - **fixed left meta column + side-by-side podiums on desktop, meta-in-header + side-by-side on tablet, meta-in-header + stacked podiums on phone** - should be reused for any future "two-result-set overview" widget (e.g. a race with men's and women's results, an event with two distance categories side by side). Reach for these classes rather than inventing a new layout.
+
 ---
 
 ## 14. Navigation Cards (home page)
@@ -838,7 +880,7 @@ For inter-page detail navigation (back / forward), see [Chevrons](#22-icons-and-
 
 ### RHS placement signals navigation
 
-Within any container (card footer, section header, list row) navigational links go on the **right**. In `.page-section-head` use `justify-content: space-between` with the heading on the left and "see more" on the right.
+Within any container (card footer, section header, list row) navigational links go on the **right**. In `.page-section-head` use `justify-content: space-between` with the heading on the left and "See more" on the right.
 
 ### Light vs dark surfaces
 
@@ -847,7 +889,27 @@ Within any container (card footer, section header, list row) navigational links 
 | Light (`--white` / `--bg-color`) | `--primary-color` | `--primary-hover` |
 | Dark (`--navy`) | `rgba(255,255,255,0.45)` (or `0.6` for footer ext links) | `--primary-color` (or `#fff` for footer) |
 
-On a navy clickable card the title is white and transitions to orange on hover (whole card is the link).
+### Orange-on-hover is reserved for clearly actionable text
+
+Reserve `--primary-color` hover transitions for inline action targets - athlete names, race names, "see more" links, buttons, CTAs. Do **not** colour-shift card titles, badges, or section headers on hover, even when the whole card is a link. The contrast trap is the practical reason: white on navy is ~13:1, orange on navy is ~4:1, so the title gets *harder* to read at the exact moment the user has signalled interest in it. The deeper reason is signal preservation - if every label on a hovered card lights up, orange stops meaning "click me" and starts meaning "you are near a clickable region", which is what the border + shadow already convey.
+
+For card-style wrappers, the affordance is **border colour change + shadow lift** on the wrapper itself, not text colour on its children:
+
+```css
+.thing-card { border: 1px solid var(--border-color); transition: border-color, box-shadow; }
+.thing-card:hover { border-color: var(--primary-color); box-shadow: var(--box-shadow-hover); }
+/* Do NOT add: .thing-card:hover .thing-title { color: var(--primary-color); } */
+```
+
+Inline links (`<a>` that is itself the click target) keep the orange hover, scoped to themselves:
+
+```css
+.athlete-name:hover { color: var(--primary-color); }    /* yes - link's own hover */
+.lb-widget-more     { color: rgba(255,255,255,0.55); }
+.lb-widget:hover .lb-widget-more { color: var(--primary-color); }   /* yes - "see more" is an explicit CTA */
+```
+
+The exceptions where parent-triggered text-colour change is permitted are very narrow: explicit CTA elements like `.lb-widget-more` whose entire purpose is "this is the click target inside the card." If you find yourself adding a `:hover .child-title { color: orange }` rule, ask whether the border-change is already doing the job - it almost always is.
 
 ---
 
@@ -868,16 +930,48 @@ Small orange all-caps label used in nav cards and the athlete hero. Sits above t
 
 ### Athlete metadata row (`.athlete-meta`)
 
-Dot-separated metadata below athlete names. `.meta-val` for numeric values (slightly larger/darker than the surrounding label text). Dots are injected via `::before`; do not add them in markup.
+Dot-separated metadata below athlete names. `.meta-val` for numeric values (slightly larger/darker than the surrounding label text). Uses the [inline separator-span pattern](#inline-list-separator-pattern) so dots never orphan onto a wrapped line.
 
 ```html
 <div class="athlete-meta">
-  <span class="meta-item"><span class="flag">🇦🇺</span> Australia</span>
-  <span class="meta-item">b. 1990</span>
-  <span class="meta-item"><span class="meta-val">42</span> races</span>
-  <span class="meta-item"><span class="meta-val">5</span> wins</span>
+  <span class="meta-item-sep"> · </span><span class="meta-item"><span class="flag">🇦🇺</span> Australia</span>
+  <span class="meta-item-sep"> · </span><span class="meta-item">b. 1990</span>
+  <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">42</span> races</span>
+  <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">5</span> wins</span>
 </div>
 ```
+
+### Inline list separator pattern
+
+Whenever you render a dot-separated horizontal list that might wrap onto a second line (metadata rows, palmares race lists, filter summaries, breadcrumbs), use **real inline separator spans paired before every item**, not `::before` pseudo-elements. The `::before` approach glues the separator to the item, so when the row wraps, the dot orphans at the start of the new line. Real `<span> · </span>` siblings let the browser break at the whitespace inside the separator, so the dot trails on the previous line instead.
+
+```html
+<div class="some-list">
+  <span class="some-list-sep"> · </span><span class="some-list-item">A</span>
+  {% if cond %}
+  <span class="some-list-sep"> · </span><span class="some-list-item">B</span>
+  {% endif %}
+  <span class="some-list-sep"> · </span><span class="some-list-item">C</span>
+</div>
+```
+
+```css
+.some-list { /* plain block / inline; do NOT use display: flex with wrap here -
+              flex makes the sep its own flex-item and breaks the whitespace-
+              wrapping trick. */ }
+.some-list-item { display: inline; }
+.some-list-sep  { color: var(--text-lighter); }
+.some-list-sep:first-child { display: none; }   /* hides the leading dot */
+```
+
+Rules of the pattern:
+
+- **Always emit `sep+item` as a paired unit**, even when the item is conditional. Wrap both in the same `{% if %}` so they appear or disappear together.
+- **Always pair sep-before-item**, never sep-after-item. The leading separator on the first rendered item is hidden by `:first-child`; this means conditional first items "just work" - whichever item renders first gets the hidden sep.
+- **Keep the container as plain block / inline content** (no `display: flex` with wrap). Flex makes each separator span its own flex-item and changes the wrap semantics - you lose the "dot at end of previous line" behaviour and gain a different orphan problem.
+- **Use ` · ` (space-dot-space) literally as the separator text**. Those spaces are the break opportunities the browser exploits when wrapping.
+
+Live examples in the codebase: `.athlete-meta` (leaderboards, search rows), `.palmares-race-sep` (athlete palmares), `.filter-summary-sep` (mobile leaderboard filter summary), `.event-card-header-meta-sep` (event-card mobile header).
 
 ### Hero stats (right-side stat cluster)
 
@@ -1009,7 +1103,7 @@ At `≤ 768px` every interactive control (buttons, nav links, filter chips, sort
 
 **Hero stats.** At `≤ 768px` show the two most important stats only and hide the rest with `display: none` (use a `.hero-stat--secondary` modifier on the omittable stats). Do not shrink three stats to fit, omit the third.
 
-**Section heading.** Border-left thins from 4px to 3px at `≤ 480px` to claw back horizontal space. The "see more" link on the right must remain on the same row; if it can't fit, drop the section sub-text instead.
+**Section heading.** Border-left thins from 4px to 3px at `≤ 480px` to claw back horizontal space. The "See more" link on the right must remain on the same row; if it can't fit, drop the section sub-text instead.
 
 **Cards.** Always full-width at `≤ 768px` (one card per row). Multi-column card grids collapse: 4-col → 2-col at `≤ 1024px`, 2-col → 1-col at `≤ 768px`. Card hover states are still styled but on touch devices `:hover` fires on tap; this is acceptable since the hover state is purely cosmetic (border colour) and never reveals new content.
 

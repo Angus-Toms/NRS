@@ -8,10 +8,6 @@
     "answer": "We get our race results from the World Triathlon archive and compute ratings and other aggregates for each one."
   },
   {
-    "question": "How do the ratings work?",
-    "answer": "We use an extension of the ELO chess rating system, adapted for multi-athlete endurance sports. Rather than giving points based on position or time, ratings go up and down based on the quality of the field around you and your performance compared to them."
-  },
-  {
     "question": "Why are the bike ratings so low?",
     "answer": "The rating system is based on percentage time difference. As the bike leg is typically longer and bike splits are similar in drafting races, the percentage difference across bike times is typically lower than across run or overall splits, for example."
   },
@@ -21,7 +17,7 @@
   },
   {
     "question": "Why is my race result missing?",
-    "answer": "We don't include results that are taken from within other races, for example, seperate U23 results within an Elite race. The system is also limited to Sprint and Olympic triathlons so triathlons that are run as duathlons due to weather are removed. Some national championships and older races combine Elite and Age-Group results which also have to be removed. For more details, read our full blog about how our rating system is calculated."
+    "answer": "We don't include results that are taken from within other races, for example, seperate U23 results within an Elite race. Some national championships and older races combine Elite and Age-Group results which also have to be removed. For more details, read our full blog about how our rating system is calculated."
   },
   {
     "question": "Why is my time/split different from the one on World Triathlon?",

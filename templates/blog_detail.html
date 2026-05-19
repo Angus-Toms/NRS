@@ -4,6 +4,9 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/about.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="renderMathInElement(document.body, {delimiters: [{left:'$$', right:'$$', display:true},{left:'$', right:'$', display:false}]});"></script>
 {% endblock %}
 
 {% block hero %}
@@ -19,4 +22,7 @@
 <div class="blog-detail">
     <div class="blog-body">{{ post.body_html | safe }}</div>
 </div>
+{% if post.has_js %}
+<script defer src="{{ STATIC_BASE_URL }}about/blogs/{{ post.slug }}.js"></script>
+{% endif %}
 {% endblock %}

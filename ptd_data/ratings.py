@@ -28,6 +28,22 @@ SCALE = 46175.8
 CONF_THRESHOLD = 10  # races to reach full confidence
 START_RATING = 1500
 
+# Race standards = exp-decay weighted average of pre-race ratings of the top
+# STANDARD_POS_CAP finishers. Below STANDARD_FLOOR finishers we keep dividing
+# by the FLOOR-size denominator, so thin fields take a haircut proportional to
+# how short they are (penalises 2-athlete exhibition races etc.).
+STANDARD_K = 0.1
+STANDARD_FLOOR = 10
+STANDARD_POS_CAP = 25
+_STANDARD_WEIGHTS = [math.exp(-STANDARD_K * i) for i in range(STANDARD_POS_CAP)]
+# _STANDARD_DENOM[n] = sum of weights for positions 1..n (i.e. first n entries).
+_STANDARD_DENOM = [sum(_STANDARD_WEIGHTS[:n]) for n in range(STANDARD_POS_CAP + 1)]
+
+
+def standard_denom(n_finishers):
+    """Denominator for the race-standard weighted average: clamps field size into [FLOOR, POS_CAP]."""
+    return _STANDARD_DENOM[min(max(n_finishers, STANDARD_FLOOR), STANDARD_POS_CAP)]
+
 # Prediction-model fit parameters. We want the stored slope/intercept to map
 # leader-rating -> leader-time, so we fit a low quantile of the (time, rating)
 # cloud rather than the mean. IRLS re-weights each iteration by 1/|residual|
@@ -807,66 +823,80 @@ def _fit_prediction_models(conn):
 def _compute_race_rankings(conn):
     """Compute per-race standards and rank each race vs same (gender, course).
 
-    Standard for a discipline = EXP-decay-weighted avg of finishers' pre-race
-    ratings (k=0.1), matching queries.get_race_standards. A discipline is set
-    NULL on a race when no finisher recorded a split for it (transition needs
-    both t1 and t2). Ranks are computed within each (gender, course) bucket;
-    rank 1 = highest standard. Races with NULL std for a discipline get
-    NULL rank for that discipline.
+    Standard for a discipline = exp-decay-weighted average of pre-race ratings,
+    summed over the top STANDARD_POS_CAP entries for that discipline and
+    divided by standard_denom(n_for_that_discipline).
+
+    Per-discipline inclusion criteria:
+      overall:    status='Finished' AND position IS NOT NULL, ranked by position
+      swim/bike/run: leg time > 0, ranked by that leg time ascending
+      transition: t1 > 0 AND t2 > 0, ranked by (t1 + t2) ascending
+
+    This means a runner who DNFs on the run but completed swim and bike still
+    contributes to the swim and bike standards. Ranks are computed within
+    each (gender, course) bucket; rank 1 = highest standard. A discipline gets
+    NULL std (and NULL rank) on races where no one recorded a time for it.
     """
     conn.execute("DELETE FROM race_rankings")
 
-    rows = conn.execute("""
-        WITH split_flags AS (
-            SELECT race_id,
-                   BOOL_OR(swim_s > 0)                       AS has_swim,
-                   BOOL_OR(bike_s > 0)                       AS has_bike,
-                   BOOL_OR(run_s  > 0)                       AS has_run,
-                   BOOL_OR(t1_s > 0 AND t2_s > 0)            AS has_transition
-            FROM results
-            GROUP BY race_id
-        ),
-        std AS (
-            SELECT r.race_id, r.gender,
-                   CASE
-                       WHEN r.category = 'ag' THEN 'ag'
-                       WHEN r.distance IN ('sprint','standard') THEN 'short'
-                       ELSE 'long'
-                   END AS course,
-                   SUM((ra.overall    - ra.overall_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS overall_std,
-                   SUM((ra.swim       - ra.swim_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS swim_std,
-                   SUM((ra.bike       - ra.bike_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS bike_std,
-                   SUM((ra.run        - ra.run_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS run_std,
-                   SUM((ra.transition - ra.transition_change) * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533 AS transition_std
+    rows = conn.execute(f"""
+        WITH base AS (
+            SELECT r.race_id, r.gender, r.category, r.distance,
+                   res.status, res.position AS overall_pos,
+                   res.swim_s, res.bike_s, res.run_s,
+                   CASE WHEN res.t1_s > 0 AND res.t2_s > 0 THEN res.t1_s + res.t2_s ELSE 0 END AS trans_s,
+                   ra.overall    - ra.overall_change    AS overall_pre,
+                   ra.swim       - ra.swim_change       AS swim_pre,
+                   ra.bike       - ra.bike_change       AS bike_pre,
+                   ra.run        - ra.run_change        AS run_pre,
+                   ra.transition - ra.transition_change AS transition_pre
             FROM races r
             JOIN results res ON res.race_id = r.race_id
             JOIN ratings ra  ON ra.race_id  = res.race_id AND ra.athlete_id = res.athlete_id
-            WHERE res.status = 'Finished'
-              AND res.position IS NOT NULL
-            GROUP BY r.race_id, r.gender, r.category, r.distance
-            HAVING COUNT(*) >= 2
+        ),
+        ranked AS (
+            SELECT *,
+                CASE WHEN swim_s  > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN swim_s  > 0 THEN swim_s  END NULLS LAST) END AS swim_pos,
+                CASE WHEN bike_s  > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN bike_s  > 0 THEN bike_s  END NULLS LAST) END AS bike_pos,
+                CASE WHEN run_s   > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN run_s   > 0 THEN run_s   END NULLS LAST) END AS run_pos,
+                CASE WHEN trans_s > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN trans_s > 0 THEN trans_s END NULLS LAST) END AS trans_pos
+            FROM base
         )
-        SELECT std.race_id, std.gender, std.course,
-               std.overall_std,
-               CASE WHEN sf.has_swim       THEN std.swim_std       END,
-               CASE WHEN sf.has_bike       THEN std.bike_std       END,
-               CASE WHEN sf.has_run        THEN std.run_std        END,
-               CASE WHEN sf.has_transition THEN std.transition_std END
-        FROM std
-        JOIN split_flags sf ON sf.race_id = std.race_id
+        SELECT race_id, gender,
+               CASE
+                   WHEN category = 'ag' THEN 'ag'
+                   WHEN distance IN ('sprint','standard') THEN 'short'
+                   ELSE 'long'
+               END AS course,
+               COUNT(*) FILTER (WHERE status = 'Finished' AND overall_pos IS NOT NULL) AS n_overall,
+               COUNT(*) FILTER (WHERE swim_s  > 0) AS n_swim,
+               COUNT(*) FILTER (WHERE bike_s  > 0) AS n_bike,
+               COUNT(*) FILTER (WHERE run_s   > 0) AS n_run,
+               COUNT(*) FILTER (WHERE trans_s > 0) AS n_trans,
+               SUM(overall_pre    * CASE WHEN status='Finished' AND overall_pos IS NOT NULL AND overall_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos - 1)) ELSE 0 END) AS overall_num,
+               SUM(swim_pre       * CASE WHEN swim_pos  IS NOT NULL AND swim_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos  - 1)) ELSE 0 END) AS swim_num,
+               SUM(bike_pre       * CASE WHEN bike_pos  IS NOT NULL AND bike_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos  - 1)) ELSE 0 END) AS bike_num,
+               SUM(run_pre        * CASE WHEN run_pos   IS NOT NULL AND run_pos   <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos   - 1)) ELSE 0 END) AS run_num,
+               SUM(transition_pre * CASE WHEN trans_pos IS NOT NULL AND trans_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (trans_pos - 1)) ELSE 0 END) AS transition_num
+        FROM ranked
+        GROUP BY race_id, gender, category, distance
+        HAVING COUNT(*) FILTER (WHERE status = 'Finished' AND overall_pos IS NOT NULL) >= 2
     """).fetchall()
 
     if not rows:
         print("No race standards computed.")
         return
 
-    # Build per-(gender, course) sorted lists per discipline to assign ranks.
+    # Per-discipline counts/nums in column order matching the SELECT above.
     DISCS = ['overall', 'swim', 'bike', 'run', 'transition']
     by_bucket = {}  # (gender, course) -> list of dicts
-    for race_id, gender, course, *stds in rows:
+    for race_id, gender, course, n_overall, n_swim, n_bike, n_run, n_trans, overall_num, swim_num, bike_num, run_num, transition_num in rows:
+        counts = {'overall': n_overall, 'swim': n_swim, 'bike': n_bike, 'run': n_run, 'transition': n_trans}
+        nums   = {'overall': overall_num, 'swim': swim_num, 'bike': bike_num, 'run': run_num, 'transition': transition_num}
         rec = {'race_id': race_id, 'gender': gender, 'course': course}
-        for d, v in zip(DISCS, stds):
-            rec[d] = v
+        for d in DISCS:
+            n = counts[d]
+            rec[d] = (nums[d] / standard_denom(n)) if n and n > 0 else None
         by_bucket.setdefault((gender, course), []).append(rec)
 
     ranked_rows = []

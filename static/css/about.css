@@ -92,6 +92,18 @@
     margin-bottom: var(--spacing-xs);
 }
 
+.blog-detail .blog-body a {
+    color: var(--primary-color);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(232, 93, 4, 0.35);
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.blog-detail .blog-body a:hover {
+    color: var(--primary-hover);
+    border-bottom-color: var(--primary-hover);
+}
+
 .blog-detail .blog-body ul:last-child,
 .blog-detail .blog-body ol:last-child {
     margin-bottom: 0;

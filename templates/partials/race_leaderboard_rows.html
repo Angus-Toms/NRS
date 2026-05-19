@@ -6,13 +6,13 @@
             <div class="athlete-details">
                 <div class="athlete-name">{{ race.race_title }}</div>
                 <div class="athlete-meta">
-                    <span class="meta-item">{{ race.race_date_str }}</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">{{ race.race_date_str }}</span>
                     {% if race.venue or race.country %}
-                    <span class="meta-item">{{ race.venue }}{% if race.venue and race.country %}, {% endif %}{{ race.country }}</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">{{ race.venue }}{% if race.venue and race.country %}, {% endif %}{{ race.country }}</span>
                     {% endif %}
-                    <span class="meta-item">{{ race.prog_name }}</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">{{ race.prog_name }}</span>
                     {% if race.winner_name %}
-                    <span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ race.winner_country_emoji or '' }}</span></span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ race.winner_country_emoji or '' }}</span></span>
                     {% endif %}
                 </div>
             </div>

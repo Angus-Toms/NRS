@@ -37,22 +37,19 @@ async def athletes_landing(request: Request):
     counts       = queries.get_counts()
     country_list = queries.get_country_list()
 
-    # Trending: per gender, pick a random course then a random athlete from
-    # that course's top 25 most improved (1yr, active only). Falling back to
-    # the other course if one is empty keeps the cards populated for niche
-    # sports like long-course women.
-    def pick_trending(gender):
-        course = random.choice(("short", "long"))
+    # Trending: one random pick per (gender, course) from that bucket's top 25
+    # most improved (1yr, active only). Yields four cards: men/women x short/long.
+    def pick_trending(gender, course):
         rows = queries.get_leaderboard(
             gender, "overall", "hot", None, None, None, True, 0, 25, course=course)
-        if not rows:
-            course = "long" if course == "short" else "short"
-            rows = queries.get_leaderboard(
-                gender, "overall", "hot", None, None, None, True, 0, 25, course=course)
-        return (_fmt_athlete(random.choice(rows)), course) if rows else (None, course)
+        return _fmt_athlete(random.choice(rows)) if rows else None
 
-    female_trending, female_trending_course = pick_trending("female")
-    male_trending,   male_trending_course   = pick_trending("male")
+    trending_cards = [
+        {"athlete": pick_trending("male",   "short"), "course": "short", "label": "Men · Short Course"},
+        {"athlete": pick_trending("female", "short"), "course": "short", "label": "Women · Short Course"},
+        {"athlete": pick_trending("male",   "long"),  "course": "long",  "label": "Men · Long Course"},
+        {"athlete": pick_trending("female", "long"),  "course": "long",  "label": "Women · Long Course"},
+    ]
 
     # All-time top 5 per gender per program (6 cards total: short, long, AG)
     def top5(gender, course, category='elite'):
@@ -66,10 +63,7 @@ async def athletes_landing(request: Request):
         "total_athletes":         counts["athletes"],
         "total_countries":        len(country_list),
         "country_list":           country_list,
-        "female_trending":        female_trending,
-        "female_trending_course": female_trending_course,
-        "male_trending":          male_trending,
-        "male_trending_course":   male_trending_course,
+        "trending_cards":         trending_cards,
         "female_lb_short":        top5("female", "short"),
         "female_lb_long":         top5("female", "long"),
         "female_lb_ag":           top5("female", "short", category="ag"),

@@ -179,6 +179,10 @@
                 <a href="/event/{{ event.event_id }}" class="event-card-overlay" aria-label="{{ event.name }}"></a>
                 <div class="event-card-header">
                     <div class="event-card-title">{{ event.name }}</div>
+                    <div class="event-card-header-meta">
+                        <span>{{ event.start_date.strftime('%-d %b %Y') }}</span>
+                        {% if event.venue %}<span class="event-card-header-meta-sep">·</span><span>{{ event.venue }}</span>{% endif %}
+                    </div>
                 </div>
                 <div class="event-card-body">
                     <div class="event-card-info">

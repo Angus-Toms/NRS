@@ -28,7 +28,18 @@
 {% block content %}
 <div class="filters-card">
     <form method="get" action="/race-leaderboard" class="filters-form">
+        {% set _course_label = 'Age Group' if course == 'ag' else ('Long' if course == 'long' else 'Short') %}
+        {% set _summary_parts = [
+            ('Male' if gender == 'male' else 'Female'),
+            _course_label,
+            disc | title,
+            (year|string if year else 'All-time'),
+        ] %}
+
         <div class="filters-primary">
+            <div class="filter-summary">
+                {% for part in _summary_parts %}{% if not loop.first %}<span class="filter-summary-sep">·</span>{% endif %}{{ part }}{% endfor %}
+            </div>
 
             <!-- Course -->
             <div class="filter-chip-group">

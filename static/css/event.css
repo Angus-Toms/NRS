@@ -87,9 +87,7 @@
     transition: color var(--transition-fast);
 }
 
-.event-race-card:hover .event-race-prog {
-    color: var(--primary-color);
-}
+/* Program label stays white on hover - border + shadow do the work. */
 
 .event-race-date {
     font-size: 0.7rem;

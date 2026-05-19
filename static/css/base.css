@@ -873,17 +873,35 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 .lb-widget-header {
     background: var(--navy);
-    padding: 0.55rem 1.25rem;
-    display: block;
-    font-size: 0.68rem;
+    padding: 0.5rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
     color: #fff;
     text-decoration: none;
     transition: color var(--transition-fast);
 }
-.lb-widget:hover .lb-widget-header { color: var(--primary-color); }
+/* Header text stays white on hover. Border + shadow signal the card is
+   clickable; orange is reserved for inline actionable text (.lb-widget-more,
+   .lb-widget-name). */
+
+.lb-widget-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: -0.4rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, 0.55);
+    transition: color var(--transition-fast);
+}
+.lb-widget-more svg { display: block; }
+.lb-widget:hover .lb-widget-more { color: var(--primary-color); }
 
 .lb-widget-list {
     list-style: none;
@@ -926,6 +944,146 @@ table td a.link:hover   { color: var(--primary-color); }
     color: var(--text-light);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+}
+
+/* ============================================
+   CHAMP CARD WIDGET (large athlete card - shared between homepage + athlete-search)
+   Markup:
+     a.champ-card                          card wrapper, links to athlete
+       .champ-card-header                  navy band with badge label
+         .champ-badge                      uppercase tag text (orange on hover)
+       .champ-card-body
+         img.champ-img                     circular profile photo
+         .champ-namerow > .champ-name + .champ-flag
+         .champ-stats-row                  3 stats with .champ-stat-divider between
+           .champ-stat > .champ-stat-num + .champ-stat-lbl
+   Grid container: .champs-grid (4 across desktop, 2x2 at ≤768).
+   ============================================ */
+.champs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.champ-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.champ-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--box-shadow-hover);
+}
+.champ-card-header {
+    background: var(--navy);
+    padding: 0.4rem 0.75rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.4rem;
+}
+.champ-badge {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+    transition: color var(--transition-fast);
+}
+/* Badge stays white on hover - border + shadow do the work. */
+
+.champ-card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1.25rem 0.75rem 1.1rem;
+    flex: 1;
+}
+.champ-img {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--border-color);
+}
+.champ-namerow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: center;
+}
+.champ-flag {
+    font-size: 1rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.champ-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    text-align: center;
+}
+.champ-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.15rem;
+}
+.champ-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: center;
+}
+.champ-stat-num {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.champ-stat-num.positive { color: var(--success-color); }
+.champ-stat-lbl {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-lighter);
+}
+.champ-stat-divider {
+    width: 1px;
+    height: 1.6rem;
+    background: var(--border-color);
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .champs-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+    .champs-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .champ-card-body { padding: 0.9rem 0.5rem 0.85rem; gap: 0.5rem; }
+    .champ-img { width: 84px; height: 84px; }
+    .champ-name { font-size: 0.9rem; }
+    .champ-badge { font-size: 0.75rem; }
+    .champ-stats-row { gap: 0.45rem; }
+    .champ-stat-num { font-size: 0.85rem; }
+    .champ-stat-lbl { font-size: 0.55rem; }
 }
 
 .pos-dnf {
@@ -1325,7 +1483,6 @@ table td a.link:hover   { color: var(--primary-color); }
 .profile-img,
 .result-avatar,
 .as-result-avatar,
-.as-champ-img,
 .champ-img,
 .event-race-entry-img,
 .athlete-profile-img,
@@ -2037,24 +2194,26 @@ table td a.link:hover   { color: var(--primary-color); }
 .athlete-ratings-hot .rating-value              { color: var(--text-color); }
 .athlete-ratings-hot .rating-value.rating-highlight { color: var(--success-color); font-weight: 800; }
 
-/* Athlete metadata row: dot-separated items */
+/* Athlete metadata row: dot-separated items.
+   Pattern: emit `<span class="meta-item-sep"> · </span>` paired before every
+   .meta-item in the template. The CSS hides the leading separator via
+   :first-child so a leading dot never appears, regardless of which items are
+   conditionally rendered. Inline display (not flex) lets the browser wrap at
+   the whitespace inside the separator span - so when the row breaks, the dot
+   tends to trail on the previous line rather than orphan at the start of the
+   wrapped line. Same trick as .palmares-race-sep on the athlete page. */
 .athlete-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
     color: var(--text-lighter);
     font-size: 0.75rem;
     margin-top: 0.2rem;
-    align-items: center;
 }
 
 .meta-item { display: inline; }
 
-.meta-item + .meta-item::before {
-    content: "·";
-    padding: 0 0.3rem;
+.meta-item-sep {
     color: var(--text-lighter);
 }
+.meta-item-sep:first-child { display: none; }
 
 /* Slightly larger/darker value within a meta item */
 .meta-val {

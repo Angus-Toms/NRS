@@ -29,7 +29,19 @@
 <div class="filters-card">
     <form method="get" action="/athlete-leaderboard" class="filters-form">
 
+        {% set _summary_parts = [
+            ('Male' if gender == 'male' else 'Female'),
+            ('Short' if course == 'short' else 'Long'),
+            ('Age Group' if category == 'ag' else 'Elite'),
+            disc | title,
+            ('Trending' if order == 'hot' else 'All-time'),
+        ] %}
+        {% if active_only %}{% set _summary_parts = _summary_parts + ['Active'] %}{% endif %}
+
         <div class="filters-primary">
+            <div class="filter-summary">
+                {% for part in _summary_parts %}{% if not loop.first %}<span class="filter-summary-sep">·</span>{% endif %}{{ part }}{% endfor %}
+            </div>
 
             <!-- Category -->
             <div class="filter-chip-group">
@@ -187,12 +199,12 @@
                 <div class="athlete-details">
                     <div class="athlete-name">{{ athlete.name }} {{ athlete.country_emoji }}</div>
                     <div class="athlete-meta">
-                        <span class="meta-item">{{ athlete.country_full }}</span>
+                        <span class="meta-item-sep"> · </span><span class="meta-item">{{ athlete.country_full }}</span>
                         {% if athlete.year_of_birth > 0 %}
-                        <span class="meta-item">b. {{ athlete.year_of_birth }}</span>
+                        <span class="meta-item-sep"> · </span><span class="meta-item">b. {{ athlete.year_of_birth }}</span>
                         {% endif %}
-                        <span class="meta-item"><span class="meta-val">{{ athlete.race_starts }}</span> races</span>
-                        <span class="meta-item"><span class="meta-val">{{ athlete.win_count }}</span> wins</span>
+                        <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">{{ athlete.race_starts }}</span> races</span>
+                        <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">{{ athlete.win_count }}</span> wins</span>
                     </div>
                 </div>
             </div>

@@ -13,12 +13,12 @@
                 <div class="athlete-name">{{ athlete.name }} {{ athlete.country_emoji }}</div>
                 <div class="athlete-meta">
                     {% if athlete.year_of_birth > 0 %}
-                    <span class="meta-item">b. {{ athlete.year_of_birth }}</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">b. {{ athlete.year_of_birth }}</span>
                     {% endif %}
-                    <span class="meta-item"><span class="meta-val">{{ athlete.race_starts }}</span> races</span>
-                    <span class="meta-item"><span class="meta-val">{{ athlete.win_count }}</span> wins</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">{{ athlete.race_starts }}</span> races</span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item"><span class="meta-val">{{ athlete.win_count }}</span> wins</span>
                     {% if athlete.active_world_overall %}
-                    <span class="meta-item">World <span class="meta-val">#{{ athlete.active_world_overall }}</span></span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">World <span class="meta-val">#{{ athlete.active_world_overall }}</span></span>
                     {% endif %}
                 </div>
             </div>

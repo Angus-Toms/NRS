@@ -10,6 +10,7 @@ from ast import literal_eval
 from functools import lru_cache
 
 from ptd_data import db
+from ptd_data.ratings import STANDARD_K, STANDARD_POS_CAP, standard_denom
 
 # Module-level read-only connection, opened on first use
 _conn = None
@@ -2417,9 +2418,10 @@ def get_race_ignored_info(race_id):
 
 
 def get_race_standards(race_id):
-    """Exponential-decay weighted average pre-race rating per discipline (k=0.1).
+    """Exponential-decay weighted average pre-race rating per discipline.
 
-    For normal races, pre-race = ra.overall - ra.overall_change (rating before this race).
+    See ptd_data.ratings.standard_denom for the field-size handling. For normal
+    races, pre-race = ra.overall - ra.overall_change (rating before this race).
     For ignored races (no ratings rows), falls back to each athlete's most recent
     rating from any prior race, which is their actual pre-race rating.
     """
@@ -2451,27 +2453,57 @@ def get_race_standards(race_id):
                 WHERE ra.athlete_id IN (SELECT athlete_id FROM results WHERE race_id = ?)
                   AND r.race_date <= (SELECT race_date FROM races WHERE race_id = ?)
                   AND r.distance IN {course_in}
+            ),
+            base AS (
+                SELECT res.status, res.position AS overall_pos,
+                       res.swim_s, res.bike_s, res.run_s,
+                       CASE WHEN res.t1_s > 0 AND res.t2_s > 0 THEN res.t1_s + res.t2_s ELSE 0 END AS trans_s,
+                       pr.overall, pr.swim, pr.bike, pr.run, pr.transition
+                FROM results res
+                JOIN pre_race pr ON res.athlete_id = pr.athlete_id AND pr.rn = 1
+                WHERE res.race_id = ?
+            ),
+            ranked AS (
+                SELECT *,
+                    CASE WHEN swim_s  > 0 THEN ROW_NUMBER() OVER (ORDER BY CASE WHEN swim_s  > 0 THEN swim_s  END NULLS LAST) END AS swim_pos,
+                    CASE WHEN bike_s  > 0 THEN ROW_NUMBER() OVER (ORDER BY CASE WHEN bike_s  > 0 THEN bike_s  END NULLS LAST) END AS bike_pos,
+                    CASE WHEN run_s   > 0 THEN ROW_NUMBER() OVER (ORDER BY CASE WHEN run_s   > 0 THEN run_s   END NULLS LAST) END AS run_pos,
+                    CASE WHEN trans_s > 0 THEN ROW_NUMBER() OVER (ORDER BY CASE WHEN trans_s > 0 THEN trans_s END NULLS LAST) END AS trans_pos
+                FROM base
             )
             SELECT
-                SUM(pr.overall * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533,
-                SUM(pr.swim * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533,
-                SUM(pr.bike * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533,
-                SUM(pr.run * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533,
-                SUM(pr.transition * CASE WHEN res.position <= 10 THEN EXP(-0.1 * (res.position - 1)) ELSE 0 END) / 6.642533
-            FROM results res
-            JOIN pre_race pr ON res.athlete_id = pr.athlete_id AND pr.rn = 1
-            WHERE res.race_id = ?
-              AND res.status = 'Finished'
-              AND res.position IS NOT NULL
+                COUNT(*) FILTER (WHERE status = 'Finished' AND overall_pos IS NOT NULL) AS n_overall,
+                COUNT(*) FILTER (WHERE swim_s  > 0) AS n_swim,
+                COUNT(*) FILTER (WHERE bike_s  > 0) AS n_bike,
+                COUNT(*) FILTER (WHERE run_s   > 0) AS n_run,
+                COUNT(*) FILTER (WHERE trans_s > 0) AS n_trans,
+                SUM(overall    * CASE WHEN status='Finished' AND overall_pos IS NOT NULL AND overall_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos - 1)) ELSE 0 END),
+                SUM(swim       * CASE WHEN swim_pos  IS NOT NULL AND swim_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos  - 1)) ELSE 0 END),
+                SUM(bike       * CASE WHEN bike_pos  IS NOT NULL AND bike_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos  - 1)) ELSE 0 END),
+                SUM(run        * CASE WHEN run_pos   IS NOT NULL AND run_pos   <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos   - 1)) ELSE 0 END),
+                SUM(transition * CASE WHEN trans_pos IS NOT NULL AND trans_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (trans_pos - 1)) ELSE 0 END)
+            FROM ranked
         """, [race_id, race_id, race_id]).fetchone()
-    else:
-        # Standards are pre-computed by ratings._compute_race_rankings.
-        # Single indexed row lookup; no aggregation at request time.
-        row = conn.execute("""
-            SELECT overall_std, swim_std, bike_std, run_std, transition_std
-            FROM race_rankings
-            WHERE race_id = ?
-        """, [race_id]).fetchone()
+        if not row or row[0] is None:
+            return {d: 0.0 for d in ["overall", "swim", "bike", "run", "transition"]}
+        n_overall, n_swim, n_bike, n_run, n_trans, ov, sw, bk, rn_, tr = row
+        def _std(num, n):
+            return (num or 0.0) / standard_denom(n) if n and n > 0 else 0.0
+        return {
+            "overall":    _std(ov,  n_overall),
+            "swim":       _std(sw,  n_swim),
+            "bike":       _std(bk,  n_bike),
+            "run":        _std(rn_, n_run),
+            "transition": _std(tr,  n_trans),
+        }
+
+    # Standards are pre-computed by ratings._compute_race_rankings.
+    # Single indexed row lookup; no aggregation at request time.
+    row = conn.execute("""
+        SELECT overall_std, swim_std, bike_std, run_std, transition_std
+        FROM race_rankings
+        WHERE race_id = ?
+    """, [race_id]).fetchone()
 
     if not row or row[0] is None:
         return {d: 0.0 for d in ["overall", "swim", "bike", "run", "transition"]}
@@ -3188,9 +3220,9 @@ def get_upcoming_race_standards(race_id, course='short'):
 
     The start list has no finishing positions yet, so we rank each discipline
     by current pre-race rating (best -> worst) and apply the same exp-decay
-    top-K formula used on completed races. Denominator is fixed at K-position
-    weights, so thin start lists are explicitly penalised — keeps the upcoming
-    race rank directly comparable to the historical race_rankings universe.
+    formula used on completed races. Denominator is set by standard_denom on
+    the entrant count, so thin start lists are penalised against the floor —
+    keeps the upcoming race rank directly comparable to historical races.
     """
     conn = _get_conn()
     course_in = _course_in(course)
@@ -3215,21 +3247,24 @@ def get_upcoming_race_standards(race_id, course='short'):
             WHERE sle.race_id = ?
         )
         SELECT
-            SUM(overall    * CASE WHEN overall_pos    <= 10 THEN EXP(-0.1 * (overall_pos    - 1)) ELSE 0 END) / 6.642533,
-            SUM(swim       * CASE WHEN swim_pos       <= 10 THEN EXP(-0.1 * (swim_pos       - 1)) ELSE 0 END) / 6.642533,
-            SUM(bike       * CASE WHEN bike_pos       <= 10 THEN EXP(-0.1 * (bike_pos       - 1)) ELSE 0 END) / 6.642533,
-            SUM(run        * CASE WHEN run_pos        <= 10 THEN EXP(-0.1 * (run_pos        - 1)) ELSE 0 END) / 6.642533,
-            SUM(transition * CASE WHEN transition_pos <= 10 THEN EXP(-0.1 * (transition_pos - 1)) ELSE 0 END) / 6.642533
+            COUNT(*),
+            SUM(overall    * CASE WHEN overall_pos    <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos    - 1)) ELSE 0 END),
+            SUM(swim       * CASE WHEN swim_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos       - 1)) ELSE 0 END),
+            SUM(bike       * CASE WHEN bike_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos       - 1)) ELSE 0 END),
+            SUM(run        * CASE WHEN run_pos        <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos        - 1)) ELSE 0 END),
+            SUM(transition * CASE WHEN transition_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (transition_pos - 1)) ELSE 0 END)
         FROM ranked
     """, [race_id]).fetchone()
-    if not row or row[0] is None:
+    if not row or row[0] is None or row[0] == 0:
         return {d: 0.0 for d in ["overall", "swim", "bike", "run", "transition"]}
+    n, ov, sw, bk, rn_, tr = row
+    denom = standard_denom(n)
     return {
-        "overall":    row[0] or 0.0,
-        "swim":       row[1] or 0.0,
-        "bike":       row[2] or 0.0,
-        "run":        row[3] or 0.0,
-        "transition": row[4] or 0.0,
+        "overall":    (ov or 0.0) / denom,
+        "swim":       (sw or 0.0) / denom,
+        "bike":       (bk or 0.0) / denom,
+        "run":        (rn_ or 0.0) / denom,
+        "transition": (tr or 0.0) / denom,
     }
 
 
