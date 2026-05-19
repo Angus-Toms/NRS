@@ -1,0 +1,37 @@
+<p>Every race on the site has a <strong>race standard</strong> attached to it. It is a single number per discipline that tries to answer the question: <em>how good was the field that actually showed up?</em> The standard is what powers the Beginner, Novice, Intermediate, Advanced, and Expert tag you see on each race page, and it is how we rank one race against another within the same gender and course bucket.</p>
+
+<p>It is a deceptively hard thing to measure well, and we think most existing approaches get it slightly wrong. Here is roughly what we do, and why.</p>
+
+<h3>The naive approach (and why we do not use it)</h3>
+
+<p>The obvious thing to do is take the average rating of the top few finishers and call that the strength of the field. Something like:</p>
+
+<p>$$ \text{standard} = \frac{1}{N} \sum_{i=1}^{N} R_i $$</p>
+
+<p>where $R_i$ is the pre-race rating of the athlete in position $i$, and $N$ is some cutoff. This is, broadly, the shape of the Strength of Field metric used by the most popular triathlon ranking systems. It is simple, it is intuitive, and it has some real problems.</p>
+
+<ol>
+    <li><strong>It is blind to both position and depth.</strong> The top 5 are averaged equally, so a race where the winner is 500 rating points clear of 5th scores the same as one where they are 50 points apart. The shape of the front is invisible. And because the cutoff is fixed, depth past 5th never enters the score at all: a five-athlete race scores the same as those same five athletes with another forty-five solid finishers behind them, even though the second race is, by any reasonable definition, much deeper and harder.</li>
+    <li><strong>Some systems do not even wait for the race to happen.</strong> A few of the most well known triathlon ranking systems compute their strength of field from the <em>start list</em>. That means a DNS from the pre-race favourite still counts, and a strong runner who DNFs on the bike still inflates the apparent depth of the run battle, even though they were nowhere near it.</li>
+    <li><strong>It handles field sizes badly.</strong> A two-athlete exhibition between the world's top two is not the same race as a 50-deep World Championship, but a naive average treats them identically. It can even score the exhibition <em>higher</em>, because there is no long tail to drag the mean down.</li>
+</ol>
+
+<h3>What we do instead</h3>
+
+<p>The PTD race standard is a <strong>weighted average of pre-race ratings</strong>, computed separately for each leg of the race. Within a leg, the stronger athletes carry more weight, the ones a bit further back carry less, and contributions taper off through the field. We only include athletes who finished the leg in question, so DNS and DNF athletes never inflate a standard for a leg they did not race.</p>
+
+<p>That gives us four concrete advantages:</p>
+
+<ol>
+    <li><strong>Both individual strength and depth shape the score.</strong> The strongest athletes in each leg carry the most weight but the rest of the field is not ignored: every finisher still contributes, just by less. Intuitively: twenty solid riders driving the peloton can change the character of a bike leg as can the three exceptional athletes at the front, and the standard picks both up.</li>
+
+    <li><strong>DNFs do not count where they did not race.</strong> Each leg is judged on its own finishers. A strong swimmer who DNFs on the bike contributes nothing to the bike, run, or overall standards. However, a good swim performance still counts toward the swim standard, because that is the leg they raced. The standards measure what happened, not what was supposed to happen.</li>
+
+    <li><strong>Small fields take a proportional haircut.</strong> Below a minimum sensible field size, we attach a growing penalty. For a strong but shallow race, its standard sits well below a properly deep field of similar calibre. A two-up showdown between the world's best is interesting, but it is not a championship, and the number reflects that.</li>
+
+    <li><strong>Five standards per race, not one.</strong> Overall is the headline, but we run the same weighting separately on swim, bike, run, and transition. A swim-heavy field with mediocre runners looks visibly different from a run-heavy one in the discipline columns on every race page. A single SOF number cannot tell you which it was.</li>
+</ol>
+
+<h3>Why this matters</h3>
+
+<p>Race standards are not just a label on a page. They feed into how we rank one race against another and they are part of what makes our ratings robust: an athlete winning a deep race gains far more than an athlete winning a shallow one, even if the trophy looks the same in both photos. Without a sensible standard, the rest of the system has nothing to anchor itself against.</p>
