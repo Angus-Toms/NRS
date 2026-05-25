@@ -27,7 +27,7 @@ from bs4 import BeautifulSoup
 from ptd_data import db
 
 BASE_URL = "https://stats.protriathletes.org"
-SCRAPE_DELAY = .3  # seconds between requests
+SCRAPE_DELAY = .15  # seconds between requests
 
 _session = requests.Session()
 _session.headers.update({
@@ -1164,8 +1164,14 @@ if __name__ == "__main__":
 
         ingester.run(years=years)
 
-        print("\nEnriching new athlete profiles...")
-        ingester.enrich_athletes()
+        # Skip the full-roster enrichment pass on incremental runs. New
+        # athletes already had their profile fetched inline in _resolve_athlete;
+        # re-scanning every historical NULL-field athlete every week just
+        # re-fetches the same pages that PTO doesn't expose data for. Run a
+        # full ingest (no --recent / --year) to retry historical gaps.
+        if not args.recent and not args.year:
+            print("\nEnriching new athlete profiles...")
+            ingester.enrich_athletes()
 
     conn.close()
     print("\nPTO ingest complete.")

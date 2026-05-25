@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query, Request
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from app.routers.router_utils import format_rating, format_rating_change
@@ -10,6 +10,7 @@ from app.routers.router_utils import format_rating, format_rating_change
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 
 
 def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, offset, category, course):
@@ -65,15 +66,6 @@ async def leaderboard(
         "category":     category,
         "course":       course,
     })
-
-
-@router.get("/leaderboard")
-async def leaderboard_legacy(request: Request):
-    """Back-compat redirect from the old /leaderboard URL."""
-    from fastapi.responses import RedirectResponse
-    qs = request.url.query
-    url = "/athlete-leaderboard" + (f"?{qs}" if qs else "")
-    return RedirectResponse(url=url, status_code=301)
 
 
 @router.get("/athlete-leaderboard/more")

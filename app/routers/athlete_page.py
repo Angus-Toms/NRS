@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from fastapi import HTTPException, Query, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
@@ -15,6 +15,7 @@ from app.routers.router_utils import (
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 router = APIRouter()
 
 _TIER_LABELS = {

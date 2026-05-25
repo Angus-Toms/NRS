@@ -1,81 +1,9 @@
 /* ============================================
    FILTERS CARD
+   Shared layout (.filters-card, .filter-summary-bar, .filter-panel,
+   .filter-panel-grid, .filter-panel-actions, .btn-filter-toggle) is in
+   base.css. Page-specific tweaks would live here.
    ============================================ */
-.filters-card {
-    background: var(--white);
-    padding: 0.875rem 1.25rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    margin-bottom: 1.5rem;
-    margin-top: 1.25rem;
-}
-
-/* Active-filter summary line: hidden on desktop, shown at <=768 in the primary
-   row so the user can see what's currently selected when the chip groups are
-   collapsed behind the filter-icon button. */
-.filter-summary {
-    display: none;
-}
-
-/* Primary row - all main filters on one line */
-.filters-primary {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.625rem;
-}
-
-/* Push actions to the right */
-.filter-spacer { flex: 1; }
-
-/* Note: .filter-v-divider, .filter-chip-group, .filter-chip-label, .radio-chips,
-   .filter-toggle, .toggle-track, .toggle-thumb, .toggle-text are in base.css */
-
-/* Filter icon button (advanced filters toggle) */
-.btn-filter-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    background: none;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    color: var(--text-light);
-    cursor: pointer;
-    align-self: flex-end;
-    margin-bottom: 3px;
-    flex-shrink: 0;
-    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
-}
-
-.btn-filter-icon:hover,
-.btn-filter-icon.open {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: var(--highlight);
-}
-
-/* Note: .btn-reset is in base.css */
-
-/* Note: .btn-search is in base.css */
-
-/* Advanced filters section */
-.filters-advanced {
-    display: none;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border-color);
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    align-items: flex-end;
-}
-
-.filters-advanced.open {
-    display: flex;
-}
-
-/* Note: .filter-group, .year-range, .range-sep, .btn-age-preset are in base.css */
 
 
 /* ============================================
@@ -131,6 +59,19 @@
 .rank-badge.rank-1-text { color: var(--gold);   }
 .rank-badge.rank-2-text { color: var(--silver); }
 .rank-badge.rank-3-text { color: var(--bronze); }
+
+.upcoming-pill {
+    display: inline-block;
+    background: var(--primary-color);
+    color: var(--white);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: var(--border-radius-sm);
+    vertical-align: 1px;
+}
 
 .athlete-card-content {
     flex: 1;
@@ -222,71 +163,10 @@
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
-    .filter-v-divider { display: none; }
-    .filter-spacer { display: none; }
-
-    /* Move all chip groups into the advanced-filters dropdown by collapsing
-       them off the primary row and only showing them when the filter icon is
-       toggled open. The filter icon, Reset button, and active-filter summary
-       stay visible in the primary row. */
-    .filters-primary {
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    .filter-summary {
-        display: block;
-        order: 0;
-        flex: 1;
-        min-width: 0;
-        font-size: 0.78rem;
-        color: var(--text-light);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .filter-summary-sep {
-        color: var(--text-lighter);
-        margin: 0 0.3rem;
-    }
-
-    .btn-filter-icon { order: 1; }
-    .filters-primary .btn-reset { order: 2; }
-    .filters-primary .btn-search { order: 3; }
-
-    /* Hide chip groups in the primary row by default; reveal when the filter
-       icon is in its `.open` state (the existing JS toggle). */
-    .filters-primary .filter-chip-group {
-        display: none;
-    }
-    .filters-primary:has(.btn-filter-icon.open) .filter-chip-group {
-        display: flex;
-        order: 4;
-        flex-basis: 100%;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.4rem;
-    }
-
-    /* Hide the Search button until filters are open - it's only useful when
-       editing filter state. */
-    .filters-primary:not(:has(.btn-filter-icon.open)) .btn-search {
-        display: none;
-    }
-
-    .filters-primary .btn-reset,
-    .filters-primary .btn-search,
-    .filters-primary .btn-filter-icon {
-        align-self: auto;
-        margin-bottom: 0;
-    }
-
-    /* Allow the ratings block to shrink with the card on narrow screens so its
-       grey background doesn't bleed past the card's right edge. The inner
-       .rating-item children also need min-width:0 + flex-shrink:1 so the wrap
-       actually kicks in - their default `width: 4.75rem; flex-shrink: 0` is
-       what was forcing the parent box wider than the card. */
+    /* Allow the ratings block to shrink with the card on narrow screens. The
+       inner .rating-item children also need min-width:0 + flex-shrink:1 so the
+       wrap actually kicks in - their default `width: 4.75rem; flex-shrink: 0`
+       is what was forcing the parent box wider than the card. */
     .athlete-card-content { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
     .athlete-main-info { min-width: 0; }    /* reset the desktop floor; full-width in column layout */
     .athlete-ratings {
@@ -295,9 +175,8 @@
                                          this, width:100% + padding overflows. */
         min-width: 0;
         flex-shrink: 1;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         justify-content: flex-start;
-        row-gap: 0.4rem;
     }
     .athlete-ratings .rating-item {
         width: auto;

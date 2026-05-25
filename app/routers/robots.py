@@ -127,6 +127,7 @@ async def sitemap_index(request: Request) -> Response:
 
 @router.get("/sitemap-static.xml")
 async def sitemap_static(request: Request) -> Response:
+    from app.routers.about import load_blogs
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
     urls = [
@@ -134,6 +135,7 @@ async def sitemap_static(request: Request) -> Response:
         _url(f"{base}/athlete-leaderboard", today, "daily",  0.9),
         _url(f"{base}/race-leaderboard",    today, "daily",  0.8),
         _url(f"{base}/races",       today, "daily",  0.9),
+        _url(f"{base}/recent",      today, "daily",  0.8),
         _url(f"{base}/upcoming",    today, "daily",  0.8),
         _url(f"{base}/athletes",    today, "weekly", 0.8),
         _url(f"{base}/countries",   today, "weekly", 0.7),
@@ -142,6 +144,8 @@ async def sitemap_static(request: Request) -> Response:
         _url(f"{base}/race-compare",    today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
     ]
+    for blog in load_blogs():
+        urls.append(_url(f"{base}/about/blog/{blog['slug']}", today, "monthly", 0.5))
     return _xml_response(_wrap_urlset(urls))
 
 

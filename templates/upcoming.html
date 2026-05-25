@@ -3,9 +3,9 @@
 {% block title %}Upcoming Races - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css">
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css?v={{ ASSET_VERSION }}">
 <style>
     /* Races wrap: column container that takes the space .event-races used to occupy */
     .event-card-races-wrap {
@@ -62,7 +62,6 @@
     <div class="page-hero-inner">
         <div>
             <h1>Upcoming Races</h1>
-            <p class="page-hero-subtitle">Start lists and predicted results for the next 90 days</p>
         </div>
         <div class="hero-stats">
             <div class="hero-stat">

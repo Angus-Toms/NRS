@@ -1,22 +1,19 @@
 let raceLeaderboardOffset = 50;
 
-function initAdvancedFilters() {
-    const btn     = document.getElementById("toggleAdvanced");
-    const section = document.getElementById("advancedFilters");
-    if (!btn || !section) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const hasActive =
-        (params.get("country") ?? "all") !== "all" ||
-        (params.get("level")   ?? "all") !== "all";
-    if (hasActive) {
-        section.classList.add("open");
-        btn.classList.add("open");
-    }
+function initFilterPanelToggle() {
+    const btn   = document.getElementById("filterToggle");
+    const panel = document.getElementById("filterPanel");
+    if (!btn || !panel) return;
     btn.addEventListener("click", () => {
-        const isOpen = section.classList.toggle("open");
-        btn.classList.toggle("open", isOpen);
+        const open = panel.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open);
     });
+}
+
+function initFilterAutoSubmit() {
+    const form = document.querySelector(".filters-card form");
+    if (!form) return;
+    form.addEventListener("change", () => form.submit());
 }
 
 function initLoadMore() {
@@ -38,5 +35,6 @@ function initLoadMore() {
     });
 }
 
-initAdvancedFilters();
+initFilterPanelToggle();
+initFilterAutoSubmit();
 initLoadMore();

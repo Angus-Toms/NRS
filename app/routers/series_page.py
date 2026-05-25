@@ -2,12 +2,13 @@ from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 from ptd_data import queries
 from app.routers.router_utils import format_time, format_time_behind
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 router = APIRouter()
 
 _DISCS = ["overall", "swim", "bike", "run", "transition"]
@@ -267,11 +268,12 @@ def _program_label(sub, gender, prog_name=None):
     """Display label for a program. AG programs surface the age band + sprint
     flag (e.g. "AG Men 30-34", "AG Men 30-34 Sprint"). Non-AG mirrors the
     pre-AG behaviour: "Elite Men", "U23 Women" etc."""
+    # Long-course pro fields are filed under sub_category='ag' in the data
+    # (e.g. Ironman 70.3 Worlds prog_name='Pro Men'); render them as-is.
+    if prog_name in ("Pro Men", "Pro Women"):
+        return prog_name
     base = f"{_SUB_LABELS.get(sub, sub.title())} {_GENDER_LABELS.get(gender, gender.title())}"
     if sub == "ag" and prog_name:
-        # prog_name is like "30-34 Male AG" or "30-34 Male AG Sprint"; strip
-        # the gender + AG tokens and we're left with the band (+ optional
-        # "Sprint"/"Super Sprint" suffix).
         parts = prog_name.split()
         band = parts[0] if parts else ""
         suffix = " ".join(p for p in parts[1:] if p not in ("AG", "Male", "Female"))
@@ -297,6 +299,21 @@ def _program_slug(sub, gender, prog_name=None):
     """Tuple-style slug builder used by route handlers that already hold a
     program tuple. Mirrors `_program_slug_for_option`."""
     return _program_slug_for_option({"sub_category": sub, "gender": gender, "prog_name": prog_name})
+
+
+@router.get("/series/list")
+async def series_list():
+    """Lightweight list of all series for the global search modal."""
+    return JSONResponse([
+        {"name": s["name"], "slug": s["slug"], "race_count": s["race_count"]}
+        for s in queries.get_all_series()
+    ])
+
+
+@router.get("/recurring/list")
+async def recurring_list():
+    """Lightweight list of recurring events for the global search modal."""
+    return JSONResponse(queries.get_all_recurring_events())
 
 
 @router.get("/series", response_class=HTMLResponse)
@@ -363,6 +380,15 @@ async def series_detail(request: Request, slug: str, program: str | None = None)
 
     sid = series["series_id"]
     program_options = queries.get_program_options_for_series(sid)
+    # AG age-band programs only make sense for AG worlds / continental
+    # championship tiers. Elsewhere, expose pro/elite/u23/junior only --
+    # "Pro Men"/"Pro Women" are filed under sub_category='ag' in the data
+    # but are pro fields and stay visible.
+    if not (series.get("tier") or "").startswith("ag-"):
+        program_options = [
+            o for o in program_options
+            if o["sub_category"] != "ag" or o.get("prog_name") in ("Pro Men", "Pro Women")
+        ]
     prog = _resolve_program(program_options, program)
     active_slug = _program_slug(*prog) if prog else None
     program_tabs, program_overflow = _build_program_tabs(program_options, active_slug)
@@ -445,6 +471,7 @@ async def recurring_detail(request: Request, slug: str, program: str | None = No
         "request":      request,
         "active_page":  "races",
         "series":       series_like,
+        "is_recurring": True,
         "program_tabs":     program_tabs,
         "program_overflow": program_overflow,
         **payload,

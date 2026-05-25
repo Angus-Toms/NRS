@@ -11,14 +11,13 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/about.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/about.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
         <h1>Pro triathlon, decoded.</h1>
-        <p class="page-hero-subtitle">Pro Tri Data tracks over 60k athletes and 9k races across every level of<br>World Triathlon racing. We combine results, ratings, and context to make<br>performance and development easier to explore.</p>
     </div>
 </div>
 {% endblock %}

@@ -893,17 +893,6 @@ document.querySelectorAll('.sub-race-toggle').forEach(btn => {
 // Initial stripe pass - also called after sort (sortTable fires on th click)
 document.querySelectorAll('.results-table tbody, .rating-table tbody').forEach(_restripeTable);
 
-// Mobile-only chevron toggle: each non-Overall .disc-row has a chevron button
-// that expands/collapses its substats. Chevron is display:none on desktop so
-// click does nothing there. Toggling .expanded on the row drives the CSS.
-document.querySelectorAll('.disc-table .disc-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const row = btn.closest('.disc-row');
-        const expanded = row.classList.toggle('expanded');
-        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    });
-});
-
 // Rivals row: hide any card that doesn't fit on one line. Recomputed on
 // container resize so the row stays single-line at every width without
 // hard-coded breakpoints.

@@ -12,16 +12,21 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
-        <h1>Countries</h1>
-        <span class="page-hero-subtitle">
-            {{ totals.countries }} nations · {{ totals.athletes }} athletes · {{ totals.host_races }} host events
-        </span>
+        <div>
+            <h1>Countries</h1>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ totals.countries }}</span>
+                <span class="hero-stat-lbl">Nations</span>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

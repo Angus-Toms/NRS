@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 # Project paths
@@ -12,6 +13,19 @@ STATIC_BASE_URL = (
     if ENV in {"prod", "production"}
     else "/static/"
 )
+
+
+def _compute_asset_version() -> str:
+    """Max mtime across static/css + static/js. Appended as ?v=... so
+    browsers and CDNs refetch when any css/js changes."""
+    files = list((STATIC_DIR / "css").glob("*.css")) + list((STATIC_DIR / "js").glob("*.js"))
+    latest = max((p.stat().st_mtime for p in files), default=time.time())
+    return str(int(latest))
+
+
+# Computed once at import; pinned for the process lifetime so all routers
+# share the same value.
+ASSET_VERSION = _compute_asset_version()
 
 # Runtime data (local: ./data, render: /var/data via DATA_ROOT)
 RUNTIME_ATHLETE_IMAGES_DIR = RUNTIME_DATA_DIR / "athlete_imgs"

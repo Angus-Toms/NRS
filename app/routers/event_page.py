@@ -3,7 +3,7 @@ import re
 from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
@@ -12,6 +12,7 @@ from app.routers.race_page import _course_signal_for_race
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 router = APIRouter()
 
 _DISCS = ["overall", "swim", "bike", "run", "transition"]
@@ -93,7 +94,13 @@ def _classify(val, thresholds):
 
 
 def _predicted_podium(top3, gender, event_spec_ids, models):
-    """Compute predicted times for the top-3 rated athletes and return podium list."""
+    """Predicted overall + per-discipline splits for the top-3 rated athletes.
+
+    Each leg (swim/bike/run) is predicted off the leader's anchor time for
+    that discipline, scaled by 10^((leader_rating - athlete_rating)/SCALE).
+    Transitions don't have their own population model, so we estimate them
+    by subtracting the predicted leg sum from the predicted overall.
+    """
     spec = event_spec_ids or ''
     has_sprint   = '376' in spec
     has_standard = '377' in spec
@@ -105,31 +112,80 @@ def _predicted_podium(top3, gender, event_spec_ids, models):
         distance = None
 
     START_RATING = 1500
-    m = models.get((gender, distance, 'overall')) if distance else None
 
-    # Compute predicted times for all top3
-    times = []
-    if m and top3:
-        leader_rating = top3[0]['overall_rating'] or START_RATING
+    # Predict one leg (or overall) for every athlete in top3, returning a
+    # list of integer seconds aligned with `top3`. Each athlete's time is
+    # the leader's anchor time scaled by their rating ratio.
+    def _predict(disc):
+        m = models.get((gender, distance, disc)) if distance else None
+        if not (m and top3):
+            return [None] * len(top3)
+        rating_key = 'overall_rating' if disc == 'overall' else f'{disc}_rating'
+        leader_rating = top3[0][rating_key] or START_RATING
         leader_time   = m['slope'] * leader_rating + m['intercept']
-        for athlete in top3:
-            rating = athlete['overall_rating'] or START_RATING
-            times.append(max(0, round(leader_time * (10 ** ((leader_rating - rating) / SCALE)))))
-    else:
-        times = [None] * len(top3)
+        out = []
+        for a in top3:
+            r = a[rating_key] or START_RATING
+            out.append(max(0, round(leader_time * (10 ** ((leader_rating - r) / SCALE)))))
+        return out
+
+    overall_t = _predict('overall')
+    swim_t    = _predict('swim')
+    bike_t    = _predict('bike')
+    run_t     = _predict('run')
+
+    # Field-fastest per leg (within the top-3 here, since we don't have
+    # the full field's predictions). Used for the "fastest" tag + gap-to-
+    # fastest annotations the wide podium widget renders.
+    def _ff(values):
+        clean = [v for v in values if v]
+        return min(clean) if clean else None
+
+    ff = {'swim': _ff(swim_t), 'bike': _ff(bike_t), 'run': _ff(run_t)}
+
+    def _leg(val, leg_key):
+        if not val:
+            return {'fmt': None, 'fastest': False, 'gap': None}
+        best = ff.get(leg_key)
+        if best and val == best:
+            return {'fmt': format_time(val), 'fastest': True, 'gap': None}
+        return {
+            'fmt':     format_time(val),
+            'fastest': False,
+            'gap':     f'+{format_time(val - best)}' if best else None,
+        }
 
     podium = []
-    for i, (athlete, predicted_time) in enumerate(zip(top3, times)):
+    for i, athlete in enumerate(top3):
         position = i + 1
+        o = overall_t[i]
+        # Transition slack = predicted overall − (swim + bike + run). Split
+        # it evenly between T1 and T2 so the row totals back up to the
+        # predicted overall. Skip if any leg is missing.
+        legs = [swim_t[i], bike_t[i], run_t[i]]
+        if o and all(legs):
+            slack = max(0, o - sum(legs))
+            t1 = slack // 2
+            t2 = slack - t1
+        else:
+            t1 = t2 = None
         podium.append({
             'position':    position,
             'athlete_id':  athlete['athlete_id'],
             'name':        athlete['name'],
             'emoji':       athlete['emoji'],
             'profile_img': athlete['profile_img'],
-            'time':        format_time(predicted_time) if predicted_time else None,
-            'gap':         format_time_behind(predicted_time - times[0])
-                           if (predicted_time and times[0] and position > 1) else None,
+            'time':        format_time(o) if o else None,
+            'gap':         format_time_behind(o - overall_t[0])
+                           if (o and overall_t[0] and position > 1) else None,
+            'swim': _leg(swim_t[i], 'swim'),
+            'bike': _leg(bike_t[i], 'bike'),
+            'run':  _leg(run_t[i],  'run'),
+            # Transitions get a formatted value but no fastest/gap context
+            # since the slack estimate is the same for every athlete by
+            # construction (we just halve the same number).
+            't1':   {'fmt': format_time(t1) if t1 else None, 'fastest': False, 'gap': None},
+            't2':   {'fmt': format_time(t2) if t2 else None, 'fastest': False, 'gap': None},
         })
     return podium
 

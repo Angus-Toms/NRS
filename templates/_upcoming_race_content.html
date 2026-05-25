@@ -14,38 +14,35 @@
 {%- endif -%}
 {%- endmacro %}
 <div class="page-section-head">Race Standards</div>
-<div class="disc-list disc-list--perf disc-list--cols-1">
-    {% if substat_cols > 0 %}
-    <div class="disc-row disc-list-head">
-        <span class="disc-name"></span>
-        <span class="disc-head-label">Standard</span>
-        <div class="disc-substats">
-            <div class="disc-head-label">Race Rank</div>
-        </div>
+<div class="ratings-section">
+    <div class="ratings-table-scroll">
+        <table class="ratings-table">
+            <thead>
+                <tr>
+                    <th class="rt-disc">Discipline</th>
+                    <th class="rt-rating">Standard</th>
+                    {% if has_rank %}<th class="rt-rank">Race Rank</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
+                <tr class="rt-row rt-row--{{ disc }}">
+                    <td class="rt-disc"><span class="rt-disc-name">{{ label }}</span></td>
+                    <td class="rt-rating">
+                        {{ race_standards[disc] }}{% if race_standard_classes[disc] %}<span class="std-pill std-pill--{{ race_standard_classes[disc] }}">{{ race_standard_classes[disc]|title }}</span>{% endif %}
+                    </td>
+                    {% if has_rank %}
+                    <td class="rt-rank">
+                        {% if race_ranks[disc] and race_course %}
+                        <a class="ranking-link" href="/race-leaderboard?gender={{ race.gender }}&course={{ race_course }}&disc={{ disc }}" title="View {{ disc }} race leaderboard">{{ ordinal(race_ranks[disc]) }}</a>
+                        {% else %}<span class="no-data">-</span>{% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% endif %}
-    {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
-    <div class="disc-row{{ ' is-overall' if disc == 'overall' else '' }}">
-        <span class="disc-name">{{ label }}</span>
-        <div class="disc-rating">
-            <span class="disc-rating-num">{{ race_standards[disc] }}</span>
-            {% if race_standard_classes[disc] %}
-            <span class="std-pill std-pill--{{ race_standard_classes[disc] }}">{{ race_standard_classes[disc]|title }}</span>
-            {% endif %}
-        </div>
-        {% if substat_cols > 0 %}
-        <div class="disc-substats">
-            <div class="substat">
-                {% if race_ranks[disc] and race_course %}
-                <div class="substat-value">
-                    <a class="race-rank-link" href="/race-leaderboard?gender={{ race.gender }}&course={{ race_course }}&disc={{ disc }}" title="View {{ disc }} race leaderboard">{{ ordinal(race_ranks[disc]) }}</a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
 </div>
 
 <!-- Predicted Results Table -->

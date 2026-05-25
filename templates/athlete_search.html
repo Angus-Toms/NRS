@@ -3,15 +3,14 @@
 {% block title %}Athletes - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete_search.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete_search.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
         <div>
-            <h1>Athlete Database</h1>
-            <p class="page-hero-subtitle">Every World Triathlon elite athlete, rated and ranked</p>
+            <h1>Athletes</h1>
         </div>
         <div class="hero-stats">
             <div class="hero-stat">
@@ -32,100 +31,105 @@
 
 <!-- ── Athlete Search ── -->
 <div class="page-section-head">Athlete Search</div>
+
 <div class="as-search-box">
-    <div class="as-search-row">
-        <div class="as-input-wrapper">
-            <svg class="as-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="text" id="as-input" class="as-input" placeholder="Search athlete name…" autocomplete="off">
-        </div>
-        <button class="as-filter-toggle" id="as-filter-toggle" aria-expanded="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
-            </svg>
-            Filters
-        </button>
-    </div>
-
-    <div class="as-filters" id="as-filters" hidden>
-
-        <!-- Row 1: radio chips + active toggle -->
-        <div class="as-filter-primary">
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Course</span>
-                <div class="radio-chips">
-                    <input type="radio" id="as-course-all"   name="as-course" value="all" checked>
-                    <label for="as-course-all">All</label>
-                    <input type="radio" id="as-course-short" name="as-course" value="short">
-                    <label for="as-course-short">Short</label>
-                    <input type="radio" id="as-course-long"  name="as-course" value="long">
-                    <label for="as-course-long">Long</label>
-                </div>
-            </div>
-            <div class="filter-v-divider"></div>
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Sort by</span>
-                <div class="radio-chips">
-                    <input type="radio" id="disc-overall" name="as-disc" value="overall" checked>
-                    <label for="disc-overall">Overall</label>
-                    <input type="radio" id="disc-swim" name="as-disc" value="swim">
-                    <label for="disc-swim">Swim</label>
-                    <input type="radio" id="disc-bike" name="as-disc" value="bike">
-                    <label for="disc-bike">Bike</label>
-                    <input type="radio" id="disc-run" name="as-disc" value="run">
-                    <label for="disc-run">Run</label>
-                </div>
-            </div>
-            <div class="filter-v-divider"></div>
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Order</span>
-                <div class="radio-chips">
-                    <input type="radio" id="order-top" name="as-order" value="top" checked>
-                    <label for="order-top">Top Rated</label>
-                    <input type="radio" id="order-hot" name="as-order" value="hot">
-                    <label for="order-hot">Trending</label>
-                </div>
-            </div>
-            <div class="filter-v-divider"></div>
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Active only</span>
-                <label class="filter-toggle">
-                    <input type="checkbox" id="as-active-only">
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                    <span class="toggle-text" id="as-active-text">Off</span>
-                </label>
-            </div>
-        </div>
-
-        <!-- Row 2: country + YOB -->
-        <div class="as-filter-secondary">
-            <div class="filter-group">
-                <label for="as-country">Country</label>
-                <select id="as-country">
-                    <option value="">All countries</option>
-                    {% for c in country_list %}
-                    <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Year of Birth</label>
-                <div class="year-range">
-                    <input type="number" id="as-yob-start" placeholder="From" min="1970" max="2012">
-                    <span class="range-sep">–</span>
-                    <input type="number" id="as-yob-end" placeholder="To" min="1970" max="2012">
-                    <button class="btn-age-preset" data-preset="u23">U23</button>
-                    <button class="btn-age-preset" data-preset="junior">Junior</button>
-                    <button class="btn-age-preset" data-preset="clear">Clear</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <div id="as-results" class="as-results"></div>
+    <svg class="as-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input type="text" id="as-input" class="as-input" placeholder="Search athlete name…" autocomplete="off">
 </div>
+
+<div class="filters-card">
+    <form id="as-filter-form" onsubmit="return false">
+        <div class="filter-summary-bar">
+            <div class="filter-summary" id="as-filter-summary">Overall · All courses · Top rated</div>
+            <button type="button" class="btn-filter-toggle" id="filterToggle" aria-expanded="false" aria-controls="filterPanel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Filters
+            </button>
+        </div>
+
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-panel-grid">
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Course</span>
+                    <div class="radio-chips">
+                        <input type="radio" id="as-course-all"   name="as-course" value="all" checked>
+                        <label for="as-course-all">All</label>
+                        <input type="radio" id="as-course-short" name="as-course" value="short">
+                        <label for="as-course-short">Short</label>
+                        <input type="radio" id="as-course-long"  name="as-course" value="long">
+                        <label for="as-course-long">Long</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Sort by</span>
+                    <div class="radio-chips">
+                        <input type="radio" id="disc-overall" name="as-disc" value="overall" checked>
+                        <label for="disc-overall">Overall</label>
+                        <input type="radio" id="disc-swim" name="as-disc" value="swim">
+                        <label for="disc-swim">Swim</label>
+                        <input type="radio" id="disc-bike" name="as-disc" value="bike">
+                        <label for="disc-bike">Bike</label>
+                        <input type="radio" id="disc-run" name="as-disc" value="run">
+                        <label for="disc-run">Run</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Order</span>
+                    <div class="radio-chips">
+                        <input type="radio" id="order-top" name="as-order" value="top" checked>
+                        <label for="order-top">Top Rated</label>
+                        <input type="radio" id="order-hot" name="as-order" value="hot">
+                        <label for="order-hot">Trending</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Active only</span>
+                    <label class="filter-toggle">
+                        <input type="checkbox" id="as-active-only">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        <span class="toggle-text" id="as-active-text">Off</span>
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <label for="as-country">Country</label>
+                    <select id="as-country">
+                        <option value="">All countries</option>
+                        {% for c in country_list %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Year of Birth</label>
+                    <div class="year-range">
+                        <input type="number" id="as-yob-start" placeholder="From" min="1970" max="2012">
+                        <span class="range-sep">–</span>
+                        <input type="number" id="as-yob-end" placeholder="To" min="1970" max="2012">
+                        <button type="button" class="btn-age-preset" data-preset="u23">U23</button>
+                        <button type="button" class="btn-age-preset" data-preset="junior">Junior</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="filter-panel-actions">
+                <button type="button" class="btn-reset" id="as-reset">Reset</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div id="as-results" class="as-results"></div>
 
 <!-- ── Currently Trending ── -->
 <div class="page-section-head">
@@ -221,5 +225,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/athlete_search.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/athlete_search.js?v={{ ASSET_VERSION }}"></script>
 {% endblock %}

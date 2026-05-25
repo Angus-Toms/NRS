@@ -122,10 +122,18 @@ RULES = [
                                           not_(name_regex(r"age[\s-]?group")),
                                       ),
                                       recurring=True),
-    SeriesRule("wtcs",                any_of(
-                                          name_regex(r"world triathlon championship series"),
-                                          name_regex(r"\bwtcs\b"),
-                                          name_regex(r"grand final"),
+    # WTCS Grand Finals / Championship Finals double as the elite World
+    # Championships (same event, cat 348). Tag those as just "world-
+    # championships" — mirror the AG/Continental exclusion above so the
+    # higher-prestige tag wins.
+    SeriesRule("wtcs",                all_of(
+                                          any_of(
+                                              name_regex(r"world triathlon championship series"),
+                                              name_regex(r"\bwtcs\b"),
+                                              name_regex(r"grand final"),
+                                          ),
+                                          not_(has_cat_id(CAT_WORLD_CHAMPS)),
+                                          not_(name_regex(r"world triathlon championship finals")),
                                       ),
                                       recurring=True),
     # Ironman 70.3 World Championships: series only, not recurring. The race
@@ -237,7 +245,7 @@ _STRIP_TOKENS = re.compile(
     r'u23|junior|juniors|youth|elite|paratriathlon|para|development|premium|'
     r'winter|duathlon|aquathlon|aquabike|multisport|tour|open|age|group|'
     r'national|federation|fisu|commonwealth|university|universiade|regional|'
-    r'ironman|challenge|'
+    r'ironman|challenge|t100|'
     # Common sponsor / org / regional-qualifier tokens. Stripping these
     # collapses sponsor-polluted slugs ("Hamburg BG", "AJ Bell Leeds",
     # "Dextro Energy Beijing", "Barfoot and Thompson Auckland") onto the
@@ -300,13 +308,21 @@ def apply(conn):
     # elite + age-group event sharing one event_id, where each tier has a
     # different cat_id set on its races) we need the UNION across races,
     # not ANY_VALUE — otherwise the AG cat (483) gets dropped half the
-    # time and the AG-tier rules miss the event.
+    # time and the AG-tier rules miss the event. Union over both finished
+    # races and upcoming_races so events that don't yet have a finished
+    # race (e.g. a 2026 European Cup in the start-list stage) still pick
+    # up their series + recurring assignments from upcoming_races' cat_ids.
     events = conn.execute("""
+        WITH all_race_cats AS (
+            SELECT event_id, cat_ids, event_spec_ids FROM races
+            UNION ALL
+            SELECT event_id, cat_ids, event_spec_ids FROM upcoming_races
+        )
         SELECT e.event_id, e.name, e.country, e.continent,
                STRING_AGG(r.cat_ids,        '|') AS cat_ids_concat,
                STRING_AGG(r.event_spec_ids, '|') AS spec_ids_concat
         FROM events e
-        LEFT JOIN races r ON r.event_id = e.event_id
+        LEFT JOIN all_race_cats r ON r.event_id = e.event_id
         GROUP BY e.event_id, e.name, e.country, e.continent
     """).fetchall()
 
@@ -391,8 +407,12 @@ def apply(conn):
 
 
 if __name__ == "__main__":
+    from ptd_data import recurring_events
     conn = db.get_conn(read_only=False)
     db.load_series_defs(conn)
     apply(conn)
     db.load_event_series_csv(conn)
+    # series rules only catch rule-bound events; the fuzzy fallback fills in
+    # generic Ironman / Challenge / etc groups that don't match any rule.
+    recurring_events.apply_fallback(conn)
     conn.close()

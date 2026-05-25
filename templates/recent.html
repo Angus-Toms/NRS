@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Recent Results - Pro Tri Data{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_search.css?v={{ ASSET_VERSION }}">
+<style>
+.load-more-container { text-align: center; margin: 2rem 0; }
+</style>
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <div>
+            <h1>Recent Results</h1>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="recent-events-grid" class="home-events-grid rs-events-grid">
+    {% with events=events %}{% include "partials/recent_events.html" %}{% endwith %}
+</div>
+
+{% if has_more %}
+<div class="load-more-container">
+    <button type="button" id="recent-load-more" class="btn-search" data-offset="{{ events|length }}">
+        See more
+    </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const btn  = document.getElementById('recent-load-more');
+    const grid = document.getElementById('recent-events-grid');
+    if (!btn || !grid) return;
+    const PAGE = 10;
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+        const offset = parseInt(btn.dataset.offset, 10) || 0;
+        try {
+            const res = await fetch(`/recent/more?offset=${offset}`);
+            const html = (await res.text()).trim();
+            if (!html) {
+                btn.remove();
+                return;
+            }
+            grid.insertAdjacentHTML('beforeend', html);
+            btn.dataset.offset = String(offset + PAGE);
+            btn.disabled = false;
+            btn.textContent = 'See more';
+            // Heuristic: if fewer than a full page came back, no more to load.
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            if (tmp.querySelectorAll('.event-card').length < PAGE) btn.remove();
+        } catch (err) {
+            btn.disabled = false;
+            btn.textContent = 'See more';
+            console.error('Failed to load more events', err);
+        }
+    });
+})();
+</script>
+{% endblock %}

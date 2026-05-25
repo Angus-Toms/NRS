@@ -674,6 +674,10 @@ def backfill_sub_category(conn):
             WHEN LOWER(SPLIT_PART(prog_name, ' ', 1)) = 'u23'    THEN 'u23'
             WHEN LOWER(SPLIT_PART(prog_name, ' ', 1)) = 'junior' THEN 'junior'
             WHEN LOWER(SPLIT_PART(prog_name, ' ', 1)) = 'youth'  THEN 'youth'
+            -- Long-course "Pro Men" / "Pro Women" are an elite field; they
+            -- otherwise split out from "Elite Men" rows when both end up on
+            -- the same recurring event page (Apfelland, Challenge etc.).
+            WHEN LOWER(SPLIT_PART(prog_name, ' ', 1)) = 'pro'    THEN 'elite'
             ELSE 'ag'
         END
     """)

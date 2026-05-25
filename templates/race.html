@@ -20,7 +20,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}{% include "_race_hero.html" %}{% endblock %}
@@ -28,8 +28,8 @@
 {% block content %}{% if is_upcoming %}{% include "_upcoming_race_content.html" %}{% else %}{% include "_race_content.html" %}{% endif %}{% endblock %}
 
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
-<script src="{{ STATIC_BASE_URL }}js/race.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
+<script src="{{ STATIC_BASE_URL }}js/race.js?v={{ ASSET_VERSION }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     initRaceCharts();

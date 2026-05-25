@@ -1,9 +1,9 @@
 /* ============================================
    ATHLETES PAGE
    Shared components live in base.css:
-   - radio-chips, athlete-ratings, athlete-meta, btn-age-preset, btn-search
-   - .as-search-box, .as-input, .as-filter-toggle, .as-filters,
-     .as-filter-primary, .as-filter-secondary, .as-results
+   - radio-chips, athlete-ratings, athlete-meta, btn-age-preset
+   - .as-search-box, .as-input, .as-results
+   - .filters-card, .filter-summary-bar, .filter-panel
    ============================================ */
 
 .as-result-item {
@@ -140,16 +140,6 @@
         gap: 1rem;
     }
 
-    .as-filter-primary,
-    .as-filter-secondary {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .filter-v-divider {
-        display: none;
-    }
-
     .hero-stats {
         display: none;
     }
@@ -167,8 +157,21 @@
         box-sizing: border-box;
         min-width: 0;
         flex-shrink: 1;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         justify-content: flex-start;
+    }
+    .as-result-item .athlete-ratings .rating-item {
+        width: auto;
+        min-width: 0;
+        flex: 1 1 4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Match leaderboard: drop the transition column on phones to reclaim
+       horizontal space for the other four ratings. */
+    .as-result-item .athlete-ratings .rating-item:nth-child(5) {
+        display: none;
     }
 }
 

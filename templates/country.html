@@ -12,9 +12,9 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css">
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/index.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/country.css?v={{ ASSET_VERSION }}">
 {% if map_locations %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 {% endif %}
@@ -54,59 +54,64 @@
     <section class="country-section">
         <div class="page-section-head country-section-head">
             <span class="country-section-title">National Leaders</span>
-            <span class="country-section-subtitle" id="country-lb-subtitle">{{ discipline_label }} · {{ gender_label }}</span>
         </div>
 
         <div class="filters-card">
-            <div class="filters-primary" id="country-filter-row" aria-label="Leaderboard filters">
-                <div class="filter-chip-group">
-                    <span class="filter-chip-label">Discipline</span>
-                    <div class="radio-chips">
-                        {% for d in discs %}
-                        <input type="radio" name="country-discipline" value="{{ d }}" id="country-disc-{{ d }}"
-                               {% if d == discipline %}checked{% endif %}>
-                        <label for="country-disc-{{ d }}">{{ disc_labels[d] }}</label>
-                        {% endfor %}
+            <div class="filter-summary-bar">
+                <div class="filter-summary">{{ discipline_label }} · {{ gender_label }}{% if course %} · {{ 'Short' if course == 'short' else 'Long' }}{% endif %}{% if active_only %} · Active{% endif %}</div>
+                <button type="button" class="btn-filter-toggle" id="filterToggle" aria-expanded="false" aria-controls="filterPanel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Filters
+                </button>
+            </div>
+
+            <div class="filter-panel" id="filterPanel" aria-label="Leaderboard filters">
+                <div class="filter-panel-grid">
+                    <div class="filter-chip-group">
+                        <span class="filter-chip-label">Discipline</span>
+                        <div class="radio-chips">
+                            {% for d in discs %}
+                            <input type="radio" name="country-discipline" value="{{ d }}" id="country-disc-{{ d }}"
+                                   {% if d == discipline %}checked{% endif %}>
+                            <label for="country-disc-{{ d }}">{{ disc_labels[d] }}</label>
+                            {% endfor %}
+                        </div>
                     </div>
-                </div>
 
-                <div class="filter-v-divider"></div>
-
-                <div class="filter-chip-group">
-                    <span class="filter-chip-label">Course</span>
-                    <div class="radio-chips">
-                        <input type="radio" name="country-course" value="short" id="country-course-short"
-                               {% if course == 'short' %}checked{% endif %}>
-                        <label for="country-course-short">Short</label>
-                        <input type="radio" name="country-course" value="long" id="country-course-long"
-                               {% if course == 'long' %}checked{% endif %}>
-                        <label for="country-course-long">Long</label>
+                    <div class="filter-chip-group">
+                        <span class="filter-chip-label">Course</span>
+                        <div class="radio-chips">
+                            <input type="radio" name="country-course" value="short" id="country-course-short"
+                                   {% if course == 'short' %}checked{% endif %}>
+                            <label for="country-course-short">Short</label>
+                            <input type="radio" name="country-course" value="long" id="country-course-long"
+                                   {% if course == 'long' %}checked{% endif %}>
+                            <label for="country-course-long">Long</label>
+                        </div>
                     </div>
-                </div>
 
-                <div class="filter-v-divider"></div>
-
-                <div class="filter-chip-group">
-                    <span class="filter-chip-label">Gender</span>
-                    <div class="radio-chips">
-                        {% for g, label in gender_options %}
-                        <input type="radio" name="country-gender" value="{{ g }}" id="country-gender-{{ g }}"
-                               {% if g == gender %}checked{% endif %}>
-                        <label for="country-gender-{{ g }}">{{ label }}</label>
-                        {% endfor %}
+                    <div class="filter-chip-group">
+                        <span class="filter-chip-label">Gender</span>
+                        <div class="radio-chips">
+                            {% for g, label in gender_options %}
+                            <input type="radio" name="country-gender" value="{{ g }}" id="country-gender-{{ g }}"
+                                   {% if g == gender %}checked{% endif %}>
+                            <label for="country-gender-{{ g }}">{{ label }}</label>
+                            {% endfor %}
+                        </div>
                     </div>
-                </div>
 
-                <div class="filter-v-divider"></div>
-
-                <div class="filter-chip-group">
-                    <span class="filter-chip-label">Active only</span>
-                    <label class="filter-toggle">
-                        <input type="checkbox" id="country-active-cb"
-                               {% if active_only %}checked{% endif %}>
-                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                        <span class="toggle-text" id="country-active-text">{% if active_only %}On{% else %}Off{% endif %}</span>
-                    </label>
+                    <div class="filter-chip-group">
+                        <span class="filter-chip-label">Active only</span>
+                        <label class="filter-toggle">
+                            <input type="checkbox" id="country-active-cb"
+                                   {% if active_only %}checked{% endif %}>
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                            <span class="toggle-text" id="country-active-text">{% if active_only %}On{% else %}Off{% endif %}</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -289,7 +294,17 @@
 
     const wrap       = document.getElementById('country-leaderboard-wrap');
     const subtitleEl = document.getElementById('country-lb-subtitle');
-    const row        = document.getElementById('country-filter-row');
+    const row        = document.getElementById('filterPanel');
+
+    // Filter toggle (mobile)
+    const filterBtn   = document.getElementById('filterToggle');
+    const filterPanel = document.getElementById('filterPanel');
+    if (filterBtn && filterPanel) {
+        filterBtn.addEventListener('click', () => {
+            const open = filterPanel.classList.toggle('open');
+            filterBtn.setAttribute('aria-expanded', open);
+        });
+    }
 
     const DISC_LABELS   = { overall:'Overall', swim:'Swim', bike:'Bike', run:'Run', transition:'Transition' };
     const GENDER_LABELS = { male:'Men', female:'Women' };

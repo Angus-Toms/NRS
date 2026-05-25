@@ -452,6 +452,10 @@
     .country-index-grid { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 480px) {
+    .hero-stats { display: none; }
+}
+
 
 /* ============================================================
    Mobile

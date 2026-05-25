@@ -183,6 +183,16 @@
     background: var(--border-color);
 }
 
+/* Race-linked col-head: darker text + orange on hover, matching the
+   .event-race-title style used on event cards. */
+.col-head--race { color: var(--text-color); font-size: 0.7rem; }
+.col-head-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.col-head-link:hover { color: var(--primary-color); }
+
 /* Podium rows in the Latest pane. No row backgrounds - the medal cue
    comes from the pos-circle and the photo border colour. */
 .podium-list { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -574,6 +584,16 @@
 .tyear.active .tyear-num,
 .tyear.active .tyear-name { color: var(--primary-color); }
 
+/* Compact variant for recurring-event pages: years are single-line,
+   so the .tyear-num doesn't need to reserve two lines of height and the
+   line/arrows can sit higher. Shifts the dot row up by ~14px. */
+.timeline-wrap--compact .tyear-num {
+    min-height: calc(0.75rem * 1.2);
+    max-height: calc(0.75rem * 1.2);
+}
+.timeline-wrap--compact .timeline-line { top: 93px; }
+.timeline-wrap--compact .tl-arrow      { top: 105px; }
+
 /* Chevron buttons: vertically centred on the timeline line.
    wrap padding-top 0.75rem (12px) + line top 90px. */
 .tl-arrow {
@@ -730,8 +750,121 @@
 
 @media (max-width: 768px) {
     .ep-head { flex-wrap: wrap; }
-    .ep-head-stds { order: 2; flex-wrap: wrap; }
-    .ep-nav { order: 1; }
+    .ep-head-stds {
+        order: 3;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 0.4rem 0;
+        padding-top: 0.4rem;
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .ep-nav { order: 2; }
+    .ch-std {
+        min-width: 0;
+        flex: 1 1 22%;
+        padding: 0 0.35rem;
+    }
+    .ch-std-v { font-size: 0.9rem; }
+    .ch-std[data-disc="transition"] { display: none; }
+}
+
+@media (max-width: 480px) {
+    .ep-head-stds { flex-wrap: nowrap; }
+    .ch-std {
+        flex: 1 1 0;
+        padding: 0 0.15rem;
+    }
+    .ch-std-v { font-size: 0.8rem; }
+    .ch-std-d { font-size: 0.5rem; letter-spacing: 0.05em; }
+}
+
+/* Mobile: collapse the dense w1-table into a stacked card per row.
+   Header (#, athlete, total) sits on top; the 5 splits wrap onto a
+   second line beneath, each labelled inline. Row tint covers the
+   whole card rather than just the text-level cells. */
+@media (max-width: 768px) {
+    .w1-table, .w1-table thead, .w1-table tbody, .w1-table tr, .w1-table td {
+        display: block;
+    }
+    .w1-table thead { display: none; }
+    .w1-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem 0.5rem;
+        padding: 0.55rem 0.7rem;
+        border-bottom: 0;
+    }
+    /* Force splits onto their own line, with a subtle separator. */
+    .w1-table tr::after {
+        content: "";
+        flex-basis: 100%;
+        height: 1px;
+        background: rgba(0, 0, 0, 0.06);
+        margin: 0.7rem 0 0.2rem;
+        order: 50;
+    }
+    .w1-table tbody td {
+        padding: 0;
+        border: 0 !important;
+        width: auto !important;
+    }
+    /* Whole-row tint for the podium (was per-cell on desktop). The
+       desktop per-td tints have !important + higher specificity, so we
+       null them out at the same level here. */
+    .w1-table tbody tr.gold-row.gold-row > td,
+    .w1-table tbody tr.gold-row.gold-row:hover > td,
+    .w1-table tbody tr.silver-row.silver-row > td,
+    .w1-table tbody tr.silver-row.silver-row:hover > td,
+    .w1-table tbody tr.bronze-row.bronze-row > td,
+    .w1-table tbody tr.bronze-row.bronze-row:hover > td { background: transparent !important; }
+    .w1-table tbody tr.gold-row   { background: rgba(245, 200, 66, 0.13); }
+    .w1-table tbody tr.silver-row { background: rgba(168, 169, 173, 0.14); }
+    .w1-table tbody tr.bronze-row { background: rgba(205, 127, 50, 0.11); }
+    /* Hover darkens the whole row tint, not just the cells. */
+    .w1-table tbody tr.gold-row:hover   { background: rgba(245, 200, 66, 0.26); }
+    .w1-table tbody tr.silver-row:hover { background: rgba(168, 169, 173, 0.26); }
+    .w1-table tbody tr.bronze-row:hover { background: rgba(205, 127, 50, 0.22); }
+    .w1-table td.w1-pos     { order: 1; min-width: 1.5rem; flex: 0 0 auto; }
+    .w1-table td.w1-ath-cell{ order: 2; flex: 1 1 0; min-width: 0; overflow: hidden; }
+    .w1-table td.w1-ath-cell .w1-ath { min-width: 0; }
+    .w1-table td.w1-ath-cell .w1-ath b {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .w1-table tbody td.w1-num--t,
+    .w1-table tbody td.w1-num {
+        order: 100;
+        flex: 1 1 18%;
+        text-align: center !important;
+        font-size: 0.75rem;
+        padding: 0.15rem 0;
+    }
+    .w1-table tbody td.w1-num .w1-cell,
+    .w1-table tbody td.w1-num--t .w1-cell { align-items: center; }
+    .w1-table tbody td.w1-num--total {
+        order: 3;
+        flex: 0 0 auto;
+        font-weight: 700;
+        text-align: right !important;
+        padding: 0;
+        font-size: 0.85rem;
+    }
+    .w1-table tbody td.w1-num--total .w1-cell { align-items: flex-end; }
+    .w1-table tbody td.w1-num--total::before { display: none; }
+    .w1-table td.w1-num--t::before,
+    .w1-table td.w1-num::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.55rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-lighter);
+        margin-bottom: 1px;
+    }
 }
 
 /* ── Dense edition results table ──────────────────────────────────── */
@@ -803,6 +936,7 @@
 .w1-ath.gold-img   img { border-color: #d4af37; }
 .w1-ath.silver-img img { border-color: #a8a9ad; }
 .w1-ath.bronze-img img { border-color: #cd7f32; }
+.w1-ath-name { min-width: 0; }
 .w1-ath b {
     font-weight: 600;
     font-size: 0.9rem;

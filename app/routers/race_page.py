@@ -5,7 +5,7 @@ import numpy as np
 from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE, YEAR_REF
@@ -13,6 +13,7 @@ from app.routers.router_utils import format_time, format_time_behind, format_rat
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
@@ -42,6 +43,54 @@ ANCHOR_TOP_K = 3
 ANCHOR_POOL_QUANTILE = {'short': 0.50, 'long': 0.33}
 
 _SHORT_DISTANCES = {'sprint', 'standard'}
+
+
+def _build_breadcrumb(race, race_id, recurring_meta):
+    """Adaptive Series / Event / Year breadcrumb for the race hero.
+
+    Each of the three segments is optional:
+      - series : primary series (lowest sort_order) the event belongs to
+      - event  : the recurring event group (same venue across years)
+      - year   : current race year. Has a dropdown of sibling years when
+                 recurring_meta is set; plain text otherwise.
+    """
+    primary_series = queries.get_series_for_race(race_id)
+    series_seg = None
+    if primary_series:
+        series_seg = {
+            'name': primary_series['name'],
+            'url':  f"/series/{primary_series['slug']}",
+        }
+
+    event_seg = None
+    year_options = []
+    if recurring_meta:
+        event_seg = {
+            'name': recurring_meta['name'],
+            'url':  f"/recurring/{recurring_meta['slug']}",
+        }
+        rows = queries.get_year_options_for_recurring(
+            recurring_meta['recurring_event_id'],
+            race['gender'],
+            race.get('sub_category'),
+        )
+        for r in rows:
+            year_options.append({
+                'year':           r['year'],
+                'race_id':        r['race_id'],
+                'race_handle':    r['race_handle'],
+                'winner_name':    r['winner_name'],
+                'winner_emoji':   r['winner_emoji'],
+                'overall_s':      format_time(r['overall_s']) if r['overall_s'] else '',
+                'is_current':     r['race_id'] == race_id,
+            })
+
+    return {
+        'series': series_seg,
+        'event':  event_seg,
+        'year':   race['race_date'].year,
+        'years':  year_options,
+    }
 
 
 def _anchor_time(field_ratings, leader_rating, distance, disc, model,
@@ -651,23 +700,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     recurring_meta = queries.get_recurring_event_for_event(event_id) if event_id else None
     recurring_slug = recurring_meta["slug"] if recurring_meta else None
 
-    # Context pills: each pill is a series or recurring-event grouping the
-    # race belongs to. Both kinds are simple links; tier drives the colour.
-    context_pills = []
-    if recurring_meta:
-        context_pills.append({
-            'kind': 'recurring',
-            'tier': 'recurring',
-            'label': recurring_meta['name'],
-            'url': f"/recurring/{recurring_meta['slug']}",
-        })
-    for s in queries.get_all_series_for_race(race_id):
-        context_pills.append({
-            'kind': 'series',
-            'tier': s.get('tier') or 'series',
-            'label': s['name'],
-            'url': f"/series/{s['slug']}",
-        })
+    breadcrumb = _build_breadcrumb(race, race_id, recurring_meta)
 
     _venue = race["location"]
     race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
@@ -717,7 +750,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "race_distance":           race_distance,
         "course_conditions":       course_conditions if not ignored_info else None,
         "series":                  series,
-        "context_pills":           context_pills,
+        "breadcrumb":              breadcrumb,
         "corrections_data":        corrections_data,
         "other_editions":          other_editions,
         "recurring_slug":           recurring_slug,
@@ -837,7 +870,9 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         "entry_count":           len(entries),
         "is_upcoming":           True,
         "series":                None,
-        "context_pills":         [],
+        "breadcrumb":            _build_breadcrumb(race, race_id,
+                                                   queries.get_recurring_event_for_event(race.get('event_id'))
+                                                   if race.get('event_id') else None),
         "other_editions":        [],
         "recurring_slug":        None,
     })

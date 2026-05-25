@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query, Request
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from app.routers.router_utils import format_rating
@@ -10,6 +10,7 @@ from app.routers.router_utils import format_rating
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 
 
 _DISC_LIST = ["overall", "swim", "bike", "run", "transition"]
@@ -45,12 +46,35 @@ async def race_leaderboard(
     level:   str = Query("all"),
 ):
     year_int = _coerce_year(year)
-    races = _format_race_rows(queries.get_race_leaderboard(
+    completed = _format_race_rows(queries.get_race_leaderboard(
         gender=gender, course=course, disc=disc, year=year_int,
         country=country, level=level, offset=0,
     ))
-    for i, r in enumerate(races):
-        r["display_rank"] = r.get(f"{disc}_rank") or (i + 1)
+    for r in completed:
+        r["display_rank"] = r.get(f"{disc}_rank")
+        r["is_upcoming"] = False
+
+    # Mix upcoming races into the first page so they sort alongside completed
+    # races by predicted standard. Only meaningful when filters could match
+    # upcoming: short-course bucket, no historical year, no series level.
+    if course == 'short' and not year_int and level == 'all':
+        upcoming = _format_race_rows(queries.get_upcoming_race_leaderboard(
+            gender=gender, course=course, country=country,
+        ))
+        std_key = f"{disc}_std"
+        for r in upcoming:
+            # Rank = 1 + count of completed races in this bucket with higher std,
+            # so upcoming slot in among completed ranks based on predicted std.
+            r["display_rank"] = queries.get_upcoming_rank_for_std(
+                gender, course, disc, r.get(std_key),
+            )
+        races = sorted(
+            completed + upcoming,
+            key=lambda r: r.get(std_key) or 0,
+            reverse=True,
+        )
+    else:
+        races = completed
 
     years     = queries.get_race_leaderboard_years(gender, course)
     countries = queries.get_race_leaderboard_countries(gender, course)

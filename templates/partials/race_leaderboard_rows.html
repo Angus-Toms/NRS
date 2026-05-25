@@ -1,6 +1,6 @@
 {% for race in races %}
-<a href="/race/{{ race.race_id }}" class="athlete-card race-card {{ 'rank-' ~ race.display_rank if race.display_rank <= 3 else '' }}">
-    <div class="rank-badge {{ 'rank-' ~ race.display_rank ~ '-text' if race.display_rank <= 3 else '' }}">#{{ race.display_rank }}</div>
+<a href="/race/{{ race.race_id }}" class="athlete-card race-card{% if not race.is_upcoming and race.display_rank and race.display_rank <= 3 %} rank-{{ race.display_rank }}{% endif %}">
+    <div class="rank-badge {{ 'rank-' ~ race.display_rank ~ '-text' if not race.is_upcoming and race.display_rank and race.display_rank <= 3 else '' }}">{% if race.display_rank %}#{{ race.display_rank }}{% else %}—{% endif %}</div>
     <div class="athlete-card-content">
         <div class="athlete-main-info">
             <div class="athlete-details">
@@ -11,7 +11,9 @@
                     <span class="meta-item-sep"> · </span><span class="meta-item">{{ race.venue }}{% if race.venue and race.country %}, {% endif %}{{ race.country }}</span>
                     {% endif %}
                     <span class="meta-item-sep"> · </span><span class="meta-item">{{ race.prog_name }}</span>
-                    {% if race.winner_name %}
+                    {% if race.is_upcoming %}
+                    <span class="meta-item-sep"> · </span><span class="meta-item"><span class="upcoming-pill">Upcoming</span></span>
+                    {% elif race.winner_name %}
                     <span class="meta-item-sep"> · </span><span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ race.winner_country_emoji or '' }}</span></span>
                     {% endif %}
                 </div>

@@ -47,7 +47,9 @@ _ELITE_PROG_PREFIXES = frozenset({'elite', 'u23', 'junior', 'youth'})
 def race_category(prog_name):
     """Return 'elite', 'ag', or None (skip entirely, e.g. para/relay/mixed-team)."""
     first = prog_name.lower().split()[0] if prog_name else ''
-    if first in _ELITE_PROG_PREFIXES:
+    # "Pro Men" / "Pro Women" prog_names from long-course PTO ingest are
+    # elite-level fields and should never fall into AG.
+    if first in _ELITE_PROG_PREFIXES or first == 'pro':
         return 'elite'
     # Skip para, relay, and other non-individual formats
     if first in ('para', 'ptvi', 'pts5', 'pts4', 'pts3', 'pts2', 'ptwc', 'awad',
@@ -62,6 +64,11 @@ def race_sub_category(prog_name):
     first = prog_name.lower().split()[0] if prog_name else ''
     if first in _ELITE_PROG_PREFIXES:
         return first
+    # Long-course "Pro Men" / "Pro Women" maps to elite, matching the PTO
+    # ingest's own classification — otherwise the same recurring event
+    # ends up split across two program tabs ("Elite Men" + "Pro Men").
+    if first == 'pro':
+        return 'elite'
     return 'ag'
 
 
@@ -382,7 +389,41 @@ class Ingester:
 
         self._ingest_events(short_events)
         db.backfill_sub_category(self.conn)
+        self._backfill_race_handles()
         db.reconcile_athlete_nationality(self.conn)
+
+    def _backfill_race_handles(self):
+        """Re-derive race_handle for every short-course race from the current
+        title + cat_ids logic.
+
+        race_handle is computed once at insert time. When the classifier
+        evolves (e.g. WTCS handles for events that are actually World
+        Champs) old rows drift. This pass walks every short-course race
+        and rewrites the handle in place. Cheap (~thousands of rows,
+        pure python on already-loaded fields).
+        """
+        rows = self.conn.execute("""
+            SELECT race_id, race_title, cat_ids, race_date
+            FROM races
+            WHERE distance IN ('sprint', 'standard')
+        """).fetchall()
+
+        updates = []
+        for race_id, race_title, cat_ids_str, race_date in rows:
+            try:
+                cat_ids = literal_eval(cat_ids_str) if cat_ids_str else []
+            except (ValueError, SyntaxError):
+                cat_ids = []
+            new_handle = short_course_race_handle(race_title, cat_ids, race_date)
+            updates.append((new_handle, race_id))
+
+        # Bulk update — leverages duckdb's UPDATE-from-VALUES support.
+        if updates:
+            self.conn.executemany(
+                "UPDATE races SET race_handle = ? WHERE race_id = ?",
+                updates,
+            )
+        print(f"  Re-derived race_handle on {len(updates)} short-course rows")
 
     def _fetch_all_events(self):
         """Paginate through /events endpoint."""
@@ -499,7 +540,7 @@ class Ingester:
             if 'athlete_id' not in r:
                 continue
             athlete_id = int(r['athlete_id'])
-            name = str(r.get('athlete_title', '')).replace('"', '').replace("'", "")
+            name = str(r.get('athlete_title', '')).replace('"', '').strip()
             country_name = str(r.get('athlete_country_name', ''))
 
             yob = 0
@@ -717,7 +758,7 @@ class StartListIngester:
             if 'athlete_id' not in e:
                 continue
             athlete_id = int(e['athlete_id'])
-            name = str(e.get('athlete_title', '')).replace('"', '').replace("'", "")
+            name = str(e.get('athlete_title', '')).replace('"', '').strip()
             country_name = str(e.get('athlete_country_name', ''))
             yob = 0
             try:

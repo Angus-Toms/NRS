@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 from ptd_data import queries
 from app.routers import router_utils
@@ -14,6 +14,7 @@ A2_COLOR = "#E91E63"  # red
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 
 
 def _format_h2h_times(time1_s, time2_s):
@@ -61,17 +62,6 @@ _PROGRAMS = {
 
 def _parse_program(program: str):
     return _PROGRAMS.get(program, _PROGRAMS['elite-short'])
-
-
-@router.get("/compare", include_in_schema=False)
-@router.get("/compare/{rest:path}", include_in_schema=False)
-async def legacy_compare_redirect(request: Request, rest: str = ""):
-    """Old /compare URLs redirect to the new /athlete-compare path."""
-    from fastapi.responses import RedirectResponse
-    qs = request.url.query
-    suffix = f"/{rest}" if rest else ""
-    target = f"/athlete-compare{suffix}" + (f"?{qs}" if qs else "")
-    return RedirectResponse(url=target, status_code=301)
 
 
 @router.get("/athlete-compare", response_class=HTMLResponse)

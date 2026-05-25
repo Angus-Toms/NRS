@@ -2,51 +2,65 @@
 const baseUrl    = window.STATIC_BASE_URL || '';
 const defaultImg = `${baseUrl}imgs/default_user.jpg`;
 
-const input      = document.getElementById('as-input');
-const results    = document.getElementById('as-results');
-const filterBtn  = document.getElementById('as-filter-toggle');
-const filterPane = document.getElementById('as-filters');
-const countryEl  = document.getElementById('as-country');
-const yobStart   = document.getElementById('as-yob-start');
-const yobEnd     = document.getElementById('as-yob-end');
-const activeOnly = document.getElementById('as-active-only');
-const activeText = document.getElementById('as-active-text');
+const input        = document.getElementById('as-input');
+const results      = document.getElementById('as-results');
+const filterBtn    = document.getElementById('filterToggle');
+const filterPanel  = document.getElementById('filterPanel');
+const filterSummary = document.getElementById('as-filter-summary');
+const countryEl    = document.getElementById('as-country');
+const yobStart     = document.getElementById('as-yob-start');
+const yobEnd       = document.getElementById('as-yob-end');
+const activeOnly   = document.getElementById('as-active-only');
+const activeText   = document.getElementById('as-active-text');
+const resetBtn     = document.getElementById('as-reset');
 
 let searchTimer = null;
+
+const DISC_LABELS  = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run' };
+const ORDER_LABELS = { top: 'Top rated', hot: 'Trending' };
 
 function getDisc()   { return document.querySelector('[name="as-disc"]:checked')?.value   || 'overall'; }
 function getOrder()  { return document.querySelector('[name="as-order"]:checked')?.value  || 'top'; }
 function getCourse() { return document.querySelector('[name="as-course"]:checked')?.value || 'all'; }
 
-// ── Filter toggle ──
-filterBtn.addEventListener('click', () => {
-    const open = filterPane.hasAttribute('hidden');
-    if (open) {
-        filterPane.removeAttribute('hidden');
-        filterBtn.setAttribute('aria-expanded', 'true');
-    } else {
-        filterPane.setAttribute('hidden', '');
-        filterBtn.setAttribute('aria-expanded', 'false');
+function updateSummary() {
+    const parts = [
+        DISC_LABELS[getDisc()],
+        getCourse() === 'all' ? 'All courses' : (getCourse() === 'short' ? 'Short' : 'Long'),
+        ORDER_LABELS[getOrder()],
+    ];
+    if (activeOnly.checked) parts.push('Active');
+    if (countryEl.value)    parts.push(countryEl.value);
+    if (yobStart.value || yobEnd.value) {
+        parts.push(`b. ${yobStart.value || '…'}–${yobEnd.value || '…'}`);
     }
+    filterSummary.innerHTML = parts
+        .map((p, i) => (i ? '<span class="filter-summary-sep">·</span>' : '') + p)
+        .join(' ');
+}
+
+filterBtn.addEventListener('click', () => {
+    const open = filterPanel.classList.toggle('open');
+    filterBtn.setAttribute('aria-expanded', open);
 });
 
-// ── Radio + select + YOB + active toggle all re-run search ──
-document.querySelectorAll('[name="as-disc"], [name="as-order"]').forEach(r => {
-    r.addEventListener('change', triggerSearch);
+document.querySelectorAll('[name="as-disc"], [name="as-order"], [name="as-course"]').forEach(r => {
+    r.addEventListener('change', onFilterChange);
 });
-
-document.querySelectorAll('[name="as-course"]').forEach(r => {
-    r.addEventListener('change', triggerSearch);
-});
-countryEl.addEventListener('change', triggerSearch);
-yobStart.addEventListener('input', triggerSearch);
-yobEnd.addEventListener('input', triggerSearch);
+countryEl.addEventListener('change', onFilterChange);
+yobStart.addEventListener('input', onFilterChange);
+yobEnd.addEventListener('input', onFilterChange);
 activeOnly.addEventListener('change', () => {
     activeText.textContent = activeOnly.checked ? 'On' : 'Off';
-    triggerSearch();
+    onFilterChange();
 });
 
-// ── YOB presets (data-preset attr distinguishes from leaderboard's data-age) ──
+function onFilterChange() {
+    updateSummary();
+    triggerSearch();
+}
+
+// YOB presets (data-preset attr distinguishes from leaderboard's data-age)
 document.querySelectorAll('.btn-age-preset[data-preset]').forEach(btn => {
     btn.addEventListener('click', () => {
         const preset = btn.dataset.preset;
@@ -56,16 +70,27 @@ document.querySelectorAll('.btn-age-preset[data-preset]').forEach(btn => {
         } else if (preset === 'u23') {
             yobStart.value = 2004;
             yobEnd.value   = 2006;
-        } else {
-            yobStart.value = '';
-            yobEnd.value   = '';
         }
-        triggerSearch();
+        onFilterChange();
     });
 });
 
-// ── Search input ──
+resetBtn.addEventListener('click', () => {
+    document.getElementById('as-course-all').checked = true;
+    document.getElementById('disc-overall').checked  = true;
+    document.getElementById('order-top').checked     = true;
+    countryEl.value = '';
+    yobStart.value  = '';
+    yobEnd.value    = '';
+    activeOnly.checked = false;
+    activeText.textContent = 'Off';
+    input.value = '';
+    results.innerHTML = '';
+    updateSummary();
+});
+
 input.addEventListener('input', triggerSearch);
+updateSummary();
 
 function triggerSearch() {
     clearTimeout(searchTimer);
@@ -97,14 +122,14 @@ function renderResults(athletes, disc, order) {
         return;
     }
 
-    const LABELS = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run' };
+    const LABELS = { overall: 'Overall', swim: 'Swim', bike: 'Bike', run: 'Run', transition: 'Transition' };
     const hotCls = order === 'hot' ? ' athlete-ratings-hot' : '';
 
     results.innerHTML = athletes.map(a => {
         const img = a.has_img ? `${baseUrl}athlete_imgs/128/${a.athlete_id}.webp` : defaultImg;
 
         // Ratings block - 4 disciplines, active one highlighted
-        const ratingsHtml = ['overall', 'swim', 'bike', 'run'].map(d => `
+        const ratingsHtml = ['overall', 'swim', 'bike', 'run', 'transition'].map(d => `
             <div class="rating-item">
                 <span class="rating-label">${LABELS[d]}</span>
                 <span class="rating-value${d === disc ? ' rating-highlight' : ''}">${a[d + '_rating']}</span>

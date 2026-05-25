@@ -3,15 +3,14 @@
 {% block title %}Compare Races - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css">
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_comparison.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race_comparison.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
         <h1>Compare Races</h1>
-        <span class="page-hero-subtitle">Head-to-head course, conditions &amp; field strength</span>
     </div>
 </div>
 {% endblock %}
@@ -63,8 +62,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
-<script src="{{ STATIC_BASE_URL }}js/race_comparison.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
+<script src="{{ STATIC_BASE_URL }}js/race_comparison.js?v={{ ASSET_VERSION }}"></script>
 {% endblock %}
 
 {% block race_comparison_specific_js %}

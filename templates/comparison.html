@@ -3,14 +3,13 @@
 {% block title %}Compare Athletes - Pro Tri Data{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/comparison.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
         <h1>Compare Athletes</h1>
-        <span class="page-hero-subtitle">Head-to-head ratings &amp; race history</span>
     </div>
 </div>
 {% endblock %}
@@ -78,8 +77,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
-<script src="{{ STATIC_BASE_URL }}js/comparison.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
+<script src="{{ STATIC_BASE_URL }}js/comparison.js?v={{ ASSET_VERSION }}"></script>
 {% endblock %}
 
 {% block comparison_specific_js %}

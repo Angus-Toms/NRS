@@ -13,7 +13,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
 {% endblock %}
 
@@ -50,7 +50,7 @@
        owns the timeline / panel / tabs interactions. #}
 
     <!-- ── Year timeline ─────────────────────────────────────────────── -->
-    <div class="timeline-wrap">
+    <div class="timeline-wrap{% if is_recurring %} timeline-wrap--compact{% endif %}">
         <button class="tl-arrow tl-arrow--prev" id="tl-prev" aria-label="Earlier editions">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
@@ -167,6 +167,7 @@ let ACTIVE_PROGRAM     = {{ active_program | tojson }};
 const PROGRAM_TABS     = {{ program_tabs | tojson }};
 const STATIC_BASE      = {{ STATIC_BASE_URL | tojson }};
 const SERIES_NAME      = {{ series.name | tojson }};
+const IS_RECURRING     = {{ (is_recurring or false) | tojson }};
 
 // Newest-first from the server -> oldest-first for the timeline / charts.
 let EDITIONS = [];
@@ -214,7 +215,15 @@ function attrEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 
 // ── Timeline ───────────────────────────────────────────────────────────
-const TIMELINE_WINDOW = 7;
+// Each timeline entry needs about this much room (image + label).
+const TIMELINE_ITEM_MIN_PX = 90;
+const TIMELINE_MAX_ITEMS   = 7;
+function currentTimelineWindow(){
+    const track = document.querySelector(".timeline-track");
+    const w = track ? track.clientWidth : window.innerWidth;
+    return Math.max(1, Math.min(TIMELINE_MAX_ITEMS, Math.floor(w / TIMELINE_ITEM_MIN_PX)));
+}
+let TIMELINE_WINDOW = currentTimelineWindow();
 let activeIdx   = 0;
 let windowStart = 0;
 syncDerivedData();
@@ -226,7 +235,9 @@ function buildTimeline(){
     const slice = EDITIONS.slice(windowStart, end);
     t.innerHTML = slice.map((e, i) => {
         const winner = e.podium[0];
-        const label = e.race_handle || (e.year != null ? String(e.year) : "");
+        const label = IS_RECURRING
+            ? (e.year != null ? String(e.year) : "")
+            : (e.race_handle || (e.year != null ? String(e.year) : ""));
         if (!winner) return `<div class="tyear" data-i="${windowStart + i}">
             <div class="tyear-img" style="background:var(--border-color)"></div>
             <span class="tyear-name">-</span>
@@ -260,6 +271,16 @@ document.getElementById("tl-next").onclick = () => {
     windowStart = Math.min(EDITIONS.length - TIMELINE_WINDOW, windowStart + TIMELINE_WINDOW);
     buildTimeline();
 };
+
+window.addEventListener("resize", () => {
+    const next = currentTimelineWindow();
+    if (next === TIMELINE_WINDOW) return;
+    TIMELINE_WINDOW = next;
+    // Keep the active item visible inside the new window.
+    const maxStart = Math.max(0, EDITIONS.length - TIMELINE_WINDOW);
+    windowStart = Math.min(Math.max(0, activeIdx - Math.floor(TIMELINE_WINDOW / 2)), maxStart);
+    buildTimeline();
+});
 
 // ── Edition panel ──────────────────────────────────────────────────────
 function buildPanel(){
@@ -316,14 +337,15 @@ function buildPanel(){
         const tdCls = "w1-num"
             + (opts.transition ? " w1-num--t" : "")
             + (opts.total      ? " w1-num--total" : "");
-        if (info && info.empty)        return `<td class="${tdCls}"><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
-        if (!text)                     return `<td class="${tdCls}"><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
+        const lbl = opts.label ? ` data-label="${opts.label}"` : "";
+        if (info && info.empty)        return `<td class="${tdCls}"${lbl}><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
+        if (!text)                     return `<td class="${tdCls}"${lbl}><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
         const baseCls = opts.total ? "w1-cell w1-cell--total" : "w1-cell";
         if (info && info.fastest){
-            return `<td class="${tdCls}"><span class="${baseCls} is-field-fastest"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">fastest</span></span></td>`;
+            return `<td class="${tdCls}"${lbl}><span class="${baseCls} is-field-fastest"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">fastest</span></span></td>`;
         }
         const gap = info && info.gap ? `+${fmtSec(info.gap)}` : "&nbsp;";
-        return `<td class="${tdCls}"><span class="${baseCls}"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">${gap}</span></span></td>`;
+        return `<td class="${tdCls}"${lbl}><span class="${baseCls}"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">${gap}</span></span></td>`;
     }
 
     const rowsHtml = e.podium.map((p, i) => {
@@ -332,14 +354,14 @@ function buildPanel(){
         return `<tr class="${tier}-row">
             <td class="w1-pos"><span class="pos-circle ${tier}">${p.position}</span></td>
             <td class="w1-ath-cell"><a href="/athlete/${p.athlete_id}" class="w1-ath ${tier}-img">
-                <img src="${profileSrc(p.athlete_id, p.profile_img, 128)}" alt="${p.name}"><b>${p.name}</b> ${p.country_emoji}
+                <img src="${profileSrc(p.athlete_id, p.profile_img, 128)}" alt="${p.name}"><span class="w1-ath-name"><b>${p.name}</b> ${p.country_emoji}</span>
             </a></td>
-            ${cellHtml(p.swim_fmt, swimInfo[i])}
-            ${cellHtml(p.t1_fmt,   t1Info[i],   {transition:true})}
-            ${cellHtml(p.bike_fmt, bikeInfo[i])}
-            ${cellHtml(p.t2_fmt,   t2Info[i],   {transition:true})}
-            ${cellHtml(p.run_fmt,  runInfo[i])}
-            ${cellHtml(p.time_fmt, totalInfo, {total:true})}
+            ${cellHtml(p.swim_fmt, swimInfo[i],            {label:"Swim"})}
+            ${cellHtml(p.t1_fmt,   t1Info[i],   {transition:true, label:"T1"})}
+            ${cellHtml(p.bike_fmt, bikeInfo[i],            {label:"Bike"})}
+            ${cellHtml(p.t2_fmt,   t2Info[i],   {transition:true, label:"T2"})}
+            ${cellHtml(p.run_fmt,  runInfo[i],             {label:"Run"})}
+            ${cellHtml(p.time_fmt, totalInfo,        {total:true, label:"Total"})}
         </tr>`;
     }).join("");
 
@@ -358,7 +380,7 @@ function buildPanel(){
         stdsHtml = `<div class="ep-head-stds">` + order.map(([lbl, k]) => {
             const v = stds[k], c = stdClasses[k];
             if (v == null || c == null) return "";
-            return `<div class="ch-std">
+            return `<div class="ch-std" data-disc="${k}">
                 <span class="ch-std-d">${lbl}</span>
                 <span class="ch-std-v">${v}</span>
                 <span class="std-pill std-pill--${c}">${cap(c)}</span>
@@ -394,7 +416,7 @@ function buildPanel(){
                 <th class="num">Bike</th>
                 <th class="num w1-num--t">T2</th>
                 <th class="num">Run</th>
-                <th class="num w1-num--total">Total</th>
+                <th class="num w1-num--total"></th>
             </tr></thead>
             <tbody>${rowsHtml}</tbody>
         </table>`;

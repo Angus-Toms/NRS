@@ -11,14 +11,13 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
 <div class="page-hero">
     <div class="page-hero-inner">
         <h1>Series</h1>
-        <span class="page-hero-subtitle">Championships, Cups &amp; Circuits</span>
     </div>
 </div>
 {% endblock %}
@@ -39,9 +38,12 @@
 {# Podium column for the Latest pane: medal-coloured pos chip, photo,
    name link, and either the winning time (1st, bold) or gap (2nd/3rd,
    small + light). #}
-{% macro podium_col(label, podium) -%}
+{% macro podium_col(label, podium, race_id=None) -%}
 <div>
-    <div class="col-head">{{ label }}</div>
+    <div class="col-head col-head--race">
+        {% if race_id %}<a href="/race/{{ race_id }}" class="col-head-link">{{ label }}</a>
+        {%- else %}{{ label }}{% endif %}
+    </div>
     {% if podium %}
     <div class="podium-list">
         {% for p in podium %}
@@ -196,8 +198,8 @@
                     {% endif %}
                 </div>
                 <div class="gender-pair">
-                    {{ podium_col(ed.male_label   or "Men",   ed.male_podium) }}
-                    {{ podium_col(ed.female_label or "Women", ed.female_podium) }}
+                    {{ podium_col(ed.male_label   or "Men",   ed.male_podium,   ed.male_race_id) }}
+                    {{ podium_col(ed.female_label or "Women", ed.female_podium, ed.female_race_id) }}
                 </div>
                 {% else %}
                 <p class="pane-empty">No recent editions on file.</p>

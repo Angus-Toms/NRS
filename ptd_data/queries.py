@@ -2111,8 +2111,14 @@ def get_event_races_detail(event_id):
     race_ids = [r["race_id"] for r in races]
     ph = ",".join("?" * len(race_ids))
 
+    # Include split-time columns so the event page can render a wide
+    # podium-with-splits table (matching the series-page widget). Raw
+    # seconds are returned alongside formatted strings so the template +
+    # any JS can compute leg gaps without re-parsing.
     podium_rows = conn.execute(f"""
-        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s, a.profile_img
+        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji,
+               res.overall_s, res.swim_s, res.t1_s, res.bike_s, res.t2_s, res.run_s,
+               a.profile_img
         FROM results res
         JOIN athletes a ON res.athlete_id = a.athlete_id
         JOIN nationalities n ON a.country_full = n.country_full
@@ -2123,11 +2129,40 @@ def get_event_races_detail(event_id):
     """, race_ids).fetchall()
 
     podium_by_race = {}
-    for race_id, pos, athlete_id, name, emoji, overall_s, profile_img in podium_rows:
-        podium_by_race.setdefault(race_id, []).append(
-            {"position": pos, "athlete_id": athlete_id, "name": name,
-             "emoji": emoji, "overall_s": overall_s, "profile_img": profile_img}
-        )
+    for (race_id, pos, athlete_id, name, emoji,
+         overall_s, swim_s, t1_s, bike_s, t2_s, run_s, profile_img) in podium_rows:
+        podium_by_race.setdefault(race_id, []).append({
+            "position":   pos,
+            "athlete_id": athlete_id,
+            "name":       name,
+            "emoji":      emoji,
+            "overall_s":  overall_s,
+            "swim_s":     swim_s,
+            "t1_s":       t1_s,
+            "bike_s":     bike_s,
+            "t2_s":       t2_s,
+            "run_s":      run_s,
+            "profile_img": profile_img,
+        })
+
+    # Field-fastest per leg (whoever in the field had the quickest split,
+    # not just the podium). Drives the "fastest" tag + gap-to-fastest
+    # annotations on the wide podium table.
+    ff_rows = conn.execute(f"""
+        SELECT race_id,
+               MIN(NULLIF(swim_s, 0)) AS swim,
+               MIN(NULLIF(t1_s,   0)) AS t1,
+               MIN(NULLIF(bike_s, 0)) AS bike,
+               MIN(NULLIF(t2_s,   0)) AS t2,
+               MIN(NULLIF(run_s,  0)) AS run
+        FROM results
+        WHERE race_id IN ({ph}) AND status = 'Finished'
+        GROUP BY race_id
+    """, race_ids).fetchall()
+    field_fastest = {
+        r[0]: {"swim": r[1], "t1": r[2], "bike": r[3], "t2": r[4], "run": r[5]}
+        for r in ff_rows
+    }
 
     std_rows = conn.execute(f"""
         SELECT race_id, overall_std, swim_std, bike_std, run_std, transition_std
@@ -2143,11 +2178,35 @@ def get_event_races_detail(event_id):
         rid = race["race_id"]
         raw = podium_by_race.get(rid, [])
         winner_s = raw[0]["overall_s"] if raw else None
+        ff = field_fastest.get(rid, {})
+
+        def _leg(p, val_key, leg_key):
+            """Return {fmt, fastest, gap} for one leg of one podium athlete."""
+            v = p[val_key]
+            if not v or v <= 0:
+                return {"fmt": None, "fastest": False, "gap": None}
+            best = ff.get(leg_key)
+            if best and v == best:
+                return {"fmt": _fmt_time(v), "fastest": True, "gap": None}
+            gap = (v - best) if best else None
+            return {
+                "fmt":     _fmt_time(v),
+                "fastest": False,
+                "gap":     f"+{_fmt_time(gap)}" if gap else None,
+            }
+
         race["podium"] = [
-            {**p,
-             "time": _fmt_time(p["overall_s"]),
-             "gap": f"+{_fmt_time(p['overall_s'] - winner_s)}"
-                    if p["position"] != 1 and p["overall_s"] and winner_s else None}
+            {
+                **p,
+                "time": _fmt_time(p["overall_s"]),
+                "gap":  (f"+{_fmt_time(p['overall_s'] - winner_s)}"
+                         if p["position"] != 1 and p["overall_s"] and winner_s else None),
+                "swim": _leg(p, "swim_s", "swim"),
+                "t1":   _leg(p, "t1_s",   "t1"),
+                "bike": _leg(p, "bike_s", "bike"),
+                "t2":   _leg(p, "t2_s",   "t2"),
+                "run":  _leg(p, "run_s",  "run"),
+            }
             for p in raw
         ]
         race["standards_raw"] = std_by_race.get(rid)
@@ -3357,6 +3416,120 @@ def get_upcoming_events(country=None, course='short'):
     return list(events.values())
 
 
+def get_upcoming_rank_for_std(gender, course, disc, std_value):
+    """Rank an upcoming race's predicted std would have within race_rankings."""
+    if std_value is None:
+        return None
+    conn = _get_conn()
+    col = f"{disc}_std"
+    row = conn.execute(
+        f"SELECT COUNT(*) FROM race_rankings WHERE gender = ? AND course = ? AND {col} IS NOT NULL AND {col} > ?",
+        [gender, course, std_value],
+    ).fetchone()
+    return (row[0] or 0) + 1
+
+
+def get_upcoming_race_leaderboard(gender, course, country=None):
+    """Upcoming races as race-leaderboard rows with predicted standards.
+
+    Same shape as get_race_leaderboard rows (sans winner / stored ranks) so the
+    route can merge the two lists. Short-course-only — upcoming standards are
+    computed from short-course ratings.
+    """
+    if course != 'short':
+        return []
+
+    conn = _get_conn()
+    course_in = _course_in(course)
+    country_sql, country_params = ("AND e.country = ?", [country]) if country and country != 'all' else ("", [])
+
+    # All upcoming races (gender, optional country) with event meta. Standards
+    # are computed in a second pass so the SQL stays readable.
+    race_rows = conn.execute(f"""
+        SELECT ur.race_id, ur.race_title, ur.prog_name, ur.race_date,
+               e.venue, e.country, n.emoji AS event_country_emoji
+        FROM upcoming_races ur
+        JOIN events e ON ur.event_id = e.event_id
+        LEFT JOIN nationalities n ON e.country = n.country_full
+        WHERE ur.gender = ?
+        {country_sql}
+        ORDER BY ur.race_date ASC, ur.race_id ASC
+    """, [gender] + country_params).fetchall()
+
+    if not race_rows:
+        return []
+
+    race_ids = [r[0] for r in race_rows]
+    ph = ",".join("?" * len(race_ids))
+
+    # Bulk computation of per-race weighted standards across the start lists.
+    # Mirrors get_upcoming_race_standards's formula but grouped by race_id.
+    std_rows = conn.execute(f"""
+        WITH ranked AS (
+            SELECT
+                sle.race_id,
+                ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.overall    DESC) AS overall_pos,
+                ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.swim       DESC) AS swim_pos,
+                ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.bike       DESC) AS bike_pos,
+                ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.run        DESC) AS run_pos,
+                ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.transition DESC) AS transition_pos
+            FROM start_list_entries sle
+            JOIN (
+                SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
+                FROM ratings ra2
+                JOIN races r2 ON ra2.race_id = r2.race_id
+                WHERE r2.distance IN {course_in}
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY ra2.athlete_id ORDER BY r2.race_date DESC, ra2.race_id DESC
+                ) = 1
+            ) ra ON ra.athlete_id = sle.athlete_id
+            WHERE sle.race_id IN ({ph})
+        )
+        SELECT
+            race_id,
+            COUNT(*) AS n,
+            SUM(overall    * CASE WHEN overall_pos    <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos    - 1)) ELSE 0 END),
+            SUM(swim       * CASE WHEN swim_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos       - 1)) ELSE 0 END),
+            SUM(bike       * CASE WHEN bike_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos       - 1)) ELSE 0 END),
+            SUM(run        * CASE WHEN run_pos        <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos        - 1)) ELSE 0 END),
+            SUM(transition * CASE WHEN transition_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (transition_pos - 1)) ELSE 0 END)
+        FROM ranked
+        GROUP BY race_id
+    """, race_ids).fetchall()
+
+    stds_by_race = {}
+    for race_id, n, ov, sw, bk, rn_, tr in std_rows:
+        denom = standard_denom(n) if n else None
+        stds_by_race[race_id] = {
+            "overall_std":    (ov or 0.0) / denom if denom else None,
+            "swim_std":       (sw or 0.0) / denom if denom else None,
+            "bike_std":       (bk or 0.0) / denom if denom else None,
+            "run_std":        (rn_ or 0.0) / denom if denom else None,
+            "transition_std": (tr or 0.0) / denom if denom else None,
+        }
+
+    race_cols = ["race_id", "race_title", "prog_name", "race_date",
+                 "venue", "country", "event_country_emoji"]
+    out = []
+    for r in race_rows:
+        rec = dict(zip(race_cols, r))
+        stds = stds_by_race.get(rec["race_id"], {})
+        rec.update(stds)
+        # Match get_race_leaderboard shape: no winner, no stored ranks
+        rec["winner_id"] = None
+        rec["winner_name"] = None
+        rec["winner_country_emoji"] = None
+        rec["overall_rank"] = None
+        rec["swim_rank"] = None
+        rec["bike_rank"] = None
+        rec["run_rank"] = None
+        rec["transition_rank"] = None
+        rec["is_upcoming"] = True
+        out.append(rec)
+    return out
+
+
 def get_upcoming_races_by_event(event_id):
     """All upcoming races for an event, ordered female-first within race_id (matches event-page ordering)."""
     conn = _get_conn()
@@ -3392,14 +3565,17 @@ def get_upcoming_event_races_detail(event_id, course='short'):
     race_ids = [r["race_id"] for r in races]
     ph = ",".join("?" * len(race_ids))
 
-    # Top 3 athletes per race by current overall rating
+    # Top 3 athletes per race by current overall rating. Pull per-leg
+    # ratings too so the predicted-podium can break the projected total
+    # into swim / bike / run splits.
     top3_rows = conn.execute(f"""
-        SELECT sle.race_id, a.athlete_id, a.name, n.emoji, a.profile_img, ra.overall
+        SELECT sle.race_id, a.athlete_id, a.name, n.emoji, a.profile_img,
+               ra.overall, ra.swim, ra.bike, ra.run, ra.transition
         FROM start_list_entries sle
         JOIN athletes a ON sle.athlete_id = a.athlete_id
         JOIN nationalities n ON a.country_full = n.country_full
         JOIN (
-            SELECT ra2.athlete_id, ra2.overall
+            SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
             FROM ratings ra2
             JOIN races r2 ON ra2.race_id = r2.race_id
             WHERE r2.distance IN {course_in}
@@ -3415,11 +3591,19 @@ def get_upcoming_event_races_detail(event_id, course='short'):
     """, race_ids).fetchall()
 
     top3_by_race = {}
-    for race_id, athlete_id, name, emoji, profile_img, overall in top3_rows:
-        top3_by_race.setdefault(race_id, []).append(
-            {"athlete_id": athlete_id, "name": name, "emoji": emoji,
-             "profile_img": profile_img, "overall_rating": overall}
-        )
+    for (race_id, athlete_id, name, emoji, profile_img,
+         overall, swim, bike, run, transition) in top3_rows:
+        top3_by_race.setdefault(race_id, []).append({
+            "athlete_id":        athlete_id,
+            "name":              name,
+            "emoji":             emoji,
+            "profile_img":       profile_img,
+            "overall_rating":    overall,
+            "swim_rating":       swim,
+            "bike_rating":       bike,
+            "run_rating":        run,
+            "transition_rating": transition,
+        })
 
     # Field average ratings for standards
     std_rows = conn.execute(f"""
@@ -3550,13 +3734,18 @@ def get_series_index_highlights(series_ids):
     """, params).fetchall()
     primary_prog = {(sid, g): (sub, pn) for sid, g, sub, pn in primary_rows}
 
-    def _label(sid, gender):
+    def _label(sid, gender, course=None):
         sub_pn = primary_prog.get((sid, gender))
         if not sub_pn:
             return "Men" if gender == "male" else "Women"
         sub, pn = sub_pn
+        # Pro long-course programs ("Pro Men" / "Pro Women") render as
+        # MPRO/WPRO regardless of how they're filed (Ironman pros sit
+        # under sub_category='ag' in our data).
+        if pn in ("Pro Men", "Pro Women") or course == "long":
+            return "MPRO" if gender == "male" else "WPRO"
         if sub == "elite":
-            return "Men" if gender == "male" else "Women"
+            return "Elite Men" if gender == "male" else "Elite Women"
         # AG: derive band + sprint suffix from prog_name e.g. "30-34 Male AG Sprint"
         parts = (pn or "").split()
         band = parts[0] if parts else ""
@@ -3631,33 +3820,39 @@ def get_series_index_highlights(series_ids):
     if all_event_ids:
         eph = ','.join(['?'] * len(all_event_ids))
         race_rows = conn.execute(f"""
-            SELECT event_id, gender, sub_category, prog_name, race_id, is_multi_stage
+            SELECT event_id, gender, sub_category, prog_name, race_id, is_multi_stage, distance
             FROM races
             WHERE event_id IN ({eph})
               AND sub_category IN ('elite','ag')
               AND gender IN ('male','female')
         """, all_event_ids).fetchall()
         # Total race count per event (across both genders, both sub-categories)
-        for event_id, _g, _s, _pn, _rid, _ms in race_rows:
+        for event_id, _g, _s, _pn, _rid, _ms, _d in race_rows:
             race_count_by_event[event_id] = race_count_by_event.get(event_id, 0) + 1
 
-    # Index races as {(event_id, gender, sub_category, prog_name): (race_id, is_multi_stage)}
-    races_idx = {(e, g, s, pn): (rid, ms) for e, g, s, pn, rid, ms in race_rows}
+    # Index races as {(event_id, gender, sub_category, prog_name): (race_id, is_multi_stage, distance)}
+    races_idx = {(e, g, s, pn): (rid, ms, d) for e, g, s, pn, rid, ms, d in race_rows}
 
     for sid, eds in editions_by_series.items():
         for info in eds:
             info["race_count"]     = race_count_by_event.get(info["event_id"], 0)
-            info["male_label"]     = _label(sid, "male")
-            info["female_label"]   = _label(sid, "female")
-            for gender, key in (("male", "male_race_id"), ("female", "female_race_id")):
+            male_course, female_course = None, None
+            for gender, rid_key in (("male", "male_race_id"), ("female", "female_race_id")):
                 primary = primary_prog.get((sid, gender))
                 if not primary:
                     continue
                 sub, pn = primary
                 hit = races_idx.get((info["event_id"], gender, sub, pn))
                 if hit:
-                    info[key] = hit[0]
+                    info[rid_key] = hit[0]
                     info["is_multi_stage"] = info["is_multi_stage"] or bool(hit[1])
+                    course = course_for_distance(hit[2])
+                    if gender == "male":
+                        male_course = course
+                    else:
+                        female_course = course
+            info["male_label"]   = _label(sid, "male",   male_course)
+            info["female_label"] = _label(sid, "female", female_course)
 
     # Podiums for all those races
     all_race_ids = [
@@ -4046,12 +4241,19 @@ def _scope_clauses(*, series_id=None, recurring_id=None):
 def get_series_for_race(race_id):
     """Return series dict {series_id, name, slug} for this race, or None.
 
-    Picks the lowest sort_order (primary series) if the event belongs to multiple.
+    Picks the lowest sort_order (primary series) if the event belongs to
+    multiple. Looks up via either `races` or `upcoming_races` so the
+    breadcrumb on an upcoming race resolves the same way as a finished one.
     """
     conn = _get_conn()
     row = conn.execute("""
+        WITH r AS (
+            SELECT race_id, event_id FROM races
+            UNION ALL
+            SELECT race_id, event_id FROM upcoming_races
+        )
         SELECT s.series_id, s.name, s.slug
-        FROM races r
+        FROM r
         JOIN event_series es ON es.event_id = r.event_id
         JOIN series s        ON s.series_id = es.series_id
         WHERE r.race_id = ?
@@ -4145,6 +4347,31 @@ def _collapse_program_rows(rows):
     return out
 
 
+def get_all_recurring_events(min_editions=2):
+    """All recurring events with edition count and date range.
+
+    Used by the global search modal. Filters to groups with at least
+    `min_editions` editions so noise from one-off renames is excluded.
+    """
+    rows = _get_conn().execute("""
+        SELECT re.slug, re.name,
+               COUNT(DISTINCT e.event_id) AS edition_count,
+               MIN(e.start_date) AS first_date,
+               MAX(e.start_date) AS last_date
+        FROM recurring_events re
+        JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
+        JOIN events e           ON e.event_id = er.event_id
+        GROUP BY re.recurring_event_id, re.slug, re.name
+        HAVING edition_count >= ?
+        ORDER BY edition_count DESC, last_date DESC
+    """, [min_editions]).fetchall()
+    return [{
+        "slug": r[0], "name": r[1], "edition_count": r[2],
+        "first_year": r[3].year if r[3] else None,
+        "last_year":  r[4].year if r[4] else None,
+    } for r in rows]
+
+
 def get_recurring_groups_for_series(series_id, program=None):
     """Venue groupings within a series: one row per recurring_event with edition count + year range."""
     prog_sql, prog_params = _program_filter(program)
@@ -4205,6 +4432,45 @@ def get_other_editions_for_event(event_id, program=None):
     """, [event_id] + prog_params).fetchall()
     cols = ["race_id", "race_date", "race_handle", "prog_name", "gender",
             "event_id", "event_name", "venue", "country"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def get_year_options_for_recurring(recurring_event_id, gender, sub_category):
+    """One row per year of the recurring event for the breadcrumb dropdown.
+
+    Picks the race in each year matching (sub_category, gender). Falls back
+    to the same sub_category in the other gender when an exact match doesn't
+    exist (mirrors get_other_editions_for_event behaviour for venues like
+    Ironman Worlds that alternate gender).
+    """
+    rows = _get_conn().execute("""
+        WITH year_race AS (
+            SELECT
+                EXTRACT(YEAR FROM r.race_date)::int AS year,
+                r.race_id, r.race_handle, r.race_date,
+                r.gender, r.sub_category,
+                ROW_NUMBER() OVER (
+                    PARTITION BY EXTRACT(YEAR FROM r.race_date)
+                    ORDER BY (CASE WHEN r.gender = ? THEN 0 ELSE 1 END), r.race_date DESC
+                ) AS rn
+            FROM event_recurring er
+            JOIN races r ON r.event_id = er.event_id
+            WHERE er.recurring_event_id = ?
+              AND r.sub_category = ?
+              AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+        )
+        SELECT yr.year, yr.race_id, yr.race_handle, yr.race_date, yr.gender,
+               a.name AS winner_name, n.emoji AS winner_emoji, res.overall_s
+        FROM year_race yr
+        LEFT JOIN results res
+               ON res.race_id = yr.race_id AND res.position = 1 AND res.status = 'Finished'
+        LEFT JOIN athletes a       ON a.athlete_id = res.athlete_id
+        LEFT JOIN nationalities n  ON n.country_full = a.country_full
+        WHERE yr.rn = 1
+        ORDER BY yr.year DESC
+    """, [gender, recurring_event_id, sub_category]).fetchall()
+    cols = ["year", "race_id", "race_handle", "race_date", "gender",
+            "winner_name", "winner_emoji", "overall_s"]
     return [dict(zip(cols, r)) for r in rows]
 
 

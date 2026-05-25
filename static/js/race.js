@@ -404,3 +404,54 @@ function initRaceSplitsToggle() {
     });
 }
 
+// Year-picker dropdown in the race hero breadcrumb. Event delegation so
+// it survives the partial swap done by switchRace().
+document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.race-year-trigger');
+    if (trigger) {
+        const picker = trigger.closest('.race-year-picker');
+        document.querySelectorAll('.race-year-picker.open').forEach(p => {
+            if (p !== picker) p.classList.remove('open');
+        });
+        picker.classList.toggle('open');
+        return;
+    }
+    document.querySelectorAll('.race-year-picker.open').forEach(p => {
+        if (!p.contains(e.target)) p.classList.remove('open');
+    });
+});
+
+// Live countdown for upcoming-race hero. Each `.race-countdown[data-race-date]`
+// ticks once per second to show d/h/m/s until the race date. When the delta
+// hits zero we swap in a fixed "race is today" message until the page is
+// reloaded. ISO date (no time) is assumed to refer to the start of the day
+// in the venue's local time — we display the user's local interpretation,
+// which is close enough for at-a-glance context.
+function _tickCountdown(el) {
+    const iso = el.dataset.raceDate;
+    if (!iso) return;
+    const target = new Date(iso + 'T00:00:00').getTime();
+    const now = Date.now();
+    const diff = target - now;
+    if (diff <= 0) {
+        el.textContent = "Race is today - results will be posted as soon as they're available.";
+        el.dataset.done = '1';
+        return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    // Sub-day: drop the days segment.
+    el.textContent = d > 0
+        ? `${d}d ${h}h ${m}m ${s}s until race`
+        : `${h}h ${m}m ${s}s until race`;
+}
+function _initCountdowns() {
+    const els = document.querySelectorAll('.race-countdown[data-race-date]:not([data-done])');
+    if (!els.length) return;
+    els.forEach(_tickCountdown);
+}
+_initCountdowns();
+setInterval(_initCountdowns, 1000);
+

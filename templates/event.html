@@ -18,7 +18,8 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/event.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
@@ -43,74 +44,126 @@
 </div>
 {% endblock %}
 
+{# Single split cell — mirrors the JS-rendered series-page cellHtml(). #}
+{% macro cell(leg, label, transition=False, total=False) %}
+{%- set tdcls = 'w1-num' ~ (' w1-num--t' if transition else '') ~ (' w1-num--total' if total else '') -%}
+{%- set base = 'w1-cell w1-cell--total' if total else 'w1-cell' -%}
+<td class="{{ tdcls }}" data-label="{{ label }}">
+    {%- if leg and leg.fmt -%}
+    {%- if leg.fastest -%}
+    <span class="{{ base }} is-field-fastest"><span class="w1-cell-val">{{ leg.fmt }}</span><span class="w1-cell-gap">fastest</span></span>
+    {%- else -%}
+    <span class="{{ base }}"><span class="w1-cell-val">{{ leg.fmt }}</span><span class="w1-cell-gap">{{ leg.gap if leg.gap else '&nbsp;' | safe }}</span></span>
+    {%- endif -%}
+    {%- else -%}
+    <span class="{{ base }}"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span>
+    {%- endif -%}
+</td>
+{% endmacro %}
+
 {% macro race_card(race) %}
-<div class="event-race-card">
-    <a href="/race/{{ race.race_id }}" class="event-race-card-overlay" aria-hidden="true" tabindex="-1"></a>
-    <div class="event-race-card-header">
-        <span class="event-race-prog">{{ race.prog_name }}</span>
-        <span class="event-race-date">{{ race.race_date.strftime('%d %B %Y') }}</span>
-    </div>
-    <div class="event-race-card-body">
-        <!-- Podium - left panel -->
-        <div class="event-race-podium event-race-podium--bordered">
-            {% if is_upcoming and race.podium %}
-            <div class="event-podium-label">Predicted Podium</div>
-            {% endif %}
-            {% for p in race.podium %}
-            <div class="event-podium-row">
-                <div class="event-podium-left">
-                    <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
-                    <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-podium-img">
-                    <a href="/athlete/{{ p.athlete_id }}" class="event-podium-name">{{ p.name }} {{ p.emoji }}</a>
-                </div>
-                <div class="event-podium-right">
-                    {% if p.position == 1 and p.time %}
-                        <span class="event-podium-time event-podium-time--winner">{{ p.time }}</span>
-                    {% elif p.gap %}
-                        <span class="event-podium-gap">{{ p.gap }}</span>
-                    {% elif p.time %}
-                        <span class="event-podium-time">{{ p.time }}</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
+<div class="edition-panel event-race-panel">
+    <div class="ep-head">
+        <div class="ep-head-l">
+            <span class="ep-kicker">{{ race.race_date.strftime('%d %B %Y') }}</span>
+            <a href="/race/{{ race.race_id }}" class="ep-title">{{ race.prog_name }}</a>
         </div>
-        <!-- Standards - right panel -->
         {% if race.standards %}
-        <div class="event-race-standards">
+        <div class="ep-head-stds">
             {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
-            <div class="event-std-col">
-                <div class="event-std-disc">{{ label }}</div>
-                <div class="event-std-val">{{ race.standards[disc] if race.standards[disc] else '-' }}</div>
-                {% if race.standards[disc] %}
+            {% if race.standards[disc] %}
+            <div class="ch-std" data-disc="{{ disc }}">
+                <span class="ch-std-d">{{ label }}</span>
+                <span class="ch-std-v">{{ race.standards[disc] }}</span>
                 <span class="std-pill std-pill--{{ race.standard_classes[disc] }}">{{ race.standard_classes[disc]|title }}</span>
-                {% else %}
-                <span class="event-std-na">-</span>
-                {% endif %}
             </div>
+            {% endif %}
             {% endfor %}
         </div>
         {% endif %}
     </div>
+    {% if race.podium %}
+    <table class="w1-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Athlete</th>
+                <th class="num">Swim</th>
+                <th class="num w1-num--t">T1</th>
+                <th class="num">Bike</th>
+                <th class="num w1-num--t">T2</th>
+                <th class="num">Run</th>
+                <th class="num w1-num--total">{{ 'Predicted' if is_upcoming else 'Total' }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in race.podium %}
+            {% set tier = 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' %}
+            <tr class="{{ tier }}-row">
+                <td class="w1-pos"><span class="pos-circle {{ tier }}">{{ p.position }}</span></td>
+                <td class="w1-ath-cell">
+                    <a href="/athlete/{{ p.athlete_id }}" class="w1-ath {{ tier }}-img">
+                        <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}">
+                        <span class="w1-ath-name"><b>{{ p.name }}</b> {{ p.emoji }}</span>
+                    </a>
+                </td>
+                {{ cell(p.swim, 'Swim') }}
+                {{ cell(p.t1,   'T1', transition=True) }}
+                {{ cell(p.bike, 'Bike') }}
+                {{ cell(p.t2,   'T2', transition=True) }}
+                {{ cell(p.run,  'Run') }}
+                {# Total cell: format depends on past vs upcoming. Past races
+                   show the actual time + gap-to-winner; upcoming races show
+                   the predicted time (no gap, no field-fastest concept). #}
+                <td class="w1-num w1-num--total" data-label="{{ 'Predicted' if is_upcoming else 'Total' }}">
+                    {% if p.time %}
+                    <span class="w1-cell w1-cell--total">
+                        <span class="w1-cell-val">{{ p.time }}</span>
+                        <span class="w1-cell-gap">{{ p.gap if p.gap else '&nbsp;' | safe }}</span>
+                    </span>
+                    {% else %}
+                    <span class="w1-cell w1-cell--total"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="ep-empty">No results yet.</div>
+    {% endif %}
 </div>
 {% endmacro %}
 
 {% block content %}
 {% if course_conditions %}
 <div class="page-section-head">Course Conditions</div>
-<p class="page-section-sub" style="margin-bottom:1rem">Average difference between predicted and actual finish times. Negative (fast) times imply a fast course or conditions while positive (slow) times indicate a slow or long course and conditions.</p>
-<div class="race-stat-section">
-    <div class="race-stat-cards race-stat-cards--4">
-        {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run')] %}
-        {% set cond = course_conditions.get(disc) %}
-        {% if cond %}
-        <div class="race-stat-card">
-            <div class="race-stat-disc">{{ label }}</div>
-            <div class="race-stat-num">{{ cond.formatted }}</div>
-            <span class="cond-pill cond-pill--{{ cond.category }}">{{ cond.category.replace('_', ' ').title() }}</span>
-        </div>
-        {% endif %}
-        {% endfor %}
+<p class="page-section-sub" style="margin-bottom:0.75rem">Average difference between predicted and actual finish times. Negative (fast) times imply a fast course or conditions; positive (slow) times indicate a slow or long course.</p>
+<div class="ratings-section">
+    <div class="ratings-table-scroll">
+        <table class="ratings-table event-cond-table">
+            <thead>
+                <tr>
+                    <th class="rt-disc">Discipline</th>
+                    <th class="rt-rating">Avg vs Prediction</th>
+                    <th class="rt-tier">Conditions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for disc, label in [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run')] %}
+                {% set cond = course_conditions.get(disc) %}
+                {% if cond %}
+                <tr class="rt-row rt-row--{{ disc }}">
+                    <td class="rt-disc"><span class="rt-disc-name">{{ label }}</span></td>
+                    <td class="rt-rating">{{ cond.formatted }}</td>
+                    <td class="rt-tier">
+                        <span class="cond-pill cond-pill--{{ cond.category }}">{{ cond.category.replace('_', ' ').title() }}</span>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endif %}

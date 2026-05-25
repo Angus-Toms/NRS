@@ -20,26 +20,25 @@ function initLoadMore() {
     });
 }
 
-function initAdvancedFilters() {
-    const btn     = document.getElementById("toggleAdvanced");
-    const section = document.getElementById("advancedFilters");
-    if (!btn || !section) return;
-
-    // Auto-expand only if a non-default advanced filter was actually submitted (check URL params)
-    const params = new URLSearchParams(window.location.search);
-    const hasActive =
-        (params.get("country") ?? "all") !== "all" ||
-        parseInt(params.get("yob_start") ?? "1930") !== 1930 ||
-        parseInt(params.get("yob_end")   ?? "2010") !== 2010;
-
-    if (hasActive) {
-        section.classList.add("open");
-        btn.classList.add("open");
-    }
-
+function initFilterPanelToggle() {
+    const btn   = document.getElementById("filterToggle");
+    const panel = document.getElementById("filterPanel");
+    if (!btn || !panel) return;
     btn.addEventListener("click", () => {
-        const isOpen = section.classList.toggle("open");
-        btn.classList.toggle("open", isOpen);
+        const open = panel.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open);
+    });
+}
+
+// Auto-submit the filter form whenever any chip/select/toggle changes. The
+// active-only checkbox is the visible UI; the hidden input next to it holds
+// the form value and is updated separately by initActiveOnlyToggle().
+function initFilterAutoSubmit() {
+    const form = document.getElementById("filtersForm");
+    if (!form) return;
+    form.addEventListener("change", e => {
+        if (e.target.id === "active-only-cb") return; // bubble waits for hidden input update
+        form.submit();
     });
 }
 
@@ -62,6 +61,8 @@ function initAgePresets() {
             yobEnd.value   = 2010;
             document.querySelectorAll(".btn-age-preset").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
+            const form = document.getElementById("filtersForm");
+            if (form) form.submit();
         });
     });
 
@@ -77,15 +78,18 @@ function initActiveOnlyToggle() {
     const cb     = document.getElementById("active-only-cb");
     const hidden = document.getElementById("active-only-input");
     const text   = document.getElementById("active-only-text");
+    const form   = document.getElementById("filtersForm");
     if (!cb || !hidden || !text) return;
 
     cb.addEventListener("change", () => {
         hidden.value     = cb.checked ? "true" : "false";
         text.textContent = cb.checked ? "On" : "Off";
+        if (form) form.submit();
     });
 }
 
 initLoadMore();
-initAdvancedFilters();
+initFilterPanelToggle();
+initFilterAutoSubmit();
 initAgePresets();
 initActiveOnlyToggle();

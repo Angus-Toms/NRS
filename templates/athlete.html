@@ -21,7 +21,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/athlete.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
@@ -110,7 +110,7 @@
                 {% endfor %}
             </div>
             {% endif %}
-            <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em"><polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/></svg>Compare</a>
+            <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Compare</a>
         </div>
 
     </div>
@@ -156,90 +156,80 @@
 {% endif %}
 
 {% if has_ratings %}
-{# Ratings: editorial table with column headers. Active athletes see a 1y
-   Change column (number + sparkline); retired/no-rank athletes get fewer
-   columns. On <=768 each row keeps Rating + Rank visible and collapses
-   Peak / Best Race behind a per-row chevron. #}
+{# Ratings: radar visual on the left, full data table on the right (and
+   below at narrow widths). Active athletes get a 1y change column with a
+   sparkline; retired athletes show their peak world rank in that column.
+   Table is horizontally scrollable inside its own container so no column
+   is hidden on small screens. #}
 {% set ag_prefix = 'AG ' if category == 'ag' else '' %}
 {% set has_change_col = current_rankings and rating_changes_1yr %}
 {% set has_rank_col   = current_rankings or peak_rankings %}
-{% set rank_col_label = ('Peak ' if not current_rankings and peak_rankings else '') ~ ag_prefix ~ 'World Rank' %}
-{% set _flags = ('-change' if has_change_col else '') ~ ('-rank' if has_rank_col else '') %}
+{% set rank_col_label = ('Peak ' if not current_rankings and peak_rankings else '') ~ ag_prefix ~ 'World' %}
 
 <div class="page-section-head"><span>Ratings</span></div>
 
-<div class="disc-table disc-table{{ _flags }}">
-    <div class="disc-head">
-        <span class="disc-th"></span>{# name col, no header #}
-        <span class="disc-th disc-th--rating">Rating</span>
-        {% if has_change_col %}<span class="disc-th disc-th--change">1y Change</span>{% endif %}
-        {% if has_rank_col   %}<span class="disc-th disc-th--rank">{{ rank_col_label }}</span>{% endif %}
-        <span class="disc-th disc-th--peak">Peak Rating</span>
-        <span class="disc-th disc-th--best">Best Race</span>
-        <span class="disc-th"></span>{# toggle col, mobile #}
+<div class="ratings-section">
+    <div class="ratings-table-scroll">
+        <table class="ratings-table">
+            <thead>
+                <tr>
+                    <th class="rt-disc">Discipline</th>
+                    <th class="rt-rating">Rating</th>
+                    {% if has_rank_col %}
+                    <th class="rt-rank">{{ rank_col_label }}</th>
+                    <th class="rt-rank">{{ 'National' if current_rankings else '' }}</th>
+                    {% endif %}
+                    <th class="rt-peak">Peak Rating</th>
+                    <th class="rt-best">Best Race</th>
+                    {% if has_change_col %}<th class="rt-change">1y Change</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for disc, label in discs %}
+                <tr class="rt-row rt-row--{{ disc }}">
+                    <td class="rt-disc"><span class="rt-disc-name">{{ label }}</span></td>
+                    <td class="rt-rating">{{ current_ratings[disc~'_rating'] }}</td>
+                    {% if has_rank_col %}
+                    <td class="rt-rank">
+                        {% if current_rankings and current_rankings['world_'~disc] %}
+                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">{{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup></a>
+                        {% elif peak_rankings and peak_rankings['world_'~disc] %}
+                        {{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup>
+                        {% else %}<span class="no-data">-</span>{% endif %}
+                    </td>
+                    <td class="rt-rank">
+                        {% if current_rankings and current_rankings['national_'~disc] %}
+                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link">{{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup></a>
+                        {% else %}<span class="no-data">-</span>{% endif %}
+                    </td>
+                    {% endif %}
+                    <td class="rt-peak">
+                        <span class="rt-peak-main">{{ rating_peaks['max_'~disc] }}</span>
+                        <a href="/race/{{ athlete['max_'~disc~'_race_id'] }}" class="rt-peak-sub">{{ rating_peaks['max_'~disc~'_race'] }}</a>
+                    </td>
+                    <td class="rt-best">
+                        {% if athlete[disc~'_increase_race_id'] != 0 %}
+                        <a href="/race/{{ athlete[disc~'_increase_race_id'] }}" class="rt-best-race">{{ best_performances[disc~'_race'] }}</a>
+                        <span class="rt-best-change {{ best_performances[disc~'_change'].css_class }}">{{ best_performances[disc~'_change'].formatted_str | safe }}</span>
+                        {% else %}<span class="no-data">-</span>{% endif %}
+                    </td>
+                    {% if has_change_col %}
+                    <td class="rt-change">
+                        {% if rating_changes_1yr[disc~'_change_1yr'].formatted_str %}
+                        <span class="rt-change-num {{ rating_changes_1yr[disc~'_change_1yr'].css_class }}">{{ rating_changes_1yr[disc~'_change_1yr'].formatted_str | safe }}</span>
+                        {% endif %}
+                        {% if sparklines[disc] %}
+                        <svg class="rt-spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+                            <polyline points="{{ sparklines[disc] }}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-
-    {% for disc, label in discs %}
-    <div class="disc-row disc-row--{{ disc }}">
-        <span class="disc-name">{{ label }}</span>
-
-        <span class="disc-rating-num">{{ current_ratings[disc~'_rating'] }}</span>
-
-        {% if has_change_col %}
-        <div class="disc-change">
-            {% if rating_changes_1yr[disc~'_change_1yr'].formatted_str %}
-            <span class="disc-rating-change {{ rating_changes_1yr[disc~'_change_1yr'].css_class }}">
-                {{ rating_changes_1yr[disc~'_change_1yr'].formatted_str | safe }}
-            </span>
-            {% endif %}
-            {% if sparklines[disc] %}
-            <svg class="disc-spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
-                <polyline points="{{ sparklines[disc] }}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if has_rank_col %}
-        <div class="disc-rank">
-            {% if current_rankings and current_rankings['world_'~disc] %}
-            <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">
-                {{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup>
-            </a>
-            {% if current_rankings['national_'~disc] %}
-            <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link disc-cell-sub">
-                {{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup> national
-            </a>
-            {% endif %}
-            {% elif peak_rankings and peak_rankings['world_'~disc] %}
-            {{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup>
-            {% else %}<span class="no-data">-</span>{% endif %}
-        </div>
-        {% endif %}
-
-        <div class="disc-peak">
-            <span class="disc-cell-value">{{ rating_peaks['max_'~disc] }}</span>
-            <a href="/race/{{ athlete['max_'~disc~'_race_id'] }}" class="disc-cell-sub">{{ rating_peaks['max_'~disc~'_race'] }}</a>
-        </div>
-
-        <div class="disc-best">
-            {% if athlete[disc~'_increase_race_id'] != 0 %}
-            <a href="/race/{{ athlete[disc~'_increase_race_id'] }}" class="disc-cell-value disc-best-race">{{ best_performances[disc~'_race'] }}</a>
-            <span class="disc-cell-sub disc-best-badge {{ best_performances[disc~'_change'].css_class }}">
-                {{ best_performances[disc~'_change'].formatted_str | safe }}
-            </span>
-            {% else %}
-            <span class="disc-cell-value no-data">-</span>
-            {% endif %}
-        </div>
-
-        <button type="button" class="disc-toggle" aria-expanded="false" aria-label="Show {{ label }} details">
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M5 3l6 5-6 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </button>
-    </div>
-    {% endfor %}
 </div>
 {% endif %}{# has_ratings #}
 
@@ -327,8 +317,8 @@
         <a class="rival-compare"
            href="/athlete-compare?a1={{ athlete.athlete_id }}&a2={{ r.athlete_id }}&program={{ category }}-{{ course }}"
            aria-label="Compare with {{ r.name }}" title="Compare">
-            <svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>
             </svg>
         </a>
     </div>
@@ -634,6 +624,6 @@
 
 {% block extra_js %}
 <!-- Load JS (always needed for table sorting) -->
-<script src="{{ STATIC_BASE_URL }}js/utils.js"></script>
-<script src="{{ STATIC_BASE_URL }}js/athlete.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
+<script src="{{ STATIC_BASE_URL }}js/athlete.js?v={{ ASSET_VERSION }}"></script>
 {% endblock %}

@@ -348,16 +348,14 @@ html, body {
 
 .header-container {
     width: 100%;
-    box-sizing: border-box;   /* no global * { box-sizing }, so padding would otherwise add to the 100% and overflow */
+    box-sizing: border-box;
     margin: 0 auto;
     padding: 0 var(--spacing-xl);
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
+    gap: var(--spacing-md, 1rem);
     height: 52px;
-    /* No justify-content; logo is the first flex item (flush left), and the
-       right-hand item (.main-nav on desktop, .nav-toggle on mobile) uses
-       margin-left: auto to push itself flush right. */
 }
 
 .logo {
@@ -386,28 +384,124 @@ html, body {
 .main-nav {
     display: flex;
     flex-wrap: nowrap;
+    align-items: center;
     gap: 1.75rem;
     margin-left: auto;
 }
 
 .nav-link {
+    display: inline-flex;
+    align-items: center;
     text-decoration: none;
-    color: rgba(255,255,255,0.55);
+    color: rgba(255,255,255,0.6);
     font-weight: 500;
     font-size: 0.8rem;
     letter-spacing: 0.08em;
-    padding-bottom: 2px;
-    border-bottom: 2px solid transparent;
-    transition: color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.nav-link:hover {
-    color: rgba(255,255,255,0.85);
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--border-radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .nav-link.active {
     color: #fff;
-    border-bottom-color: var(--primary-color);
+    background: rgba(232,93,4,0.18);
+}
+
+.nav-link:hover {
+    color: #fff;
+    background: var(--primary-color);
+}
+
+/* ---- Dropdowns ---- */
+.nav-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.nav-dropdown.active > .nav-dropdown-toggle {
+    color: #fff;
+    background: rgba(232,93,4,0.18);
+}
+.nav-dropdown:hover > .nav-dropdown-toggle,
+.nav-dropdown.open > .nav-dropdown-toggle {
+    color: #fff;
+    background: var(--primary-color);
+}
+
+.nav-dropdown-menu {
+    position: absolute;
+    top: 100%;            /* flush with toggle bottom; padding-top provides visual gap and hover bridge */
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: var(--navy);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--border-radius);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    min-width: 200px;
+    padding: 0.4rem;
+    margin-top: 8px;     /* visible gap between toggle and menu... */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast), visibility 0s linear var(--transition-fast);
+    z-index: 1001;
+}
+/* ...filled by an invisible bridge so hover doesn't drop between toggle and menu. */
+.nav-dropdown-menu::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -10px;
+    height: 10px;
+}
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown.open .nav-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+.nav-dropdown-item {
+    display: block;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.nav-dropdown-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+}
+
+/* ---- Search trigger (icon only, sits left of nav) ---- */
+.nav-search-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    color: rgba(255,255,255,0.65);
+    padding: 0.4rem;
+    margin-left: var(--spacing-lg, 1.25rem);
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+.nav-search-trigger:hover { color: #fff; background: rgba(255,255,255,0.06); }
+.nav-search-trigger:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 /* Mobile nav toggle (hamburger). Hidden on desktop, shown at <=768. */
@@ -434,16 +528,18 @@ html, body {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-left: auto;       /* push to far right; main-nav goes absolute */
+    }
+    .nav-search-trigger {
+        margin-left: auto;
     }
 
-    /* Collapse the inline nav into a full-width dropdown panel below the header. */
     .main-nav {
         position: absolute;
-        top: 52px;            /* sits directly under the 52px header */
+        top: 52px;
         left: 0;
         right: 0;
         flex-direction: column;
+        align-items: stretch;
         gap: 0;
         background: var(--navy);
         border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -451,24 +547,277 @@ html, body {
         max-height: 0;
         overflow: hidden;
         transition: max-height var(--transition-base);
+        margin-left: 0;
     }
     .main-nav.open {
         max-height: calc(100vh - 52px);
+        overflow-y: auto;
     }
 
+    /* Top-level "About" link + the standalone-link layout for the
+       category toggles. */
     .nav-link {
         display: flex;
         align-items: center;
         min-height: 44px;
         padding: 0 var(--spacing-xl);
-        font-size: 0.9rem;
-        letter-spacing: 0.04em;
+        font-size: 0.95rem;
+        letter-spacing: 0;
         border-bottom: 1px solid rgba(255,255,255,0.06);
+        border-radius: 0;
+        background: none;
+        width: 100%;
+        box-sizing: border-box;
+        color: rgba(255, 255, 255, 0.85);
     }
+    .nav-link:hover { background: rgba(255,255,255,0.04); color: #fff; }
     .nav-link.active {
+        color: var(--primary-color);
+        background: none;
+        box-shadow: none;
+    }
+
+    /* Mobile nav restructure: each .nav-dropdown becomes a labelled
+       section. The parent toggle ("Athletes" / "Races") is rendered as
+       a small uppercase section header rather than a clickable nav row —
+       it still links to the index page (a tap target) but visually reads
+       as a label, not as a row competing with its own sub-items. The
+       sub-items are the real navigation choices. */
+    .nav-dropdown { display: block; }
+    .nav-dropdown > .nav-dropdown-toggle {
+        min-height: 0;
+        padding: 1rem var(--spacing-xl) 0.35rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.4);
+        background: transparent;
+        border-bottom: none;
+        justify-content: flex-start;
+    }
+    .nav-dropdown > .nav-dropdown-toggle:hover {
+        color: rgba(255, 255, 255, 0.7);
+        background: transparent;
+    }
+    /* The desktop ":hover" and ".open" rules paint the dropdown toggle
+       orange to mark the open menu. On mobile the menu is always open
+       and hovering a sub-item also hovers the parent, so the bar of
+       orange behind the section label fights the cleaner label-style
+       treatment. Suppress both states here. */
+    .nav-dropdown:hover > .nav-dropdown-toggle,
+    .nav-dropdown.open > .nav-dropdown-toggle {
+        background: transparent;
+        color: rgba(255, 255, 255, 0.4);
+    }
+    /* Current section: tint the section label orange so the user sees
+       which group they're in, without painting the whole row. */
+    .nav-dropdown.active > .nav-dropdown-toggle,
+    .nav-dropdown.active:hover > .nav-dropdown-toggle {
+        color: var(--primary-color);
+        background: transparent;
+        box-shadow: none;
+    }
+    /* Sub-items are the actual nav rows. */
+    .nav-dropdown-menu,
+    .nav-dropdown:hover .nav-dropdown-menu,
+    .nav-dropdown.open .nav-dropdown-menu {
+        position: static;
+        transform: none;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        min-width: 0;
+        display: block;
+        transition: none;
+    }
+    .nav-dropdown-menu::before { display: none; }
+    .nav-dropdown-item {
+        padding: 0 var(--spacing-xl);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        border-radius: 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.85);
+    }
+    .nav-dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.04);
         color: #fff;
-        border-bottom-color: rgba(255,255,255,0.06);
-        box-shadow: inset 3px 0 0 var(--primary-color);
+    }
+}
+
+/* ============================================
+   GLOBAL SEARCH MODAL
+   ============================================ */
+.search-modal[hidden] { display: none; }
+.search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 5vh 1rem 1rem;
+    box-sizing: border-box;
+}
+.search-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 24, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.search-modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+    overflow: hidden;
+}
+.search-modal-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.search-modal-icon { color: rgba(0,0,0,0.45); flex: 0 0 auto; }
+.search-modal-input {
+    flex: 1 1 auto;
+    border: 0;
+    outline: 0;
+    font-size: 1rem;
+    font-family: inherit;
+    background: transparent;
+    color: inherit;
+    padding: 0.25rem 0;
+    min-width: 0;
+}
+.search-modal-kbd {
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.06);
+    color: rgba(0,0,0,0.55);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+.search-modal-close {
+    background: transparent;
+    border: 0;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: rgba(0,0,0,0.5);
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+.search-modal-close:hover { color: #000; }
+
+.search-modal-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 0.5rem;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    background: rgba(0,0,0,0.02);
+}
+.search-modal-tab {
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.7rem 0.9rem;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(0,0,0,0.55);
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.search-modal-tab:hover { color: rgba(0,0,0,0.85); }
+.search-modal-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+.search-modal-tab-count {
+    display: inline-block;
+    margin-left: 0.3rem;
+    font-size: 0.7rem;
+    color: rgba(0,0,0,0.4);
+    font-weight: 500;
+}
+
+.search-modal-results {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+.search-modal-empty,
+.search-modal-no-results {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: rgba(0,0,0,0.45);
+    font-size: 0.9rem;
+}
+.search-modal-pane { padding: 0.25rem 0; }
+.search-modal-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    transition: background var(--transition-fast);
+}
+.search-modal-row:hover { background: rgba(0,0,0,0.04); }
+.search-modal-row-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.search-modal-row-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: rgba(0,0,0,0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.search-modal-row-sub {
+    font-size: 0.75rem;
+    color: rgba(0,0,0,0.5);
+}
+.search-modal-row-meta {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+
+body.search-modal-locked { overflow: hidden; }
+
+@media (max-width: 600px) {
+    .search-modal { padding: 0; }
+    .search-modal-panel {
+        max-width: none;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
     }
 }
 
@@ -1188,6 +1537,219 @@ table td a.link:hover   { color: var(--primary-color); }
 .race-stat-num.rating-decrease { color: var(--error-color); }
 .race-stat-num.no-data         { color: var(--text-lighter); }
 
+/* ============================================
+   RATINGS / STANDARDS TABLE
+   Shared layout used on the athlete profile (Ratings) and race page
+   (Standards). Plain navy-header table, no card chrome. Horizontally
+   scrollable inside its own container so no column is dropped on narrow
+   screens.
+   ============================================ */
+/* Card chrome: white background + rounded corners + border, matching
+   the rest of the site's table-sections. */
+.ratings-section {
+    margin-bottom: 2rem;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg, 12px);
+    overflow: hidden;
+}
+
+.ratings-table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+.ratings-table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    table-layout: auto;
+}
+.ratings-table th,
+.ratings-table td {
+    text-align: left;
+    padding: 0.85rem 1rem;
+    border-top: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+/* Navy header strip — bright but not orange. */
+.ratings-table thead th {
+    border-top: 0;
+    border-bottom: 0;
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+.ratings-table tbody tr { transition: background 0.12s ease; }
+.ratings-table tbody tr:hover { background: #fafbfc; }
+
+/* Column widths. Fixed widths on every column so the slack distributes
+   evenly rather than ballooning Best Performance. Disciplines + ranks
+   are tight; standard, tier and rank get a bit more breathing room. */
+.ratings-table th.rt-disc,
+.ratings-table td.rt-disc { width: 6em; }
+.ratings-table th.rt-rating,
+.ratings-table td.rt-rating { width: 5.5em; }
+.ratings-table th.rt-tier,
+.ratings-table td.rt-tier { width: 8em; white-space: nowrap; }
+.ratings-table th.rt-rank,
+.ratings-table td.rt-rank { width: 7em; white-space: nowrap; }
+.ratings-table th.rt-change,
+.ratings-table td.rt-change { width: 12em; min-width: 12em; }
+.ratings-table th.rt-cond,
+.ratings-table td.rt-cond { width: 11em; white-space: nowrap; }
+.ratings-table th.rt-best,
+.ratings-table td.rt-best { width: 13em; }
+.ratings-table th.rt-peak,
+.ratings-table td.rt-peak { width: 12em; }
+
+/* Discipline name — small + muted, matches the peak-race subtext below
+   the peak rating so the column reads as a soft label rather than a
+   competing headline. */
+.rt-disc-name {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+/* Rating / Standard — the headline number in the row. */
+.ratings-table td.rt-rating {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    line-height: 1;
+    white-space: nowrap;
+}
+.ratings-table td.rt-rating .std-pill { vertical-align: middle; margin-left: 0.4em; }
+
+/* 1y change cell — number on the left, sparkline on the right. Colour
+   on the sparkline is driven off the sign class set on the number span. */
+.ratings-table td.rt-change { white-space: nowrap; }
+.rt-change-num {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    min-width: 3.2em;
+    vertical-align: middle;
+}
+.rt-change-num.positive { color: var(--success-color); }
+.rt-change-num.negative { color: var(--error-color); }
+.rt-change-num.neutral  { color: var(--text-light); }
+.rt-spark {
+    display: inline-block;
+    vertical-align: middle;
+    height: 22px;
+    width: 7em;
+    color: var(--text-light);
+    opacity: 0.9;
+    margin-left: 0.5rem;
+}
+.rt-change-num.positive ~ .rt-spark { color: var(--success-color); }
+.rt-change-num.negative ~ .rt-spark { color: var(--error-color); }
+.rt-change-num.neutral  ~ .rt-spark { color: var(--text-light); }
+
+/* World / National rank cells: bold ordinal, link-able. */
+.ratings-table td.rt-rank a,
+.ratings-table td.rt-rank > span {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    text-decoration: none;
+}
+.ratings-table td.rt-rank a:hover { color: var(--primary-color); }
+
+/* Peak cell — value on top, race name underneath. */
+.rt-peak-main {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+.rt-peak-sub {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-light);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 16em;
+    margin-top: 1px;
+}
+a.rt-peak-sub:hover { color: var(--primary-color); }
+
+/* Best race / Best performance cell — small muted race or athlete name,
+   change badge below it. */
+.rt-best-race {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-light);
+    text-decoration: none;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+a.rt-best-race:hover { color: var(--primary-color); }
+.rt-best-change {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25em;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+}
+.rt-best-change.rating-increase { color: var(--success-color); }
+.rt-best-change.rating-decrease { color: var(--error-color); }
+.rt-best-change.rating-neutral,
+.rt-best-change.no-best-performance { color: var(--text-lighter); }
+
+/* Course conditions cell — formatted offset + cond-pill. Pill sits on the
+   same text baseline as the offset value so the two read as one unit. */
+.rt-cond-val {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+.rt-cond-val .cond-pill { margin: 0; vertical-align: middle; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .ratings-table th,
+    .ratings-table td { padding: 0.7rem 0.85rem; }
+    .ratings-table td.rt-rating { font-size: 1.25rem; }
+    .ratings-table th.rt-disc,
+    .ratings-table td.rt-disc { width: 5em; }
+}
+@media (max-width: 480px) {
+    .ratings-table { min-width: 760px; }
+    .ratings-table th,
+    .ratings-table td { padding: 0.6rem 0.75rem; }
+    .ratings-table td.rt-rating { font-size: 1.15rem; }
+    .ratings-table th.rt-change,
+    .ratings-table td.rt-change { width: 11em; min-width: 11em; }
+    .rt-spark { width: 6em; }
+}
+
+
 /* ── Standard classification pill ── */
 .std-pill {
     display: inline-block;
@@ -1455,13 +2017,6 @@ table td a.link:hover   { color: var(--primary-color); }
 .muted-col a {
     color: inherit;
     text-decoration: none;
-}
-
-.ratings-section {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* ============================================
@@ -1896,7 +2451,118 @@ table td a.link:hover   { color: var(--primary-color); }
    SHARED FILTER COMPONENTS
    Used on: leaderboard, athlete search, and any
    page with a segmented filter row.
+
+   Unified filter card layout
+   --------------------------
+   Markup pattern (shared across all leaderboard and search pages):
+
+     <div class="filters-card">
+       <form>
+         <div class="filter-summary-bar">           <- mobile-only header
+           <div class="filter-summary">…</div>
+           <button class="btn-filter-toggle">Filters</button>
+         </div>
+         <div class="filter-panel">                  <- inline on desktop, collapsed on mobile
+           <div class="filter-panel-grid"> chip groups + selects </div>
+           <div class="filter-panel-actions"> Reset </div>
+         </div>
+       </form>
+     </div>
+
+   Desktop: panel always visible, summary bar hidden.
+   Mobile (<=768): summary bar visible, panel hidden until `.open` is added.
    ============================================ */
+
+.filters-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.filter-summary-bar { display: none; }
+
+.filter-panel {
+    padding: 1rem 1.25rem;
+}
+
+.filter-panel-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.5rem;
+}
+
+.filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .filter-summary-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+    }
+
+    .filter-summary {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.8rem;
+        color: var(--text-light);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .filter-summary-sep {
+        color: var(--text-lighter);
+        margin: 0 0.3rem;
+    }
+
+    .filter-panel {
+        display: none;
+        padding: 0.85rem 1rem 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .filter-panel.open { display: block; }
+
+    /* Chip groups stack their label/chips vertically and the rows wrap. Default
+       left alignment puts a lone wrapped group flush to the start. */
+    .filter-panel-grid {
+        gap: 0.85rem 1rem;
+    }
+}
+
+.btn-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-light);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.btn-filter-toggle:hover,
+.btn-filter-toggle[aria-expanded="true"] {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
 
 /* Label above a chip group */
 .filter-chip-group {
@@ -2141,13 +2807,11 @@ table td a.link:hover   { color: var(--primary-color); }
    Used on: leaderboard, athlete search results.
    ============================================ */
 
-/* Ratings block: labels on top, values below, grey bg pill */
+/* Ratings block: labels on top, values below, thin separators between items */
 .athlete-ratings {
     display: flex;
     gap: 0.25rem;
     padding: 0.35rem 0.625rem;
-    background-color: var(--bg-color);
-    border-radius: var(--border-radius);
     align-items: center;
     flex-shrink: 0;
 }
@@ -2236,7 +2900,7 @@ table td a.link:hover   { color: var(--primary-color); }
        definitions further up — the hamburger collapses everything into one row. */
 
     .page-container {
-        width: 95%;
+        width: 90%;
         padding: var(--spacing-md) 0;
     }
 
@@ -2276,25 +2940,14 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 
 /* ============================================
-   SHARED SEARCH BOX - used on athletes + races pages
-   (.as-search-box, .as-input, .as-filter-toggle, .as-filters, etc.)
+   SHARED SEARCH INPUT - used on athletes + races pages
    ============================================ */
 .as-search-box {
     background: var(--white);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
-
-.as-search-row {
-    display: flex;
-    align-items: stretch;
-}
-
-.as-input-wrapper {
+    margin-bottom: 1rem;
     position: relative;
-    flex: 1;
 }
 
 .as-search-icon {
@@ -2314,17 +2967,10 @@ table td a.link:hover   { color: var(--primary-color); }
     font-size: 0.975rem;
     font-family: inherit;
     border: none;
-    border-right: 1px solid var(--border-color);
     background: transparent;
     box-sizing: border-box;
     outline: none;
     color: var(--text-color);
-}
-
-.as-input:focus {
-    background: var(--white);
-    border-right-color: var(--primary-color);
-    outline: none;
 }
 
 .as-search-box:focus-within {
@@ -2332,56 +2978,12 @@ table td a.link:hover   { color: var(--primary-color); }
     box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.1);
 }
 
-.as-filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0 1.25rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: var(--text-light);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color var(--transition-fast), background var(--transition-fast);
-    flex-shrink: 0;
-}
-
-.as-filter-toggle:hover,
-.as-filter-toggle[aria-expanded="true"] {
-    color: var(--primary-color);
-    background: rgba(231, 100, 30, 0.05);
-}
-
-/* Filter panel */
-.as-filters {
-    border-top: 1px solid var(--border-color);
-    background: var(--white);
-}
-
-/* Primary row: radio chip groups + active toggle */
-.as-filter-primary {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.625rem;
-    padding: 0.875rem 1.25rem;
-}
-
-/* Secondary row: selects + year range */
-.as-filter-secondary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    align-items: flex-end;
-    padding: 0 1.25rem 0.875rem;
-}
-
 /* Results container - hidden when empty */
 .as-results {
-    border-top: 1px solid var(--border-color);
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
 }
 
 .as-results:empty {

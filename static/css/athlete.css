@@ -94,14 +94,15 @@
 }
 
 .athlete-hero-country-link {
-    color: inherit;
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
-    border-bottom: 1px dotted rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgba(232, 93, 4, 0.55);
+    padding-bottom: 1px;
     transition: color 0.15s, border-color 0.15s;
 }
 .athlete-hero-country-link:hover {
-    color: #fff;
-    border-bottom-color: #fff;
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
 }
 
 .hero-meta-dot {
@@ -191,6 +192,7 @@
     color: #fff;
     border-color: rgba(255, 255, 255, 0.7);
 }
+.athlete-compare-link .compare-ic { width: 0.95em; height: 0.95em; flex-shrink: 0; }
 
 /* ============================================
     PALMARES - navy-header card, full-width in page content
@@ -313,291 +315,12 @@ sup.ordinal-suffix {
 /* ============================================
    RATINGS
    ============================================ */
-/* Used when no splits have been recorded for particular performance */
-.no-best-performance {
-    font-size: var(--font-size-bg);
-}
+/* Used when no splits have been recorded for a particular performance */
+.no-best-performance { font-size: var(--font-size-bg); }
 
-/* ── Per-discipline colours ──
-   Used to tint sparklines so each row reads at a glance. Keep in sync with
-   DISC_COLORS in athlete.js. */
-.disc-row--overall    { --disc-color: #E87722; }
-.disc-row--swim       { --disc-color: #38bdf8; }
-.disc-row--bike       { --disc-color: #a78bfa; }
-.disc-row--run        { --disc-color: #34d399; }
-.disc-row--transition { --disc-color: #f472b6; }
 
-/* ============================================
-   RATINGS TABLE
-   Editorial-style table: column headers up top, one row per discipline.
-   Variants by athlete state set how many columns to render:
-     .disc-table-change-rank  active w/ rank   (6 cols + toggle)
-     .disc-table-rank         retired w/ rank  (5 cols + toggle)
-     .disc-table-change       active no rank   (5 cols + toggle)
-     .disc-table              fallback         (4 cols + toggle)
-   ============================================ */
-.disc-table {
-    margin-bottom: 2rem;
-}
-
-/* Each row + the header share the same grid template so cells align.
-   Name + rating get smaller fr shares since their content is short; the
-   data columns (rank/peak/best/change) take 1fr each. All shrink together
-   but the short-content cols stay narrower. */
-.disc-table .disc-row,
-.disc-table .disc-head {
-    display: grid;
-    align-items: center;
-    gap: 0 1.25rem;
-    padding: 0.85rem 0;
-    border-top: 1px solid var(--border-color);
-    /* default: name | rating | peak | best */
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "name rating peak best";
-}
-.disc-table-change .disc-row,
-.disc-table-change .disc-head {
-    /* name | rating | peak | best | change */
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "name rating peak best change";
-}
-.disc-table-rank .disc-row,
-.disc-table-rank .disc-head {
-    /* name | rating | rank | peak | best */
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "name rating rank peak best";
-}
-.disc-table-change-rank .disc-row,
-.disc-table-change-rank .disc-head {
-    /* name | rating | rank | peak | best | change */
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "name rating rank peak best change";
-}
-
-/* Pin every header cell + data cell to its named grid-area so the header
-   text column and content column always line up exactly (no reliance on
-   auto-placement order). */
-.disc-th--rating { grid-area: rating; }
-.disc-th--change { grid-area: change; }
-.disc-th--rank   { grid-area: rank; }
-.disc-th--peak   { grid-area: peak; }
-.disc-th--best   { grid-area: best; }
-.disc-table .disc-name        { grid-area: name; }
-.disc-table .disc-rating-num  { grid-area: rating; }
-.disc-table .disc-change      { grid-area: change; }
-.disc-table .disc-rank        { grid-area: rank; }
-.disc-table .disc-peak        { grid-area: peak; }
-.disc-table .disc-best        { grid-area: best; }
-.disc-table .disc-toggle      { grid-area: toggle; }
-
-/* Header row: no top border (it's the first row), small vertical padding. */
-.disc-head {
-    border-top: none !important;
-    padding: 0.5rem 0 0.5rem !important;
-}
-.disc-th {
-    font-size: 0.6rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-lighter);
-    justify-self: start;
-}
-/* Force data cells to start-align too — defends against any browser-default
-   stretch quirk that could leave the header offset relative to content. */
-.disc-table .disc-name,
-.disc-table .disc-rating-num,
-.disc-table .disc-change,
-.disc-table .disc-rank,
-.disc-table .disc-peak,
-.disc-table .disc-best {
-    justify-self: start;
-}
-
-/* Data row */
-.disc-table .disc-row:first-of-type { /* first data row sits under header */ }
-.disc-table .disc-name {
-    align-self: center;
-    line-height: 1;
-}
-.disc-table .disc-rating-num {
-    font-size: 1.5rem;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.01em;
-    font-variant-numeric: tabular-nums;
-    align-self: center;
-}
-
-/* Change cell: number + sparkline laid out as a 2-col grid so the spark
-   always starts at the same x regardless of how many digits the change has
-   ("+4" vs "+187"). Baseline-aligned with the big rating number on its left. */
-.disc-change {
-    display: grid;
-    grid-template-columns: 3.2em minmax(0, 1fr);
-    align-items: baseline;
-    gap: 0 0.5rem;
-    min-width: 0;
-}
-.disc-change .disc-rating-change {
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    /* Stay left-aligned within the fixed slot. */
-    justify-self: start;
-}
-.disc-change .disc-spark {
-    flex: 1 1 auto;
-    height: 22px;
-    min-width: 80px;
-    max-width: 220px;
-    color: var(--disc-color, var(--text-light));
-    opacity: 0.8;
-    /* SVGs default to baseline-aligned at their bottom edge; lift slightly
-       so the line tracks roughly through the rating-num x-height instead
-       of sitting visibly below the baseline. */
-    transform: translateY(0.35em);
-}
-
-/* Rank cell: world rank on top, optional national rank as sub line below. */
-.disc-rank {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-    font-size: 0.95rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
-    min-width: 0;
-}
-.disc-rank .ranking-link { color: var(--text-color); text-decoration: none; }
-.disc-rank .ranking-link:hover { color: var(--primary-color); }
-/* National rank uses the shared .disc-cell-sub styling so it matches the
-   peak race subtext exactly. Override .disc-rank .ranking-link's text-color
-   above so it picks up text-light like the peak race link does. */
-.disc-rank a.disc-cell-sub {
-    color: var(--text-light);
-}
-.disc-rank a.disc-cell-sub:hover { color: var(--primary-color); }
-
-/* Peak / Best cells: value (top) + sub (below) stacked. Main row items
-   (rating, name, change) baseline-align with the value line; sub lines
-   hang below that baseline. */
-.disc-peak,
-.disc-best {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-    min-width: 0;
-}
-.disc-cell-value {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-color);
-    font-variant-numeric: tabular-nums;
-    text-decoration: none;
-    flex-shrink: 0;
-    line-height: 1.2;
-}
-a.disc-cell-value:hover { color: var(--primary-color); }
-.disc-cell-sub {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: var(--text-light);
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    /* Bumped from 1.2 — overflow: hidden clips at the line-box, so smaller
-       line-height was cutting descenders (g/y/p) on race slugs. */
-    line-height: 1.5;
-    padding-bottom: 1px;
-}
-a.disc-cell-sub:hover { color: var(--primary-color); }
-
-/* Peak race slug: allow up to two lines if the race name is long, instead
-   of single-line truncation. Other .disc-cell-sub uses (national rank,
-   best-race badge) stay one line. */
-.disc-peak .disc-cell-sub {
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    line-height: 1.3;
-}
-/* Best-race delta badge: inline-flex + gap so the chevron arrow has the
-   same breathing room from the number as elsewhere (matches .disc-rating-change). */
-.disc-best-badge {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.25em;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-.disc-best-badge.rating-increase { color: var(--success-color); }
-.disc-best-badge.rating-decrease { color: var(--error-color);   }
-.disc-best-badge.rating-neutral,
-.disc-best-badge.no-best-performance { color: var(--text-lighter); }
-
-/* Toggle button: not used at any breakpoint right now. Hidden everywhere. */
-.disc-toggle { display: none; }
-
-/* ── Mobile (<=768) ──
-   Drop 1y Change. Keep rank / peak / best. Equal column widths. */
-@media (max-width: 768px) {
-    .disc-th--change,
-    .disc-table .disc-change { display: none; }
-
-    /* Catch-all: name + rating + peak + best */
-    .disc-table .disc-row,
-    .disc-table .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-areas: "name rating peak best";
-    }
-    /* Variants with change become same as default (change hidden). */
-    .disc-table-change .disc-row,
-    .disc-table-change .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-areas: "name rating peak best";
-    }
-    /* Variants with rank keep rank. */
-    .disc-table-rank .disc-row,
-    .disc-table-rank .disc-head,
-    .disc-table-change-rank .disc-row,
-    .disc-table-change-rank .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-areas: "name rating rank peak best";
-    }
-}
-
-/* ── Narrow mobile (<=480) ──
-   Also drop Peak Rating; keep rank + best. */
-@media (max-width: 480px) {
-    .disc-th--peak,
-    .disc-table .disc-peak { display: none; }
-
-    /* Catch-all: name + rating + best */
-    .disc-table .disc-row,
-    .disc-table .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr);
-        grid-template-areas: "name rating best";
-    }
-    .disc-table-change .disc-row,
-    .disc-table-change .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 1fr);
-        grid-template-areas: "name rating best";
-    }
-    .disc-table-rank .disc-row,
-    .disc-table-rank .disc-head,
-    .disc-table-change-rank .disc-row,
-    .disc-table-change-rank .disc-head {
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.65fr) minmax(0, 0.85fr) minmax(0, 1fr);
-        grid-template-areas: "name rating rank best";
-    }
-}
+/* Ratings table styles moved to base.css so the same look is shared
+   between athlete.html and the race-page standards section. */
 
 /* 1yr change shown in stat card sub-row - flex so SVG chevron centres */
 .rating-change-1yr {
@@ -1036,7 +759,7 @@ tr.sub-race-row .link:hover {
     border: 1px solid var(--border-color);
     transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.rival-compare svg { width: 12px; height: 8px; }
+.rival-compare svg { width: 13px; height: 13px; }
 .rival-compare:hover {
     color: var(--primary-color);
     border-color: var(--primary-color);

@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css">
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/leaderboard.css?v={{ ASSET_VERSION }}">
 {% endblock %}
 
 {% block hero %}
@@ -27,7 +27,7 @@
 
 {% block content %}
 <div class="filters-card">
-    <form method="get" action="/athlete-leaderboard" class="filters-form">
+    <form method="get" action="/athlete-leaderboard" class="filters-form" id="filtersForm">
 
         {% set _summary_parts = [
             ('Male' if gender == 'male' else 'Female'),
@@ -38,147 +38,129 @@
         ] %}
         {% if active_only %}{% set _summary_parts = _summary_parts + ['Active'] %}{% endif %}
 
-        <div class="filters-primary">
+        <div class="filter-summary-bar">
             <div class="filter-summary">
                 {% for part in _summary_parts %}{% if not loop.first %}<span class="filter-summary-sep">·</span>{% endif %}{{ part }}{% endfor %}
             </div>
-
-            <!-- Category -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Category</span>
-                <div class="radio-chips">
-                    <input type="radio" name="category" value="elite" id="cat-elite"
-                        {% if category == 'elite' %}checked{% endif %}>
-                    <label for="cat-elite">Elite</label>
-                    <input type="radio" name="category" value="ag" id="cat-ag"
-                        {% if category == 'ag' %}checked{% endif %}>
-                    <label for="cat-ag">Age Group</label>
-                </div>
-            </div>
-
-            <div class="filter-v-divider"></div>
-
-            <!-- Course -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Course</span>
-                <div class="radio-chips">
-                    <input type="radio" name="course" value="short" id="course-short"
-                        {% if course == 'short' %}checked{% endif %}>
-                    <label for="course-short">Short</label>
-                    <input type="radio" name="course" value="long" id="course-long"
-                        {% if course == 'long' %}checked{% endif %}>
-                    <label for="course-long">Long</label>
-                </div>
-            </div>
-
-            <div class="filter-v-divider"></div>
-
-            <!-- Gender -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Gender</span>
-                <div class="radio-chips">
-                    <input type="radio" name="gender" value="female" id="gender-female"
-                        {% if gender == 'female' %}checked{% endif %}>
-                    <label for="gender-female">Female</label>
-                    <input type="radio" name="gender" value="male" id="gender-male"
-                        {% if gender == 'male' %}checked{% endif %}>
-                    <label for="gender-male">Male</label>
-                </div>
-            </div>
-
-            <div class="filter-v-divider"></div>
-
-            <!-- Discipline -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Discipline</span>
-                <div class="radio-chips">
-                    <input type="radio" name="disc" value="overall" id="disc-overall"
-                        {% if disc == "overall" %}checked{% endif %}>
-                    <label for="disc-overall">Overall</label>
-                    <input type="radio" name="disc" value="swim" id="disc-swim"
-                        {% if disc == "swim" %}checked{% endif %}>
-                    <label for="disc-swim">Swim</label>
-                    <input type="radio" name="disc" value="bike" id="disc-bike"
-                        {% if disc == "bike" %}checked{% endif %}>
-                    <label for="disc-bike">Bike</label>
-                    <input type="radio" name="disc" value="run" id="disc-run"
-                        {% if disc == "run" %}checked{% endif %}>
-                    <label for="disc-run">Run</label>
-                    <input type="radio" name="disc" value="transition" id="disc-transition"
-                        {% if disc == "transition" %}checked{% endif %}>
-                    <label for="disc-transition">Transition</label>
-                </div>
-            </div>
-
-            <div class="filter-v-divider"></div>
-
-            <!-- Order -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Rank by</span>
-                <div class="radio-chips">
-                    <input type="radio" name="order" value="top" id="order-top"
-                        {% if order == 'top' %}checked{% endif %}>
-                    <label for="order-top">All-time</label>
-                    <input type="radio" name="order" value="hot" id="order-hot"
-                        {% if order == 'hot' %}checked{% endif %}>
-                    <label for="order-hot">Trending</label>
-                </div>
-            </div>
-
-            <div class="filter-v-divider"></div>
-
-            <!-- Active only -->
-            <div class="filter-chip-group">
-                <span class="filter-chip-label">Active only</span>
-                <!-- Hidden input carries the actual submitted value; checkbox is UI -->
-                <input type="hidden" name="active_only" id="active-only-input"
-                       value="{{ 'true' if active_only else 'false' }}">
-                <label class="filter-toggle">
-                    <input type="checkbox" id="active-only-cb"
-                           {% if active_only %}checked{% endif %}>
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                    <span class="toggle-text" id="active-only-text">{% if active_only %}On{% else %}Off{% endif %}</span>
-                </label>
-            </div>
-
-            <!-- Spacer pushes actions right -->
-            <div class="filter-spacer"></div>
-
-            <!-- Filter icon (advanced filters toggle) -->
-            <button type="button" class="btn-filter-icon" id="toggleAdvanced" title="More filters">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="btn-filter-toggle" id="filterToggle" aria-expanded="false" aria-controls="filterPanel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
+                Filters
             </button>
-
-            <!-- Reset + Apply -->
-            <a href="/athlete-leaderboard" class="btn-reset">Reset</a>
-            <button type="submit" class="btn-search">Search</button>
         </div>
 
-        <!-- Advanced filters (collapsed by default) -->
-        <div class="filters-advanced" id="advancedFilters">
-            <div class="filter-group">
-                <label for="country">Country</label>
-                <select name="country" id="country">
-                    <option value="all" {% if country == "all" %}selected{% endif %}>All Countries</option>
-                    {% for c in all_countries %}
-                        <option value="{{ c }}" {% if country == c %}selected{% endif %}>{{ c }}</option>
-                    {% endfor %}
-                </select>
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-panel-grid">
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Category</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="category" value="elite" id="cat-elite"
+                            {% if category == 'elite' %}checked{% endif %}>
+                        <label for="cat-elite">Elite</label>
+                        <input type="radio" name="category" value="ag" id="cat-ag"
+                            {% if category == 'ag' %}checked{% endif %}>
+                        <label for="cat-ag">Age Group</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Course</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="course" value="short" id="course-short"
+                            {% if course == 'short' %}checked{% endif %}>
+                        <label for="course-short">Short</label>
+                        <input type="radio" name="course" value="long" id="course-long"
+                            {% if course == 'long' %}checked{% endif %}>
+                        <label for="course-long">Long</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Gender</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="gender" value="male" id="gender-male"
+                            {% if gender == 'male' %}checked{% endif %}>
+                        <label for="gender-male">Male</label>
+                        <input type="radio" name="gender" value="female" id="gender-female"
+                            {% if gender == 'female' %}checked{% endif %}>
+                        <label for="gender-female">Female</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Discipline</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="disc" value="overall" id="disc-overall"
+                            {% if disc == "overall" %}checked{% endif %}>
+                        <label for="disc-overall">Overall</label>
+                        <input type="radio" name="disc" value="swim" id="disc-swim"
+                            {% if disc == "swim" %}checked{% endif %}>
+                        <label for="disc-swim">Swim</label>
+                        <input type="radio" name="disc" value="bike" id="disc-bike"
+                            {% if disc == "bike" %}checked{% endif %}>
+                        <label for="disc-bike">Bike</label>
+                        <input type="radio" name="disc" value="run" id="disc-run"
+                            {% if disc == "run" %}checked{% endif %}>
+                        <label for="disc-run">Run</label>
+                        <input type="radio" name="disc" value="transition" id="disc-transition"
+                            {% if disc == "transition" %}checked{% endif %}>
+                        <label for="disc-transition">Transition</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Rank by</span>
+                    <div class="radio-chips">
+                        <input type="radio" name="order" value="top" id="order-top"
+                            {% if order == 'top' %}checked{% endif %}>
+                        <label for="order-top">All-time</label>
+                        <input type="radio" name="order" value="hot" id="order-hot"
+                            {% if order == 'hot' %}checked{% endif %}>
+                        <label for="order-hot">Trending</label>
+                    </div>
+                </div>
+
+                <div class="filter-chip-group">
+                    <span class="filter-chip-label">Active only</span>
+                    <input type="hidden" name="active_only" id="active-only-input"
+                           value="{{ 'true' if active_only else 'false' }}">
+                    <label class="filter-toggle">
+                        <input type="checkbox" id="active-only-cb"
+                               {% if active_only %}checked{% endif %}>
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        <span class="toggle-text" id="active-only-text">{% if active_only %}On{% else %}Off{% endif %}</span>
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <label for="country">Country</label>
+                    <select name="country" id="country">
+                        <option value="all" {% if country == "all" %}selected{% endif %}>All Countries</option>
+                        {% for c in all_countries %}
+                            <option value="{{ c }}" {% if country == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Birth Year</label>
+                    <div class="year-range">
+                        <input type="number" name="yob_start" id="yob_start"
+                            min="1930" max="2010" value="{{ yob_start }}" step="1">
+                        <span class="range-sep">–</span>
+                        <input type="number" name="yob_end" id="yob_end"
+                            min="1930" max="2010" value="{{ yob_end }}" step="1">
+                        <button type="button" class="btn-age-preset" data-age="19">Junior</button>
+                        <button type="button" class="btn-age-preset" data-age="23">U23</button>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="filter-group">
-                <label>Birth Year</label>
-                <div class="year-range">
-                    <input type="number" name="yob_start" id="yob_start"
-                        min="1930" max="2010" value="{{ yob_start }}" step="1">
-                    <span class="range-sep">–</span>
-                    <input type="number" name="yob_end" id="yob_end"
-                        min="1930" max="2010" value="{{ yob_end }}" step="1">
-                    <button type="button" class="btn-age-preset" data-age="19">Junior</button>
-                    <button type="button" class="btn-age-preset" data-age="23">U23</button>
-                </div>
+            <div class="filter-panel-actions">
+                <a href="/athlete-leaderboard" class="btn-reset">Reset</a>
             </div>
         </div>
 
@@ -277,5 +259,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ STATIC_BASE_URL }}js/leaderboard.js"></script>
+<script src="{{ STATIC_BASE_URL }}js/leaderboard.js?v={{ ASSET_VERSION }}"></script>
 {% endblock %}

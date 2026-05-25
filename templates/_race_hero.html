@@ -1,39 +1,68 @@
 <div class="race-hero" data-race-id="{{ race.race_id }}">
     <div class="race-hero-inner">
-        <!-- Left: back nav + title + metadata + race switcher -->
+        <!-- Left: breadcrumb + title + metadata + race switcher -->
         <div class="race-hero-left">
-            {% if context_pills %}
-            <div class="race-context-pills race-context-pills-series">
-                {% for pill in context_pills %}
-                <a href="{{ pill.url }}"
-                   class="race-context-pill race-context-pill-link race-context-pill--{{ pill.tier }}">
-                    {{ pill.label }}<svg class="race-context-pill-chev" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </a>
-                {% endfor %}
-            </div>
+            {% if breadcrumb and (breadcrumb.series or breadcrumb.event) %}
+            <nav class="race-breadcrumb" aria-label="Race context">
+                {% if breadcrumb.series %}
+                <span class="race-breadcrumb-seg">
+                    <a href="{{ breadcrumb.series.url }}" class="race-breadcrumb-link">{{ breadcrumb.series.name }}</a>
+                    <span class="race-breadcrumb-sep">/</span>
+                </span>
+                {% endif %}
+                {% if breadcrumb.event %}
+                <span class="race-breadcrumb-seg">
+                    <a href="{{ breadcrumb.event.url }}" class="race-breadcrumb-link">{{ breadcrumb.event.name }}</a>
+                    <span class="race-breadcrumb-sep">/</span>
+                </span>
+                {% endif %}
+                {% if breadcrumb.years|length > 1 %}
+                <span class="race-year-picker" data-year-picker>
+                    <button type="button" class="race-breadcrumb-link race-year-trigger">
+                        {{ breadcrumb.year }}
+                        <svg class="race-year-trigger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                    <div class="race-year-popover" role="listbox">
+                        {% for y in breadcrumb.years %}
+                        <a href="/race/{{ y.race_id }}" class="race-yp-row{% if y.is_current %} current{% endif %}"{% if y.is_current %} aria-current="true"{% endif %}>
+                            <span class="race-yp-year">{{ y.year }}</span>
+                            <span class="race-yp-winner">{% if y.winner_name %}{{ y.winner_name }}{% if y.winner_emoji %} {{ y.winner_emoji }}{% endif %}{% else %}<span class="race-yp-winner-empty">No result</span>{% endif %}</span>
+                            <span class="race-yp-time">{{ y.overall_s }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </span>
+                {% else %}
+                <span class="race-breadcrumb-year">{{ breadcrumb.year }}</span>
+                {% endif %}
+            </nav>
             {% endif %}
-            <h1 class="race-hero-title">{{ race.race_title }}{% if race.is_multi_stage or (ignored_info and ignored_info.parent_is_multi_stage) %} {% include "_multi_stage_badge.html" %}{% endif %}</h1>
+            <h1 class="race-hero-title">{{ race.race_title }}{% if is_upcoming %} <span class="upcoming-badge">Upcoming</span>{% endif %}{% if race.is_multi_stage or (ignored_info and ignored_info.parent_is_multi_stage) %} {% include "_multi_stage_badge.html" %}{% endif %}</h1>
             <div class="race-hero-meta">
                 <span>{{ race.date.strftime('%d %B %Y') }}</span>
                 <span class="race-meta-dot">·</span>
                 <span>{% if race_location %}{{ race_location }}, {% endif %}{{ race_country }}</span>
+                {% if is_upcoming %}
+                <span class="race-meta-dot">·</span>
+                <span>{{ entry_count }} entries</span>
+                {% if race.date %}
+                <span class="race-meta-dot">·</span>
+                {# Leave the contents to the JS countdown tick — server-side we
+                   only know calendar-day deltas, the JS computes 24h intervals,
+                   so rendering a placeholder here would flash a different
+                   number on first paint. #}
+                <span class="race-countdown" data-race-date="{{ race.date.isoformat() }}" aria-live="polite"></span>
+                {% endif %}
+                {% else %}
+                <span class="race-meta-dot">·</span>
+                <span>{{ race.athlete_count }} athletes</span>
+                <span class="race-meta-dot">·</span>
+                <a href="/race-compare?r1={{ race.race_id }}" class="race-compare-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="race-compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                    <span class="race-compare-label">Compare race</span>
+                </a>
+                {% endif %}
             </div>
-            {% if is_upcoming %}
-            <div class="race-hero-finishers">
-                <span class="upcoming-badge">Upcoming</span>
-                {{ entry_count }} entered
-                {% if days_until is not none %}· {% if days_until == 0 %}Today{% elif days_until == 1 %}Tomorrow{% else %}{{ days_until }} days away{% endif %}{% endif %}
-            </div>
-            {% else %}
-            <div class="race-hero-finishers">
-                {{ race.athlete_count }} athletes · {{ finish_count }} finishers
-                {%- set _label = {'DNF':'DNFs', 'DNS':'DNSs', 'DQ':'DQs', 'LAP':'LAPs', 'NC':'NCs'} -%}
-                {%- for status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] -%}
-                    {%- set n = race.status_counts.get(status, 0) -%}
-                    {%- if n %} · {{ n }} {{ _label[status] }}{%- endif -%}
-                {%- endfor -%}
-            </div>
-            {% endif %}
             {% if event_races|length > 1 %}
             {%- set event_is_multi_stage = event_races | selectattr('is_multi_stage') | list | length > 0 -%}
             {# Show up to N pills. If the active race isn't already in the
@@ -63,13 +92,6 @@
         <!-- Right: podium (past races only) -->
         {% if splits_data and not is_upcoming %}
         <div class="race-hero-podium">
-            <div class="race-hero-actions">
-                <a href="/race-compare?r1={{ race.race_id }}" class="race-compare-link">
-                    <svg viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="height:0.75em;width:auto;vertical-align:middle;margin-right:0.3em">
-                        <polyline points="4,1 1,5 4,9"/><polyline points="12,1 15,5 12,9"/>
-                    </svg>Compare race
-                </a>
-            </div>
             <div class="podium-label">Podium</div>
             {% for athlete in splits_data[:3] %}
                 {% if athlete.position in [1, 2, 3] %}

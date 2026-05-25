@@ -3,14 +3,26 @@
 # Fired by launchd (see ~/Library/LaunchAgents/com.angus.ptd.weekly.plist)
 # at 00:00 on Sun, Mon, Tue, Thu.
 #
-# Sends a macOS notification on non-zero exit. All output appended to
-# scripts/weekly.log so you can tail it live or grep through past runs.
+# Sends a macOS notification on non-zero exit. Two log files:
+#   weekly.latest.log   — current run only, cleared on start. Filtered down
+#                         to step headers + key summary lines so a quick
+#                         tail shows what stage the run is in without
+#                         drowning in per-athlete noise.
+#   weekly.verbose.log  — current run only, cleared on start. Unfiltered
+#                         output for when something fails and you need
+#                         the per-athlete detail.
+#   weekly.history.csv  — append-only. One row per run with start/finish
+#                         timestamps, duration, status, and the per-table
+#                         net deltas (new events / races / athletes /
+#                         results) so long-term progress is grep-able.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-LOG="$SCRIPT_DIR/weekly.log"
+LATEST_LOG="$SCRIPT_DIR/weekly.latest.log"
+VERBOSE_LOG="$SCRIPT_DIR/weekly.verbose.log"
+HISTORY_CSV="$SCRIPT_DIR/weekly.history.csv"
 
 # launchd jobs start with an almost-empty PATH. Add the usual suspects so
 # python3, wrangler, ssh, scp all resolve.
@@ -23,38 +35,125 @@ export PYTHONUNBUFFERED=1
 
 cd "$PROJECT_ROOT"
 
-# Activate project venv (otherwise build_db's `python3 -m ptd_data.*` calls hit
-# system python and immediately ModuleNotFoundError on pandas/duckdb/etc).
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/.venv/bin/activate"
 
-# Redirect everything to the log from here on. Append mode so history accrues.
-exec >> "$LOG" 2>&1
+# Truncate both per-run logs on entry — each invocation starts fresh.
+: > "$LATEST_LOG"
+: > "$VERBOSE_LOG"
+
+# History CSV header (only written if file is missing or empty).
+if [ ! -s "$HISTORY_CSV" ]; then
+    echo "started_at,finished_at,duration_s,status,new_events,new_races,new_athletes,new_results" > "$HISTORY_CSV"
+fi
+
+# Quick read-only count snapshot via duckdb. Read-only so it can run while
+# another writer is active (e.g. if a previous run is still finishing up).
+db_count() {
+    local table="$1"
+    python3 - "$table" <<'PY' 2>/dev/null || echo 0
+import duckdb, sys
+con = duckdb.connect('ptd_data/ptd.duckdb', read_only=True)
+print(con.execute(f"select count(*) from {sys.argv[1]}").fetchone()[0])
+PY
+}
+
+# Lines worth keeping in the condensed `weekly.latest.log`. Step headers
+# from build_db.sh start with "==>"; ingest progress prints "Done." /
+# "Checked"; explicit OK/FAIL markers from this script; the start/end
+# banners; rebuild-step summary lines that already contain counts.
+LATEST_FILTER='^(==>|====|  Run |  Baseline|  Final|  Net:|\[OK\]|\[FAIL\]|Done\.|Checked |Ingested |Loaded |Rule-based |Recurring fallback|Rebuilding |Wrote |Skipped )'
 
 notify_fail() {
     osascript -e "display notification \"$1\" with title \"PTD weekly FAILED\" sound name \"Basso\"" >/dev/null 2>&1 || true
 }
 
-echo ""
-echo "================================================================"
-echo "  Run started: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-echo "================================================================"
-START=$SECONDS
+START_ISO=$(date '+%Y-%m-%dT%H:%M:%S%z')
+START_TS=$SECONDS
 
-"$SCRIPT_DIR/build_db.sh" --extend
+EVENTS_BEFORE=$(db_count events)
+RACES_BEFORE=$(db_count races)
+ATHLETES_BEFORE=$(db_count athletes)
+RESULTS_BEFORE=$(db_count results)
+
+# Run-stage header is written to both logs so they each open with context.
+{
+    echo "================================================================"
+    echo "  Run started: $START_ISO"
+    echo "  Baseline: ${EVENTS_BEFORE} events / ${RACES_BEFORE} races / ${ATHLETES_BEFORE} athletes / ${RESULTS_BEFORE} results"
+    echo "================================================================"
+} | tee "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+
+# Run a pipeline step. Stream stdout/stderr unfiltered into the verbose
+# log and a filtered subset into the latest log. Returns the rc of the
+# underlying command, not the tee.
+#   $1: human label  $2..: command + args
+run_step() {
+    local label="$1"; shift
+    {
+        echo ""
+        echo "==> ${label}"
+    } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+
+    # `set -o pipefail` is already on; we want the exit code of the leftmost
+    # command (the actual work), not the tee/grep at the right end.
+    "$@" 2>&1 \
+        | tee -a "$VERBOSE_LOG" \
+        | grep --line-buffered -E "$LATEST_FILTER" \
+        | tee -a "$LATEST_LOG" >/dev/null
+    return ${PIPESTATUS[0]}
+}
+
+STATUS=success
+
+run_step "build_db --extend" "$SCRIPT_DIR/build_db.sh" --extend
 rc=$?
 if [ $rc -ne 0 ]; then
-    echo "[FAIL] build_db.sh exited $rc"
-    notify_fail "build_db.sh exited $rc. tail scripts/weekly.log"
-    exit $rc
+    STATUS="build_db:$rc"
+    {
+        echo "[FAIL] build_db.sh exited $rc"
+    } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+    notify_fail "build_db.sh exited $rc. tail $LATEST_LOG"
 fi
 
-"$SCRIPT_DIR/deploy.sh" --no-git --no-static
-rc=$?
-if [ $rc -ne 0 ]; then
-    echo "[FAIL] deploy.sh exited $rc"
-    notify_fail "deploy.sh exited $rc. tail scripts/weekly.log"
-    exit $rc
+if [ "$STATUS" = "success" ]; then
+    run_step "deploy --no-git --no-static" "$SCRIPT_DIR/deploy.sh" --no-git --no-static
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        STATUS="deploy:$rc"
+        {
+            echo "[FAIL] deploy.sh exited $rc"
+        } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+        notify_fail "deploy.sh exited $rc. tail $LATEST_LOG"
+    fi
 fi
 
-echo "[OK] Run completed in $(( SECONDS - START ))s at $(date '+%Y-%m-%d %H:%M:%S %Z')"
+EVENTS_AFTER=$(db_count events)
+RACES_AFTER=$(db_count races)
+ATHLETES_AFTER=$(db_count athletes)
+RESULTS_AFTER=$(db_count results)
+
+DURATION=$(( SECONDS - START_TS ))
+FINISH_ISO=$(date '+%Y-%m-%dT%H:%M:%S%z')
+
+NEW_EVENTS=$(( EVENTS_AFTER - EVENTS_BEFORE ))
+NEW_RACES=$(( RACES_AFTER - RACES_BEFORE ))
+NEW_ATHLETES=$(( ATHLETES_AFTER - ATHLETES_BEFORE ))
+NEW_RESULTS=$(( RESULTS_AFTER - RESULTS_BEFORE ))
+
+# Summary footer goes to both per-run logs so a quick tail tells the
+# whole story.
+{
+    echo ""
+    echo "================================================================"
+    echo "  Run finished: $FINISH_ISO"
+    echo "  Status: $STATUS in ${DURATION}s"
+    echo "  Net: ${NEW_EVENTS} events / ${NEW_RACES} races / ${NEW_ATHLETES} athletes / ${NEW_RESULTS} results"
+    echo "================================================================"
+} | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+
+# One-row CSV append — easy to load into a sheet for long-term tracking.
+echo "${START_ISO},${FINISH_ISO},${DURATION},${STATUS},${NEW_EVENTS},${NEW_RACES},${NEW_ATHLETES},${NEW_RESULTS}" >> "$HISTORY_CSV"
+
+[ "$STATUS" = "success" ] || exit 1
+exit 0

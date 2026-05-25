@@ -1,11 +1,9 @@
 Issues:
-- [X] Palmares double counting from multi-stage races
-- [X] Predictions being geared to the top-end 
-- [X] Course conditions being kind of bad? Seem to usually say course is too slow - would be good to see the distribution of conditions - should be fairly normal.
-    - [ ] For recurring long-course events, we can extend course conditions to calculate over many years.
-    - [ ] Leaderboard of fast and slow courses and time converter?
-- [ ] Race leaderboard 
-- [X] Better 'large' athlete widgets
-- [ ] More athlete and race photos
-- [X] Rivals ?
-- [X]  Race compare
+- [] 2023 Americas Triathlon Cup Long Beach has no short handle?
+
+TODO before 'launch':
+- [ ] Redesign home page
+- [X] Tweak menu on mobile
+- [X] Allow apostrophes on athlete's names
+- [X] Clean up event page
+- [X] Check prog discrepancies at Apfelland Triathlon

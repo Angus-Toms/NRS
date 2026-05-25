@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, race_leaderboard, comparison, race_comparison, about, robots, series_page, country_page, upcoming_page
-from config import RUNTIME_DATA_DIR, STATIC_BASE_URL
+from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
 ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
@@ -22,6 +22,7 @@ RUNTIME_DATA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/data", StaticFiles(directory=RUNTIME_DATA_DIR), name="data")
 templates = Jinja2Templates(directory = BASE_DIR / "templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"]   = ASSET_VERSION
 
 # @app.middleware("http")
 # async def enforce_host(request: Request, call_next):

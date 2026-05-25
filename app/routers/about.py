@@ -3,11 +3,12 @@ import json
 
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
-from config import STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 QA_PATH = BASE_DIR / "static" / "about" / "qa.json"

@@ -1,22 +1,35 @@
-const input       = document.getElementById('rs-input');
-const filterBtn   = document.getElementById('rs-filter-toggle');
-const filterPanel = document.getElementById('rs-filters');
-const results     = document.getElementById('rs-results');
+const input         = document.getElementById('rs-input');
+const filterBtn     = document.getElementById('filterToggle');
+const filterPanel   = document.getElementById('filterPanel');
+const filterSummary = document.getElementById('rs-filter-summary');
+const results       = document.getElementById('rs-results');
+const countryEl     = document.getElementById('rs-country');
+const yearStartEl   = document.getElementById('rs-year-start');
+const yearEndEl     = document.getElementById('rs-year-end');
+const resetBtn      = document.getElementById('rs-reset');
 
-// ── Filter toggle ──
+function getSort()      { return document.querySelector('input[name="rs-sort"]:checked')?.value || 'desc'; }
+function getCountry()   { return countryEl.value; }
+function getYearStart() { return yearStartEl.value; }
+function getYearEnd()   { return yearEndEl.value; }
+
+function updateSummary() {
+    const parts = [ getSort() === 'desc' ? 'Newest first' : 'Oldest first' ];
+    if (getCountry()) parts.push(getCountry());
+    if (getYearStart() || getYearEnd()) {
+        parts.push(`${getYearStart() || '…'}–${getYearEnd() || '…'}`);
+    }
+    filterSummary.innerHTML = parts
+        .map((p, i) => (i ? '<span class="filter-summary-sep">·</span>' : '') + p)
+        .join(' ');
+}
+
 filterBtn.addEventListener('click', () => {
-    const open = filterPanel.hidden;
-    filterPanel.hidden = !open;
+    const open = filterPanel.classList.toggle('open');
     filterBtn.setAttribute('aria-expanded', open);
 });
 
-// ── Live search ──
 let searchTimer;
-
-function getSort()    { return document.querySelector('input[name="rs-sort"]:checked')?.value || 'desc'; }
-function getCountry() { return document.getElementById('rs-country').value; }
-function getYearStart() { return document.getElementById('rs-year-start').value; }
-function getYearEnd()   { return document.getElementById('rs-year-end').value; }
 
 function runSearch() {
     const q = input.value.trim();
@@ -25,11 +38,9 @@ function runSearch() {
         return;
     }
     const params = new URLSearchParams({ q, sort: getSort() });
-    const country = getCountry();
-    const ys = getYearStart(), ye = getYearEnd();
-    if (country)  params.set('country', country);
-    if (ys)       params.set('year_start', ys);
-    if (ye)       params.set('year_end', ye);
+    if (getCountry())   params.set('country', getCountry());
+    if (getYearStart()) params.set('year_start', getYearStart());
+    if (getYearEnd())   params.set('year_end', getYearEnd());
 
     results.innerHTML = '<div class="rs-loading">Searching…</div>';
 
@@ -38,22 +49,38 @@ function runSearch() {
         .then(renderResults);
 }
 
+function onFilterChange() {
+    updateSummary();
+    runSearch();
+}
+
 input.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(runSearch, 200);
 });
 
-// Re-run on filter changes
-document.querySelectorAll('input[name="rs-sort"]').forEach(r => r.addEventListener('change', runSearch));
-document.getElementById('rs-country').addEventListener('change', runSearch);
-document.getElementById('rs-year-start').addEventListener('input', () => {
+document.querySelectorAll('input[name="rs-sort"]').forEach(r => r.addEventListener('change', onFilterChange));
+countryEl.addEventListener('change', onFilterChange);
+yearStartEl.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(runSearch, 400);
+    searchTimer = setTimeout(onFilterChange, 400);
 });
-document.getElementById('rs-year-end').addEventListener('input', () => {
+yearEndEl.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(runSearch, 400);
+    searchTimer = setTimeout(onFilterChange, 400);
 });
+
+resetBtn.addEventListener('click', () => {
+    document.getElementById('sort-desc').checked = true;
+    countryEl.value   = '';
+    yearStartEl.value = '';
+    yearEndEl.value   = '';
+    input.value       = '';
+    results.innerHTML = '';
+    updateSummary();
+});
+
+updateSummary();
 
 function esc(text) {
     const d = document.createElement('div');
