@@ -6,12 +6,14 @@ from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, race_leaderboard, comparison, race_comparison, about, robots, series_page, country_page, upcoming_page
+from app.page_cache import page_cache_middleware
 from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
 ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
 
 app = FastAPI()
+app.middleware("http")(page_cache_middleware)
 # /static/athlete_imgs must be mounted before /static so it takes precedence in dev.
 # In prod the CDN serves athlete images; this mount is a no-op there.
 athlete_imgs_dir = RUNTIME_DATA_DIR / "athlete_imgs"
