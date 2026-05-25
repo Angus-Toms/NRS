@@ -2576,6 +2576,141 @@ def get_race_standards(race_id):
     }
 
 
+_DISC_DEFAULT = {d: 0.0 for d in ["overall", "swim", "bike", "run", "transition"]}
+
+
+def get_race_standards_bulk(race_ids):
+    """Bulk get_race_standards. Returns {race_id: {overall, swim, bike, run, transition}}.
+
+    Two queries total regardless of N:
+      1. Normal races: indexed lookup against race_rankings.
+      2. Ignored races: one aggregation grouped by race_id, with per-race date
+         cutoff and course bucket handled inside the SQL.
+    """
+    if not race_ids:
+        return {}
+
+    conn = _get_conn()
+    race_ids = list(dict.fromkeys(race_ids))  # de-dupe, preserve order
+    placeholders = ",".join("?" * len(race_ids))
+
+    ignored_set = {r[0] for r in conn.execute(
+        f"SELECT race_id FROM ignored_races WHERE race_id IN ({placeholders})",
+        race_ids,
+    ).fetchall()}
+    normal_ids = [rid for rid in race_ids if rid not in ignored_set]
+    ignored_ids = [rid for rid in race_ids if rid in ignored_set]
+
+    result = {}
+
+    if normal_ids:
+        np = ",".join("?" * len(normal_ids))
+        rows = conn.execute(f"""
+            SELECT race_id, overall_std, swim_std, bike_std, run_std, transition_std
+            FROM race_rankings
+            WHERE race_id IN ({np})
+        """, normal_ids).fetchall()
+        for row in rows:
+            if row[1] is None:
+                result[row[0]] = dict(_DISC_DEFAULT)
+            else:
+                result[row[0]] = {
+                    "overall":    row[1],
+                    "swim":       row[2],
+                    "bike":       row[3],
+                    "run":        row[4],
+                    "transition": row[5],
+                }
+
+    if ignored_ids:
+        ip = ",".join("?" * len(ignored_ids))
+        # One pass for all ignored races: pre_race CTE partitions per target
+        # race so each athlete's "most recent prior rating" is computed in the
+        # target's course bucket and date window. Discipline ranks partition
+        # by race_id so positions reset per race.
+        rows = conn.execute(f"""
+            WITH targets AS (
+                SELECT race_id, race_date, distance
+                FROM races
+                WHERE race_id IN ({ip})
+            ),
+            target_results AS (
+                SELECT res.race_id, res.athlete_id, res.position, res.status,
+                       res.swim_s, res.bike_s, res.run_s,
+                       CASE WHEN res.t1_s > 0 AND res.t2_s > 0 THEN res.t1_s + res.t2_s ELSE 0 END AS trans_s
+                FROM results res
+                WHERE res.race_id IN ({ip})
+            ),
+            pre_race AS (
+                SELECT t.race_id AS target_race_id, ra.athlete_id,
+                       ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY t.race_id, ra.athlete_id
+                           ORDER BY r.race_date DESC, ra.race_id DESC
+                       ) AS rn
+                FROM targets t
+                JOIN target_results tr ON tr.race_id = t.race_id
+                JOIN ratings ra ON ra.athlete_id = tr.athlete_id
+                JOIN races r ON ra.race_id = r.race_id
+                WHERE r.race_date <= t.race_date
+                  AND (
+                      (t.distance IN ('sprint','standard') AND r.distance IN ('sprint','standard'))
+                      OR
+                      (t.distance IN ('middle','t100','long') AND r.distance IN ('middle','t100','long'))
+                  )
+            ),
+            base AS (
+                SELECT tr.race_id, tr.status, tr.position AS overall_pos,
+                       tr.swim_s, tr.bike_s, tr.run_s, tr.trans_s,
+                       pr.overall, pr.swim, pr.bike, pr.run, pr.transition
+                FROM target_results tr
+                JOIN pre_race pr
+                  ON pr.target_race_id = tr.race_id
+                 AND pr.athlete_id = tr.athlete_id
+                 AND pr.rn = 1
+            ),
+            ranked AS (
+                SELECT *,
+                    CASE WHEN swim_s  > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN swim_s  > 0 THEN swim_s  END NULLS LAST) END AS swim_pos,
+                    CASE WHEN bike_s  > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN bike_s  > 0 THEN bike_s  END NULLS LAST) END AS bike_pos,
+                    CASE WHEN run_s   > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN run_s   > 0 THEN run_s   END NULLS LAST) END AS run_pos,
+                    CASE WHEN trans_s > 0 THEN ROW_NUMBER() OVER (PARTITION BY race_id ORDER BY CASE WHEN trans_s > 0 THEN trans_s END NULLS LAST) END AS trans_pos
+                FROM base
+            )
+            SELECT
+                race_id,
+                COUNT(*) FILTER (WHERE status = 'Finished' AND overall_pos IS NOT NULL) AS n_overall,
+                COUNT(*) FILTER (WHERE swim_s  > 0) AS n_swim,
+                COUNT(*) FILTER (WHERE bike_s  > 0) AS n_bike,
+                COUNT(*) FILTER (WHERE run_s   > 0) AS n_run,
+                COUNT(*) FILTER (WHERE trans_s > 0) AS n_trans,
+                SUM(overall    * CASE WHEN status='Finished' AND overall_pos IS NOT NULL AND overall_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos - 1)) ELSE 0 END),
+                SUM(swim       * CASE WHEN swim_pos  IS NOT NULL AND swim_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos  - 1)) ELSE 0 END),
+                SUM(bike       * CASE WHEN bike_pos  IS NOT NULL AND bike_pos  <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos  - 1)) ELSE 0 END),
+                SUM(run        * CASE WHEN run_pos   IS NOT NULL AND run_pos   <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos   - 1)) ELSE 0 END),
+                SUM(transition * CASE WHEN trans_pos IS NOT NULL AND trans_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (trans_pos - 1)) ELSE 0 END)
+            FROM ranked
+            GROUP BY race_id
+        """, ignored_ids + ignored_ids).fetchall()
+        for row in rows:
+            rid, n_o, n_s, n_b, n_r, n_t, ov, sw, bk, rn_, tr = row
+            def _std(num, n):
+                return (num or 0.0) / standard_denom(n) if n and n > 0 else 0.0
+            result[rid] = {
+                "overall":    _std(ov,  n_o),
+                "swim":       _std(sw,  n_s),
+                "bike":       _std(bk,  n_b),
+                "run":        _std(rn_, n_r),
+                "transition": _std(tr,  n_t),
+            }
+
+    for rid in race_ids:
+        if rid not in result:
+            result[rid] = dict(_DISC_DEFAULT)
+
+    return result
+
+
 # Keyed by (gender, course). Invalidate by restarting the process (pre-race ratings are stable).
 _standard_thresholds_cache: dict = {}
 
@@ -3325,6 +3460,135 @@ def get_upcoming_race_standards(race_id, course='short'):
         "run":        (rn_ or 0.0) / denom,
         "transition": (tr or 0.0) / denom,
     }
+
+
+def get_upcoming_race_entries_bulk(race_ids, course='short'):
+    """Bulk get_upcoming_race_entries. Returns {race_id: [entries]}."""
+    if not race_ids:
+        return {}
+    conn = _get_conn()
+    race_ids = list(dict.fromkeys(race_ids))
+    placeholders = ",".join("?" * len(race_ids))
+    course_in = _course_in(course)
+    rows = conn.execute(f"""
+        SELECT
+            sle.race_id,
+            sle.athlete_id,
+            sle.start_num,
+            a.name,
+            a.year_of_birth,
+            a.profile_img,
+            n.alpha3 AS country_alpha3,
+            n.emoji  AS country_emoji,
+            ra.overall    AS overall_rating,
+            ra.swim       AS swim_rating,
+            ra.bike       AS bike_rating,
+            ra.run        AS run_rating,
+            ra.transition AS transition_rating
+        FROM start_list_entries sle
+        JOIN athletes a      ON sle.athlete_id = a.athlete_id
+        JOIN nationalities n ON a.country_full = n.country_full
+        LEFT JOIN (
+            SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
+            FROM ratings ra2
+            JOIN races r2 ON ra2.race_id = r2.race_id
+            WHERE r2.distance IN {course_in}
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY ra2.athlete_id ORDER BY r2.race_date DESC, ra2.race_id DESC
+            ) = 1
+        ) ra ON ra.athlete_id = sle.athlete_id
+        WHERE sle.race_id IN ({placeholders})
+        ORDER BY sle.race_id, sle.start_num
+    """, race_ids).fetchall()
+    cols = ["athlete_id", "start_num", "name", "year_of_birth", "profile_img",
+            "country_alpha3", "country_emoji",
+            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating"]
+    result = {rid: [] for rid in race_ids}
+    for row in rows:
+        rid = row[0]
+        result[rid].append(dict(zip(cols, row[1:])))
+    return result
+
+
+def get_upcoming_race_distance_types_bulk(race_ids):
+    """Bulk get_upcoming_race_distance_type. Returns {race_id: 'sprint'|'standard'|None}."""
+    if not race_ids:
+        return {}
+    conn = _get_conn()
+    race_ids = list(dict.fromkeys(race_ids))
+    placeholders = ",".join("?" * len(race_ids))
+    rows = conn.execute(
+        f"SELECT race_id, event_spec_ids FROM upcoming_races WHERE race_id IN ({placeholders})",
+        race_ids,
+    ).fetchall()
+    result = {rid: None for rid in race_ids}
+    for rid, spec in rows:
+        if spec is None:
+            continue
+        has_sprint   = '376' in spec
+        has_standard = '377' in spec
+        if has_sprint and not has_standard:
+            result[rid] = 'sprint'
+        elif has_standard and not has_sprint:
+            result[rid] = 'standard'
+    return result
+
+
+def get_upcoming_race_standards_bulk(race_ids, course='short'):
+    """Bulk get_upcoming_race_standards. Returns {race_id: {overall, swim, bike, run, transition}}."""
+    if not race_ids:
+        return {}
+    conn = _get_conn()
+    race_ids = list(dict.fromkeys(race_ids))
+    placeholders = ",".join("?" * len(race_ids))
+    course_in = _course_in(course)
+    rows = conn.execute(f"""
+        WITH ranked AS (
+            SELECT sle.race_id,
+                   ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.overall    DESC) AS overall_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.swim       DESC) AS swim_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.bike       DESC) AS bike_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.run        DESC) AS run_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.transition DESC) AS transition_pos
+            FROM start_list_entries sle
+            JOIN (
+                SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
+                FROM ratings ra2
+                JOIN races r2 ON ra2.race_id = r2.race_id
+                WHERE r2.distance IN {course_in}
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY ra2.athlete_id ORDER BY r2.race_date DESC, ra2.race_id DESC
+                ) = 1
+            ) ra ON ra.athlete_id = sle.athlete_id
+            WHERE sle.race_id IN ({placeholders})
+        )
+        SELECT
+            race_id,
+            COUNT(*),
+            SUM(overall    * CASE WHEN overall_pos    <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos    - 1)) ELSE 0 END),
+            SUM(swim       * CASE WHEN swim_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos       - 1)) ELSE 0 END),
+            SUM(bike       * CASE WHEN bike_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos       - 1)) ELSE 0 END),
+            SUM(run        * CASE WHEN run_pos        <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos        - 1)) ELSE 0 END),
+            SUM(transition * CASE WHEN transition_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (transition_pos - 1)) ELSE 0 END)
+        FROM ranked
+        GROUP BY race_id
+    """, race_ids).fetchall()
+    result = {rid: dict(_DISC_DEFAULT) for rid in race_ids}
+    for row in rows:
+        rid, n, ov, sw, bk, rn_, tr = row
+        if not n or n == 0:
+            continue
+        denom = standard_denom(n)
+        result[rid] = {
+            "overall":    (ov or 0.0) / denom,
+            "swim":       (sw or 0.0) / denom,
+            "bike":       (bk or 0.0) / denom,
+            "run":        (rn_ or 0.0) / denom,
+            "transition": (tr or 0.0) / denom,
+        }
+    return result
+
 
 
 def get_upcoming_events(country=None, course='short'):

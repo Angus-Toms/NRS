@@ -484,11 +484,13 @@ async def get_athlete(request: Request, athlete_id: int,
             _main.append(r)
 
     # Patch standard_class on sub-races: ignored races have no ratings rows so
-    # overall_std is NULL from the main query; fetch it via get_race_standards.
+    # overall_std is NULL from the main query; fetch via one bulk query.
+    _sub_ids = [sub["race_id"] for subs in _sub_map.values() for sub in subs]
+    _sub_standards = queries.get_race_standards_bulk(_sub_ids) if _sub_ids else {}
     for subs in _sub_map.values():
         for sub in subs:
-            standards = queries.get_race_standards(sub["race_id"])
-            sub["standard_class"] = _std_class(standards.get("overall"))
+            std = _sub_standards.get(sub["race_id"], {}).get("overall")
+            sub["standard_class"] = _std_class(std)
 
     race_history = []
     for r in _main:
@@ -542,13 +544,17 @@ async def get_athlete(request: Request, athlete_id: int,
         models = queries.get_prediction_models()
         disc_col = {'overall': 'overall_rating', 'swim': 'swim_rating',
                     'bike': 'bike_rating', 'run': 'run_rating'}
+        _upcoming_ids = [r['race_id'] for r in upcoming_raw]
+        _entries_by_race   = queries.get_upcoming_race_entries_bulk(_upcoming_ids)
+        _distance_by_race  = queries.get_upcoming_race_distance_types_bulk(_upcoming_ids)
+        _standards_by_race = queries.get_upcoming_race_standards_bulk(_upcoming_ids)
         for race in upcoming_raw:
-            entries  = queries.get_upcoming_race_entries(race['race_id'])
-            distance = queries.get_upcoming_race_distance_type(race['race_id'])
+            entries  = _entries_by_race.get(race['race_id'], [])
+            distance = _distance_by_race.get(race['race_id'])
 
             # Standard pill classification
             std_class = None
-            standards = queries.get_upcoming_race_standards(race['race_id'])
+            standards = _standards_by_race.get(race['race_id'], {})
             if standards and standards.get('overall'):
                 t = queries.get_race_standard_thresholds(race['gender'])['overall']
                 v = standards['overall']

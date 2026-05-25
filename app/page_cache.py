@@ -8,6 +8,7 @@ A page-level cache keyed by full path+query collapses each scraped URL to a
 single dict lookup after the first hit.
 """
 
+import gzip
 import re
 import threading
 import time
@@ -20,9 +21,14 @@ from starlette.responses import Response
 # /athlete/<id> and /race/<id>, with optional query string (course, category, etc.).
 _CACHEABLE_PATH = re.compile(r"^/(athlete|race)/\d+$")
 
-TTL_SECONDS = 30 * 60      # 30 min - data only changes after a ratings rebuild
-MAX_ENTRIES = 2000         # rough cap; each entry is one rendered HTML page
-MAX_BYTES_PER_ENTRY = 2_000_000  # skip absurdly large responses (safety)
+TTL_SECONDS = 30 * 60       # 30 min - data only changes after a ratings rebuild
+# Sized for a 512MB Render Starter instance. HTML compresses ~10-12x with gzip,
+# so 1500 entries averaging ~25KB compressed sits around 35-40MB total. The
+# compressed-size cap below stops one outlier page from dominating memory.
+MAX_ENTRIES = 1500
+MAX_BYTES_PER_ENTRY = 500_000        # uncompressed safety cap
+MAX_COMPRESSED_BYTES_PER_ENTRY = 100_000  # ~10x worst-case observed
+GZIP_LEVEL = 6
 
 
 class _PageCache:
@@ -84,9 +90,10 @@ async def page_cache_middleware(request, call_next):
     key = cache_key(request)
     hit = page_cache.get(key)
     if hit is not None:
-        _, status, headers, body, media_type = hit
+        _, status, headers, gz_body, media_type = hit
         headers = dict(headers)
         headers["X-Page-Cache"] = "HIT"
+        body = gzip.decompress(gz_body)
         return Response(content=body, status_code=status, headers=headers, media_type=media_type)
 
     response = await call_next(request)
@@ -105,8 +112,12 @@ async def page_cache_middleware(request, call_next):
     # Strip the original content-length; Response will set it fresh from body.
     headers.pop("content-length", None)
 
+    # Store gzipped to keep memory pressure low on small instances; uncompressed
+    # check below is the safety limit (skip pages that won't fit even compressed).
     if len(body) <= MAX_BYTES_PER_ENTRY:
-        page_cache.set(key, response.status_code, headers, body, response.media_type)
+        gz_body = gzip.compress(body, compresslevel=GZIP_LEVEL)
+        if len(gz_body) <= MAX_COMPRESSED_BYTES_PER_ENTRY:
+            page_cache.set(key, response.status_code, headers, gz_body, response.media_type)
 
     headers["X-Page-Cache"] = "MISS"
     return Response(
