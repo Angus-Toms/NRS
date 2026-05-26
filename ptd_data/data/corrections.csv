@@ -314,3 +314,8 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 677299,182688,00:10:21,00:00:29,00:29:24,00:00:35,00:18:45,00:59:34,Overall time has trailing :00 appended (race 677299 ingest quirk); corrected by dropping the extra field
 677299,136602,00:09:32,00:00:32,00:28:46,00:00:42,00:20:09,00:59:41,Overall time has trailing :00 appended (race 677299 ingest quirk); corrected by dropping the extra field
 677299,196897,00:09:30,00:00:33,00:28:41,00:00:39,00:20:30,00:59:53,Overall time has trailing :00 appended (race 677299 ingest quirk); corrected by dropping the extra field
+672658,124408,00:18:41,00:00:53,01:05:17,00:00:24,00:37:55,02:03:10,Bike split missing 1h prefix
+672658,150060,00:18:43,00:00:53,01:05:13,00:00:23,00:44:09,02:09:21,Bike split missing 1h prefix
+672658,160316,00:19:52,00:00:51,01:07:19,00:01:00,00:42:42,02:11:44,Bike split missing 1h prefix
+672658,194946,00:20:45,00:01:02,01:07:04,00:00:28,00:44:13,02:13:32,Bike split missing 1h prefix
+672658,160963,00:19:49,00:00:57,01:09:33,00:00:29,00:45:24,02:16:12,Bike split missing 1h prefix

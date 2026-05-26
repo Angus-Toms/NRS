@@ -3680,19 +3680,6 @@ def get_upcoming_events(country=None, course='short'):
     return list(events.values())
 
 
-def get_upcoming_rank_for_std(gender, course, disc, std_value):
-    """Rank an upcoming race's predicted std would have within race_rankings."""
-    if std_value is None:
-        return None
-    conn = _get_conn()
-    col = f"{disc}_std"
-    row = conn.execute(
-        f"SELECT COUNT(*) FROM race_rankings WHERE gender = ? AND course = ? AND {col} IS NOT NULL AND {col} > ?",
-        [gender, course, std_value],
-    ).fetchone()
-    return (row[0] or 0) + 1
-
-
 def get_upcoming_race_leaderboard(gender, course, country=None):
     """Upcoming races as race-leaderboard rows with predicted standards.
 

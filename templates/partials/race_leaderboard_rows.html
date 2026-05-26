@@ -1,6 +1,6 @@
 {% for race in races %}
-<a href="/race/{{ race.race_id }}" class="athlete-card race-card{% if not race.is_upcoming and race.display_rank and race.display_rank <= 3 %} rank-{{ race.display_rank }}{% endif %}">
-    <div class="rank-badge {{ 'rank-' ~ race.display_rank ~ '-text' if not race.is_upcoming and race.display_rank and race.display_rank <= 3 else '' }}">{% if race.display_rank %}#{{ race.display_rank }}{% else %}—{% endif %}</div>
+<a href="/race/{{ race.race_id }}" class="athlete-card race-card{% if race.display_rank and race.display_rank <= 3 %} rank-{{ race.display_rank }}{% endif %}">
+    <div class="rank-badge {{ 'rank-' ~ race.display_rank ~ '-text' if race.display_rank and race.display_rank <= 3 else '' }}">{% if race.display_rank %}#{{ race.display_rank }}{% else %}—{% endif %}</div>
     <div class="athlete-card-content">
         <div class="athlete-main-info">
             <div class="athlete-details">

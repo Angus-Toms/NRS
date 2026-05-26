@@ -76,13 +76,11 @@
 
     <div class="h2h-stats-group">
         {% for row in standard_rows %}
-        {%- set rank_pill1 = ('<span class="race-rank-pill">#' ~ row.rank1 ~ (' of ' ~ row.rank_total1 if row.rank_total1 else '') ~ '</span>') if row.rank1 else '' -%}
-        {%- set rank_pill2 = ('<span class="race-rank-pill">#' ~ row.rank2 ~ (' of ' ~ row.rank_total2 if row.rank_total2 else '') ~ '</span>') if row.rank2 else '' -%}
         {{ rc_stat_row(
             row.label, row.value1, row.value2,
             raw1=row.raw1, raw2=row.raw2,
-            pill1='<span class="std-pill std-pill--' ~ row.class1 ~ '">' ~ row.class1|title ~ '</span>' ~ rank_pill1,
-            pill2='<span class="std-pill std-pill--' ~ row.class2 ~ '">' ~ row.class2|title ~ '</span>' ~ rank_pill2,
+            pill1='<span class="std-pill std-pill--' ~ row.class1 ~ '">' ~ row.class1|title ~ '</span>',
+            pill2='<span class="std-pill std-pill--' ~ row.class2 ~ '">' ~ row.class2|title ~ '</span>',
             higher_better=true
         ) }}
         {% endfor %}

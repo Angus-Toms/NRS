@@ -163,25 +163,33 @@
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
-    /* Allow the ratings block to shrink with the card on narrow screens. The
-       inner .rating-item children also need min-width:0 + flex-shrink:1 so the
-       wrap actually kicks in - their default `width: 4.75rem; flex-shrink: 0`
-       is what was forcing the parent box wider than the card. */
-    .athlete-card-content { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
-    .athlete-main-info { min-width: 0; }    /* reset the desktop floor; full-width in column layout */
+    /* Two-row card: top row = badge + name/meta (badge vertically centered),
+       bottom row = full-width ratings. We achieve this without touching the
+       markup by promoting .athlete-card-content's children to direct flex
+       children of .athlete-card via `display: contents`, then letting
+       .athlete-ratings claim a full new flex row via `flex-basis: 100%`. */
+    .athlete-card { flex-wrap: wrap; align-items: center; }
+    .athlete-card-content { display: contents; }
+    .athlete-main-info { flex: 1 1 0; min-width: 0; }
+    .athlete-name { overflow: visible; white-space: normal; }
+
     .athlete-ratings {
+        flex-basis: 100%;
         width: 100%;
         box-sizing: border-box;       /* site has no global border-box; without
                                          this, width:100% + padding overflows. */
+        margin-top: 0.4rem;
         min-width: 0;
         flex-shrink: 1;
         flex-wrap: nowrap;
-        justify-content: flex-start;
+        justify-content: space-between;
+        padding-left: 0;
+        padding-right: 0;
     }
     .athlete-ratings .rating-item {
         width: auto;
         min-width: 0;
-        flex: 1 1 4rem;
+        flex: 1 1 0;
     }
 }
 

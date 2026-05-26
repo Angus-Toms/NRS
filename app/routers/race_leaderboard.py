@@ -62,17 +62,17 @@ async def race_leaderboard(
             gender=gender, course=course, country=country,
         ))
         std_key = f"{disc}_std"
-        for r in upcoming:
-            # Rank = 1 + count of completed races in this bucket with higher std,
-            # so upcoming slot in among completed ranks based on predicted std.
-            r["display_rank"] = queries.get_upcoming_rank_for_std(
-                gender, course, disc, r.get(std_key),
-            )
         races = sorted(
             completed + upcoming,
             key=lambda r: r.get(std_key) or 0,
             reverse=True,
         )
+        # Renumber the merged list so completed and upcoming share a single
+        # rank universe — otherwise upcoming races above the current leader
+        # collide with the precomputed #1 from race_rankings.
+        for i, r in enumerate(races):
+            std = r.get(std_key)
+            r["display_rank"] = (i + 1) if std is not None else None
     else:
         races = completed
 

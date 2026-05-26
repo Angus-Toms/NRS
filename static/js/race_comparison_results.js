@@ -129,16 +129,12 @@
                         const step   = (xmin !== undefined && xmax !== undefined)
                                        ? _niceStep(xmax - xmin, fmt)
                                        : undefined;
-                        // Snap the visible range to multiples of `step` so the
-                        // first/last ticks themselves land on round numbers.
-                        const lo = step ? Math.floor(xmin / step) * step : xmin;
-                        const hi = step ? Math.ceil (xmax / step) * step : xmax;
                         return {
                             type: 'linear',
                             offset: false,
                             bounds: 'data',
-                            min: lo,
-                            max: hi,
+                            min: xmin,
+                            max: xmax,
                             title: { display: true, text: fmt === 'time' ? 'Time' : 'Rating' },
                             grid:  { display: false },
                             ticks: {
