@@ -826,9 +826,13 @@ class PTOIngester:
         - Prefilter by exact country match. No country → no match (the old
           name-alone fallback conflated namesakes like Thomas Davies GBR 1972
           vs GBR 1995, and country is cheap and reliable).
-        - PTO yob required. Without it we can't distinguish a pro from a
-          namesake AGer; the overlap-race matcher (ptd_data.pto_matcher) is
-          the safer cross-reference path for yob-less PTO athletes.
+        - Exact-name fallback: if there's a unique normalised-name match in
+          the same country AND one side has yob=0/NULL, accept (we can't
+          contradict on yob and the unique-name + same-country pairing is
+          strong).
+        - Otherwise PTO yob required. Without it we can't distinguish a pro
+          from a namesake AGer; the overlap-race matcher (ptd_data.pto_matcher)
+          is the safer cross-reference path for yob-less PTO athletes.
         - Within country+yob (±1), require name similarity ≥ 0.70 and a
           clear margin over the runner-up (≥ _NAME_SIM_GAP). If no single
           winner, skip — conservative by design.
@@ -840,6 +844,18 @@ class PTOIngester:
         candidates = self._wt_athletes.get(country_full, [])
         if not candidates:
             return None, None
+
+        # Exact-name + same-country fallback when one side has no yob.
+        # Country is already enforced by the per-country index. If there's a
+        # unique normalised-name match and at least one of the two yobs is
+        # missing (0/NULL), trust the pairing — same name + same country +
+        # no contradicting yob is strong enough to auto-link.
+        pto_norm = _normalize_name(name)
+        exact_name = [c for c in candidates if _normalize_name(c[1]) == pto_norm]
+        if len(exact_name) == 1 and (not yob or not exact_name[0][2]):
+            top = exact_name[0]
+            return top[0], f"exact_name_country (wt_yob={top[2] or '?'}, pto_yob={yob or '?'})"
+
         if not yob:
             # Still scan for namesake to suggest as a merge candidate. We
             # don't auto-merge (the safety rationale is unchanged), but flag

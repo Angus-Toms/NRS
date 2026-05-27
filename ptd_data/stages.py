@@ -35,8 +35,9 @@ _PLAIN_RE = re.compile(
 _STAGE_RE = re.compile(
     r'\b(?:'
     r'semi[- ]?final'
-    r'|final\s+[ab]\b'
-    r'|final\s+(?:men|women)\b'
+    r'|final\s+[a-c]\b'
+    r'|final\s+[a-c]\s+(?:elite|u23|junior|youth)\s+(?:men|women)\b'
+    r'|final\s+(?:elite|u23|junior|youth)?\s*(?:men|women)\b'
     r'|heat'
     r'|repechage'
     r'|qualifier'
@@ -50,7 +51,10 @@ _CAT_RE = re.compile(r'\b(elite|u23|junior|youth)\b', re.I)
 
 # Bare "Final Men" / "Final Women" — used in older events (e.g. 2012) where
 # this IS the combined/final row rather than "Elite Men/Women".
-_BARE_FINAL_RE = re.compile(r'^\s*final\s+(?:men|women)\s*$', re.I)
+_BARE_FINAL_RE = re.compile(
+    r'^\s*final\s+(?:(?:elite|u23|junior|youth)\s+)?(?:men|women)\s*$',
+    re.I,
+)
 
 
 def combined_category(prog_name: str) -> str | None:
@@ -92,9 +96,13 @@ def mark_multi_stage(conn) -> None:
         # as the combined row rather than "Elite Men/Women". Treat it as combined
         # only when there is no plain "Elite/U23/..." combined in the same group.
         if not combined and stages:
-            combined = [(rid, 'elite', title)
-                        for rid, pn, title in group_rows
-                        if _BARE_FINAL_RE.match(pn)]
+            combined = []
+            for rid, pn, title in group_rows:
+                m = _BARE_FINAL_RE.match(pn)
+                if not m:
+                    continue
+                tier_m = _CAT_RE.search(pn)
+                combined.append((rid, tier_m.group(1).lower() if tier_m else 'elite', title))
             # These bare-final rows also matched _STAGE_RE so remove them from stages.
             bare_ids = {rid for rid, _, _ in combined}
             stages = [(rid, pn, cat) for rid, pn, cat in stages if rid not in bare_ids]
