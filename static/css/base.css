@@ -1376,8 +1376,10 @@ table td a.link:hover   { color: var(--primary-color); }
     line-height: 1;
 }
 
-/* Country flag SVGs (replaces emoji flags). Default: inline next to names. */
-.flag {
+/* Country flag SVGs (replaces emoji flags). Default: inline next to names.
+ * The .flag.flag selector beats avatar-img rules (.w1-ath img etc.) in series.css
+ * that would otherwise round these into circles. */
+.flag.flag {
     display: inline-block;
     width: 1em;
     height: 0.7em;

@@ -114,7 +114,7 @@ if $DO_STATIC; then
                 echo "public, max-age=3600" ;;
         esac
     }
-    for dir in css js imgs fonts/plus-jakarta-sans; do
+    for dir in css js imgs flags fonts/plus-jakarta-sans; do
         echo "  $dir/"
         for f in "$STATIC_DIR/$dir"/*; do
             [ -f "$f" ] || continue

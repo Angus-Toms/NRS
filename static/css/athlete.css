@@ -175,23 +175,13 @@
 .athlete-compare-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.35rem;
     text-decoration: none;
-    color: rgba(255, 255, 255, 0.65);
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    padding: 0.3rem 0.75rem;
-    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.85);
+    transition: color var(--transition-fast);
     white-space: nowrap;
-    flex-shrink: 0;
-    transition: color var(--transition-fast), border-color var(--transition-fast);
 }
-
-.athlete-compare-link:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.7);
-}
+.athlete-compare-link:hover { color: var(--primary-color); }
 .athlete-compare-link .compare-ic { width: 0.95em; height: 0.95em; flex-shrink: 0; }
 
 /* ============================================
@@ -552,10 +542,6 @@ tr.sub-race-row .link:hover {
     .athlete-mode-pill {
         font-size: 0.72rem;
         padding: 0.3rem 0.65rem;
-    }
-    .athlete-compare-link {
-        font-size: 0.72rem;
-        padding: 0.25rem 0.65rem;
     }
 
     .palmares-grid {
