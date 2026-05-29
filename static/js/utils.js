@@ -1,3 +1,12 @@
+// --- Flag SVG helper ---
+// Returns an <img> tag for the country flag, or empty string when code missing.
+function flagImg(code, country, extraCls) {
+    if (!code) return '';
+    const cls = 'flag' + (extraCls ? ' ' + extraCls : '');
+    const alt = String(country || code).replace(/"/g, '&quot;');
+    return `<img src="/static/flags/${code}.svg" alt="${alt}" class="${cls}" loading="lazy">`;
+}
+
 // --- Sort icons: inject SVG chevrons into every th.sortable on load ---
 function initSortIcons() {
     const SI_NEUTRAL = `<svg class="si-neutral" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1,5.5 5,1.5 9,5.5"/><polyline points="1,8.5 5,12.5 9,8.5"/></svg>`;

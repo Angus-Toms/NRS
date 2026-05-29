@@ -354,7 +354,7 @@ function buildPanel(){
         return `<tr class="${tier}-row">
             <td class="w1-pos"><span class="pos-circle ${tier}">${p.position}</span></td>
             <td class="w1-ath-cell"><a href="/athlete/${p.athlete_id}" class="w1-ath ${tier}-img">
-                <img src="${profileSrc(p.athlete_id, p.profile_img, 128)}" alt="${p.name}"><span class="w1-ath-name"><b>${p.name}</b> ${p.country_emoji}</span>
+                <img src="${profileSrc(p.athlete_id, p.profile_img, 128)}" alt="${p.name}"><span class="w1-ath-name"><b>${p.name}</b> ${flagImg(p.country_alpha3)}</span>
             </a></td>
             ${cellHtml(p.swim_fmt, swimInfo[i],            {label:"Swim"})}
             ${cellHtml(p.t1_fmt,   t1Info[i],   {transition:true, label:"T1"})}
@@ -472,7 +472,7 @@ function renderLeaders(){
                          + group(editionsFor(3), "bronze", 3);
         return `<div class="leader-row">
             <img src="${profileSrc(l.athlete_id, l.profile_img, 128)}" alt="${l.name}">
-            <a href="/athlete/${l.athlete_id}" class="leader-name">${l.name} ${l.country_emoji}</a>
+            <a href="/athlete/${l.athlete_id}" class="leader-name">${l.name} ${flagImg(l.country_alpha3)}</a>
             <div>${groupsHtml}</div>
         </div>`;
     }).join("");
@@ -486,7 +486,7 @@ function renderMedals(){
         return;
     }
     // Pull per-medal detail (surname + race short) from RACES, joined to
-    // the server's medal_table by country_emoji. Race short comes from
+    // the server's medal_table by country_alpha3. Race short comes from
     // venue + 2-digit year so we can tell apart same-year editions.
     function shortFor(e){
         const v  = (e.venue || "").trim();
@@ -497,7 +497,7 @@ function renderMedals(){
     // list reads top-down from latest medal to earliest.
     const detail = {};
     RACES.forEach(e => e.podium.forEach((p, i) => {
-        const cc = p.country_emoji;
+        const cc = p.country_alpha3;
         if (!cc) return;
         const slot = i === 0 ? "g" : i === 1 ? "s" : "b";
         detail[cc] = detail[cc] || {g:[], s:[], b:[]};
@@ -515,12 +515,12 @@ function renderMedals(){
     }
 
     tbody.innerHTML = MEDAL_TABLE.map(c => {
-        const d = detail[c.country_emoji] || {g:[], s:[], b:[]};
+        const d = detail[c.country_alpha3] || {g:[], s:[], b:[]};
         const groups = group(d.g, "gold", 1) + group(d.s, "silver", 2) + group(d.b, "bronze", 3);
         const linkOpen  = c.country_alpha3 ? `<a href="/country/${c.country_alpha3}" class="medals-country">` : `<span class="medals-country">`;
         const linkClose = c.country_alpha3 ? `</a>` : `</span>`;
         return `<tr>
-            <td>${linkOpen}${c.country_full || c.country_emoji} <span class="medals-flag">${c.country_emoji}</span>${linkClose}</td>
+            <td>${linkOpen}${c.country_full || c.country_alpha3} <span class="medals-flag">${flagImg(c.country_alpha3, c.country_full)}</span>${linkClose}</td>
             <td>${groups}</td>
         </tr>`;
     }).join("");
@@ -530,7 +530,7 @@ function renderMedals(){
 function renderAges(){
     function rowHtml(w){
         return `<tr>
-            <td><a href="/athlete/${w.athlete_id}" class="age-ath"><img src="${profileSrc(w.athlete_id, w.profile_img, 128)}">${w.name} ${w.country_emoji}</a></td>
+            <td><a href="/athlete/${w.athlete_id}" class="age-ath"><img src="${profileSrc(w.athlete_id, w.profile_img, 128)}">${w.name} ${flagImg(w.country_alpha3)}</a></td>
             <td><span class="age-val">${w.age}</span></td>
             <td><a href="/race/${w.race_id}" class="age-yr">${w.edition_short || w.year || ""}</a></td>
         </tr>`;
@@ -669,7 +669,7 @@ function tooltipTimes(tip, chart){
     if (!w) return "";
     return `${ttHead(ed)}
         <div class="ct-body">
-            <div class="ct-row"><span>Winner</span><b>${w.name} ${w.country_emoji}</b></div>
+            <div class="ct-row"><span>Winner</span><b>${w.name} ${flagImg(w.country_alpha3)}</b></div>
             <div class="ct-row"><span>Time</span><b>${w.time_fmt}</b></div>
         </div>`;
 }
@@ -691,8 +691,8 @@ function tooltipMargin(tip, chart){
     const w = ed.podium[0], r = ed.podium[1];
     return `${ttHead(ed)}
         <div class="ct-body">
-            ${w ? `<div class="ct-row"><span>Winner</span><b>${w.name} ${w.country_emoji}</b></div>` : ""}
-            ${r ? `<div class="ct-row"><span>Runner-up</span><b>${r.name} ${r.country_emoji}</b></div>` : ""}
+            ${w ? `<div class="ct-row"><span>Winner</span><b>${w.name} ${flagImg(w.country_alpha3)}</b></div>` : ""}
+            ${r ? `<div class="ct-row"><span>Runner-up</span><b>${r.name} ${flagImg(r.country_alpha3)}</b></div>` : ""}
             ${r && r.gap_fmt ? `<div class="ct-row"><span>Margin</span><b>${r.gap_fmt}</b></div>` : ""}
         </div>`;
 }

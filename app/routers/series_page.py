@@ -2,13 +2,14 @@ from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 from ptd_data import queries
 from app.routers.router_utils import format_time, format_time_behind
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 router = APIRouter()
 
 _DISCS = ["overall", "swim", "bike", "run", "transition"]
@@ -73,7 +74,7 @@ def _races_to_json(races):
                     "position":      p["position"],
                     "athlete_id":    p["athlete_id"],
                     "name":          p["name"],
-                    "country_emoji": p["country_emoji"],
+                    "country_alpha3": p["country_alpha3"],
                     "profile_img":   bool(p.get("profile_img")),
                     "overall_s":     p.get("overall_s"),
                     "swim_s":        p.get("swim_s"),
@@ -250,7 +251,7 @@ def _winners_age_to_json(rows):
         {
             "athlete_id":    w["athlete_id"],
             "name":          w["name"],
-            "country_emoji": w["country_emoji"],
+            "country_alpha3": w["country_alpha3"],
             "profile_img":   bool(w.get("profile_img")),
             "race_id":       w["race_id"],
             "year":          w["race_date"].year if w.get("race_date") else None,

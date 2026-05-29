@@ -104,7 +104,7 @@
                 <td class="w1-ath-cell">
                     <a href="/athlete/{{ p.athlete_id }}" class="w1-ath {{ tier }}-img">
                         <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}">
-                        <span class="w1-ath-name"><b>{{ p.name }}</b> {{ p.emoji }}</span>
+                        <span class="w1-ath-name"><b>{{ p.name }}</b> {{ flag(p.country_alpha3) }}</span>
                     </a>
                 </td>
                 {{ cell(p.swim, 'Swim') }}

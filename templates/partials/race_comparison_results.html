@@ -16,7 +16,7 @@
             <span class="pos-circle {{ 'gold' if p.position == 1 else 'silver' if p.position == 2 else 'bronze' }}">{{ p.position }}</span>
             <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}"
                  alt="{{ p.name }}" class="event-race-entry-img" loading="lazy" width="32" height="32">
-            <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.country_emoji }}</a>
+            <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ flag(p.country_alpha3) }}</a>
             {% if p.position == 1 and p.time %}
                 <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
             {% elif p.gap %}
@@ -196,7 +196,7 @@
         <tbody>
             {% for a in common_athletes %}
             <tr>
-                <td><a href="/athlete/{{ a.athlete_id }}" class="link">{{ a.name }} {{ a.country_emoji }}</a></td>
+                <td><a href="/athlete/{{ a.athlete_id }}" class="link">{{ a.name }} {{ flag(a.country_alpha3) }}</a></td>
                 <td class="position-col h2h-pos-cell">{{ pos_span(a.r1_position, a.r1_status) }}</td>
                 <td class="rc-split-cell">
                     {% for d in ['overall', 'swim', 'bike', 'run'] %}

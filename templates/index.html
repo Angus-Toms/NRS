@@ -80,7 +80,7 @@
                         class="champ-img">
                     <div class="champ-namerow">
                         <h3 class="champ-name">{{ champ.name }}</h3>
-                        <span class="champ-flag">{{ champ.country_emoji }}</span>
+                        <span class="champ-flag">{{ flag(champ.country_alpha3, champ.country_full) }}</span>
                     </div>
                     <div class="champ-stats-row">
                         <div class="champ-stat">
@@ -158,7 +158,7 @@
                                 <li class="event-race-entry">
                                     <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
                                     <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-race-entry-img">
-                                    <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                                    <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ flag(p.country_alpha3) }}</a>
                                     {% if p.position == 1 and p.time %}
                                         <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
                                     {% elif p.position > 1 and p.gap %}
@@ -228,7 +228,7 @@
                                 <li class="event-race-entry">
                                     <span class="event-podium-pos event-podium-pos--{{ p.position }}">{{ p.position }}</span>
                                     <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}" class="event-race-entry-img">
-                                    <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ p.emoji }}</a>
+                                    <a href="/athlete/{{ p.athlete_id }}" class="event-entry-name">{{ p.name }} {{ flag(p.country_alpha3) }}</a>
                                     {% if p.position == 1 and p.time %}
                                         <span class="event-entry-time event-entry-time--winner">{{ p.time }}</span>
                                     {% elif p.gap %}
@@ -283,7 +283,7 @@
                         {% else %}<span class="pos-other">{{ pos }}</span>{% endif %}
                         <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img else 'imgs/default_user_64.webp' }}"
                              alt="{{ a.name }}" class="lb-widget-img" loading="lazy" width="32" height="32">
-                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-widget-name">{{ a.name }} {{ a.country_emoji }}</a>
+                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-widget-name">{{ a.name }} {{ flag(a.country_alpha3) }}</a>
                         <span class="lb-widget-rating">{{ "%.0f"|format(a.overall) }}</span>
                     </li>
                     {% endfor %}

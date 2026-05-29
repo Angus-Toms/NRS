@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 
@@ -9,6 +9,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 
 
 @router.get("/races", response_class=HTMLResponse)

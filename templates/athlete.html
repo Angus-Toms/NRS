@@ -40,7 +40,7 @@
             <div class="athlete-hero-name-row">
                 <h1 class="athlete-hero-name">
                     {{ athlete.name }}
-                    {{ athlete.country_emoji }}
+                    {{ flag(athlete.country_alpha3, athlete.country_full, 'flag-lg') }}
                     <span class="athlete-status-chip {{ 'status-active' if athlete.active else 'status-retired' }}">{{ 'Active' if athlete.active else 'Retired' }}</span>
                 </h1>
             </div>
@@ -59,7 +59,7 @@
                         {% for h in nationality_history %}
                         <li class="nat-history-item">
                             <a href="/country/{{ h.country_alpha3 }}" class="nat-history-link">
-                                <span class="nat-history-flag">{{ h.country_emoji }}</span>
+                                <span class="nat-history-flag">{{ flag(h.country_alpha3, h.country_full) }}</span>
                                 <span class="nat-history-name">{{ h.country_full }}</span>
                             </a>
                             <span class="nat-history-dates">
@@ -84,6 +84,8 @@
                 {% if athlete.nickname %}
                 <span class="hero-meta-dot">·</span> <span class="athlete-hero-nickname">"{{ athlete.nickname }}"</span>
                 {% endif %}
+                <span class="hero-meta-dot">·</span>
+                <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg><span class="athlete-compare-label">Compare</span></a>
             </div>
             <div class="athlete-hero-stats">
                 <span class="hero-stat-n">{{ athlete.race_starts }}</span> starts
@@ -94,9 +96,9 @@
             </div>
         </div>
 
-        <!-- Actions: course switcher above, compare beneath; own column on the right -->
+        <!-- Actions: course/category switcher on the right -->
+        {% if mode_summaries and mode_summaries|length > 1 %}
         <div class="athlete-hero-actions">
-            {% if mode_summaries and mode_summaries|length > 1 %}
             <div class="athlete-mode-switcher" role="tablist" aria-label="Profile mode">
                 {% for m in mode_summaries %}
                 {% set is_active = m.key == active_mode %}
@@ -109,9 +111,8 @@
                 </a>
                 {% endfor %}
             </div>
-            {% endif %}
-            <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Compare</a>
         </div>
+        {% endif %}
 
     </div>
 </div>
@@ -177,7 +178,7 @@
                     <th class="rt-rating">Rating</th>
                     {% if has_rank_col %}
                     <th class="rt-rank">{{ rank_col_label }}</th>
-                    <th class="rt-rank">{{ 'National' if current_rankings else '' }}</th>
+                    {% if current_rankings %}<th class="rt-rank">National</th>{% endif %}
                     {% endif %}
                     <th class="rt-peak">Peak Rating</th>
                     <th class="rt-best">Best Race</th>
@@ -194,14 +195,16 @@
                         {% if current_rankings and current_rankings['world_'~disc] %}
                         <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">{{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup></a>
                         {% elif peak_rankings and peak_rankings['world_'~disc] %}
-                        {{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup>
+                        <span>{{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup></span>
                         {% else %}<span class="no-data">-</span>{% endif %}
                     </td>
+                    {% if current_rankings %}
                     <td class="rt-rank">
-                        {% if current_rankings and current_rankings['national_'~disc] %}
+                        {% if current_rankings['national_'~disc] %}
                         <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link">{{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup></a>
                         {% else %}<span class="no-data">-</span>{% endif %}
                     </td>
+                    {% endif %}
                     {% endif %}
                     <td class="rt-peak">
                         <span class="rt-peak-main">{{ rating_peaks['max_'~disc] }}</span>
@@ -311,7 +314,7 @@
             <img class="rival-img"
                  src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ r.athlete_id ~ '.webp' if r.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
                  alt="{{ r.name }}" loading="lazy" width="80" height="80">
-            <div class="rival-name">{{ r.name }} {{ r.country_emoji }}</div>
+            <div class="rival-name">{{ r.name }} {{ flag(r.country_alpha3) }}</div>
             <div class="rival-record"><span class="rival-wins">{{ r.wins }}W</span> &middot; <span class="rival-losses">{{ r.losses }}L</span></div>
         </a>
         <a class="rival-compare"

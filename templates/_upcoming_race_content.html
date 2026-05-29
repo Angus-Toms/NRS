@@ -83,7 +83,7 @@
                     </td>
                     <td class="athlete-col" data-value="{{ row.name }}">
                         <a href="/athlete/{{ row.athlete_id }}" class="link">
-                            {{ row.name }} {{ row.country_emoji }}
+                            {{ row.name }} {{ flag(row.country_alpha3) }}
                         </a>{% if row.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
                     </td>
                     <td class="yob-col" data-value="{{ row.year_of_birth if row.year_of_birth else 0 }}">
@@ -159,7 +159,7 @@
                     </td>
                     <td class="athlete-col" data-value="{{ athlete.name }}">
                         <a href="/athlete/{{ athlete.athlete_id }}" class="link">
-                            {{ athlete.name }} {{ athlete.country_emoji }}
+                            {{ athlete.name }} {{ flag(athlete.country_alpha3) }}
                         </a>{% if athlete.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
                     </td>
                     <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">

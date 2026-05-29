@@ -151,7 +151,7 @@ function renderResults(athletes, disc, order) {
             ? `${SEP}<span class="meta-item ptd-tag-row">${tags.join('')}</span>`
             : '';
         const metaHtml = `
-            ${SEP}<span class="meta-item">${a.country_emoji} ${escapeHtml(a.country_full)}</span>
+            ${SEP}<span class="meta-item">${flagImg(a.country_alpha3, a.country_full)} ${escapeHtml(a.country_full)}</span>
             ${yobItem}
             ${SEP}<span class="meta-item"><span class="meta-val">${a.race_starts}</span> races</span>
             ${SEP}<span class="meta-item"><span class="meta-val">${a.wins}</span> wins</span>

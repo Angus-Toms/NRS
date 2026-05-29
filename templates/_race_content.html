@@ -168,7 +168,7 @@
                         </td>
                         <td class="athlete-col" data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">
-                                {{ athlete.name }} {{ athlete.country_emoji }}
+                                {{ athlete.name }} {{ flag(athlete.country_alpha3) }}
                             </a>
                         </td>
                         <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">
@@ -255,7 +255,7 @@
                     </td>
                     <td class="athlete-col" data-value="{{ row.name }}">
                         <a href="/athlete/{{ row.athlete_id }}" class="link">
-                            {{ row.name }} {{ row.country_emoji }}
+                            {{ row.name }} {{ flag(row.country_alpha3) }}
                         </a>{% if row.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
                     </td>
                     <td class="yob-col" data-value="{{ row.year_of_birth if row.year_of_birth else 0 }}">
@@ -349,7 +349,7 @@
                         </td>
                         <td class="athlete-col" data-value="{{ athlete.name }}">
                             <a href="/athlete/{{ athlete.athlete_id }}" class="link">
-                                {{ "{} {}".format(athlete.name, athlete.country_emoji) }}
+                                {{ athlete.name }} {{ flag(athlete.country_alpha3) }}
                             </a>
                         </td>
                         <td class="yob-col" data-value="{{ athlete.year_of_birth if athlete.year_of_birth else 0 }}">
@@ -439,7 +439,7 @@
                     {% else %}<span class="pos-other">{{ c.position }}</span>{% endif %}
                 </td>
                 <td class="corr-athlete-col" data-value="{{ c.name }}">
-                    <a href="/athlete/{{ c.athlete_id }}" class="link">{{ c.name }}</a> {{ c.country_emoji }}
+                    <a href="/athlete/{{ c.athlete_id }}" class="link">{{ c.name }}</a> {{ flag(c.country_alpha3) }}
                 </td>
                 <td class="corr-note-col">{{ c.notes }}</td>
                 {% for f in c.fields %}

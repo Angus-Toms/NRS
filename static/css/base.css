@@ -1375,6 +1375,21 @@ table td a.link:hover   { color: var(--primary-color); }
     flex-shrink: 0;
     line-height: 1;
 }
+
+/* Country flag SVGs (replaces emoji flags). Default: inline next to names. */
+.flag {
+    display: inline-block;
+    width: 1em;
+    height: 0.7em;
+    object-fit: cover;
+    vertical-align: 0;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+    margin-left: 0.35em;
+}
+.flag.flag-lg { width: 1.1em; height: 0.75em; border-radius: 2px; }
+.flag.flag-xl { width: 2em;   height: 1.35em; border-radius: 4px; }
 .champ-name {
     font-size: 1.05rem;
     font-weight: 600;

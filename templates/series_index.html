@@ -51,7 +51,7 @@
         <div class="podium-row {{ tier }}-row">
             <span class="pos-circle {{ tier }}">{{ p.position }}</span>
             {{ athlete_img(p) }}
-            <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ p.name }} {{ p.country_emoji }}</a>
+            <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ p.name }} {{ flag(p.country_alpha3) }}</a>
             {% if p.position == 1 %}
             <span class="podium-time">{{ p.time_fmt or '-' }}</span>
             {% else %}
@@ -121,7 +121,7 @@
 <div class="leader-row{% if extra %} leader-row--extra{% endif %}">
     {{ athlete_img(l) }}
     <div>
-        <a href="/athlete/{{ l.athlete_id }}" class="leader-name">{{ l.name }} {{ l.country_emoji }}</a>
+        <a href="/athlete/{{ l.athlete_id }}" class="leader-name">{{ l.name }} {{ flag(l.country_alpha3) }}</a>
         {% if l.editions %}
         <div class="leader-meta">
             {% for ed in l.editions %}

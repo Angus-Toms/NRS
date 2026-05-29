@@ -128,7 +128,6 @@ def search_athletes(query, gender=None, course='all', require_programs=None):
             a.year_of_birth,
             a.gender,
             n.alpha3   AS country_alpha3,
-            n.emoji    AS country_emoji,
             a.country_full,
             latest.overall AS rating,
             COALESCE(t.has_elite_short, FALSE) AS has_elite_short,
@@ -151,7 +150,7 @@ def search_athletes(query, gender=None, course='all', require_programs=None):
     """, params).fetchall()
 
     cols = ["athlete_id", "name", "year_of_birth", "gender", "country_alpha3",
-            "country_emoji", "country_full", "rating",
+            "country_full", "rating",
             "has_elite_short", "has_elite_long", "has_ag"]
     return [dict(zip(cols, r)) for r in rows]
 
@@ -228,7 +227,6 @@ def search_athletes_full(query, disc="overall", order="top", country=None,
             a.year_of_birth,
             a.gender,
             n.alpha3    AS country_alpha3,
-            n.emoji     AS country_emoji,
             a.country_full,
             a.profile_img,
             c.overall, c.swim, c.bike, c.run, c.transition,
@@ -249,7 +247,7 @@ def search_athletes_full(query, disc="overall", order="top", country=None,
     """, params + [limit]).fetchall()
 
     cols = ["athlete_id", "name", "year_of_birth", "gender", "country_alpha3",
-            "country_emoji", "country_full", "profile_img",
+            "country_full", "profile_img",
             "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
             "race_starts", "wins",
             "has_elite_short", "has_elite_long", "has_ag"]
@@ -269,7 +267,6 @@ def get_podium(gender, category='elite', course='short'):
             a.athlete_id,
             a.name,
             n.alpha3   AS country_alpha3,
-            n.emoji    AS country_emoji,
             a.country_full,
             a.year_of_birth,
             a.profile_img,
@@ -298,7 +295,7 @@ def get_podium(gender, category='elite', course='short'):
         LIMIT 3
     """, [category, category, gender]).fetchall()
 
-    cols = ["athlete_id", "name", "country_alpha3", "country_emoji",
+    cols = ["athlete_id", "name", "country_alpha3",
             "country_full", "year_of_birth", "profile_img", "overall", "overall_rank"]
     return [dict(zip(cols, r)) for r in rows]
 
@@ -365,7 +362,7 @@ def get_recent_events(offset, limit, country=None):
     if podium_race_ids:
         ph = ",".join("?" * len(podium_race_ids))
         podium_rows = conn.execute(f"""
-            SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji, res.overall_s, a.profile_img
+            SELECT res.race_id, res.position, a.athlete_id, a.name, n.alpha3, res.overall_s, a.profile_img
             FROM results res
             JOIN athletes a ON res.athlete_id = a.athlete_id
             JOIN nationalities n ON a.country_full = n.country_full
@@ -376,10 +373,10 @@ def get_recent_events(offset, limit, country=None):
         """, podium_race_ids).fetchall()
 
         podium_by_race = {}
-        for race_id, position, athlete_id, name, emoji, overall_s, profile_img in podium_rows:
+        for race_id, position, athlete_id, name, alpha3, overall_s, profile_img in podium_rows:
             podium_by_race.setdefault(race_id, []).append(
                 {"position": position, "athlete_id": athlete_id, "name": name,
-                 "emoji": emoji, "overall_s": overall_s, "profile_img": profile_img}
+                 "country_alpha3": alpha3, "overall_s": overall_s, "profile_img": profile_img}
             )
         # Compute gap (time diff from winner) for 2nd and 3rd
         for entries in podium_by_race.values():
@@ -617,7 +614,6 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
             a.name,
             a.year_of_birth,
             n.alpha3    AS country_alpha3,
-            n.emoji     AS country_emoji,
             a.country_full,
             a.profile_img,
             c.overall, c.swim, c.bike, c.run, c.transition,
@@ -646,7 +642,7 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
 
     rows = conn.execute(sql, params).fetchall()
     cols = [
-        "athlete_id", "name", "year_of_birth", "country_alpha3", "country_emoji", "country_full",
+        "athlete_id", "name", "year_of_birth", "country_alpha3", "country_full",
         "profile_img",
         "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
         "world_overall", "world_swim", "world_bike", "world_run", "world_transition",
@@ -772,10 +768,10 @@ def get_race_leaderboard(gender, course, disc, year=None, country=None, level=No
         SELECT DISTINCT
             r.race_id, r.race_title, r.prog_name, r.race_date, r.gender, r.distance,
             e.venue, e.country,
-            n.emoji AS event_country_emoji,
+            n.alpha3 AS event_country_alpha3,
             winner.athlete_id AS winner_id,
             winner.name       AS winner_name,
-            winner.country_emoji AS winner_country_emoji,
+            winner.country_alpha3 AS winner_country_alpha3,
             rr.overall_std, rr.swim_std, rr.bike_std, rr.run_std, rr.transition_std,
             rr.overall_rank, rr.swim_rank, rr.bike_rank, rr.run_rank, rr.transition_rank
         FROM race_rankings rr
@@ -784,7 +780,7 @@ def get_race_leaderboard(gender, course, disc, year=None, country=None, level=No
         LEFT JOIN nationalities n ON e.country = n.country_full
         {extra_joins}
         LEFT JOIN (
-            SELECT res.race_id, a.athlete_id, a.name, nn.emoji AS country_emoji
+            SELECT res.race_id, a.athlete_id, a.name, nn.alpha3 AS country_alpha3
             FROM results res
             JOIN athletes a       ON res.athlete_id = a.athlete_id
             JOIN nationalities nn ON a.country_full = nn.country_full
@@ -799,8 +795,8 @@ def get_race_leaderboard(gender, course, disc, year=None, country=None, level=No
     rows = conn.execute(sql, params).fetchall()
     cols = [
         "race_id", "race_title", "prog_name", "race_date", "gender", "distance",
-        "venue", "country", "event_country_emoji",
-        "winner_id", "winner_name", "winner_country_emoji",
+        "venue", "country", "event_country_alpha3",
+        "winner_id", "winner_name", "winner_country_alpha3",
         "overall_std", "swim_std", "bike_std", "run_std", "transition_std",
         "overall_rank", "swim_rank", "bike_rank", "run_rank", "transition_rank",
     ]
@@ -958,10 +954,10 @@ def get_alpha3_for_country(country_full):
 
 
 def get_country_by_alpha3(alpha3):
-    """Return {country_full, alpha3, emoji, athlete_count, race_host_count} or None."""
+    """Return {country_full, alpha3, athlete_count, race_host_count} or None."""
     conn = _get_conn()
     row = conn.execute("""
-        SELECT n.country_full, n.alpha3, n.emoji,
+        SELECT n.country_full, n.alpha3,
                (SELECT COUNT(*) FROM athletes a WHERE a.country_full = n.country_full) AS athlete_count,
                (SELECT COUNT(*) FROM events e    WHERE e.country     = n.country_full) AS race_host_count
         FROM nationalities n
@@ -969,7 +965,7 @@ def get_country_by_alpha3(alpha3):
     """, [alpha3]).fetchone()
     if not row:
         return None
-    cols = ["country_full", "alpha3", "emoji", "athlete_count", "race_host_count"]
+    cols = ["country_full", "alpha3", "athlete_count", "race_host_count"]
     return dict(zip(cols, row))
 
 
@@ -1091,7 +1087,7 @@ def get_countries_with_counts():
             FULL OUTER JOIN inactive_pick ip
               ON ap.country_full = ip.country_full AND ap.gender = ip.gender
         )
-        SELECT n.country_full, n.alpha3, n.emoji,
+        SELECT n.country_full, n.alpha3,
                COALESCE(ath.athlete_count, 0),
                COALESCE(ev.race_host_count, 0),
                COALESCE(cont.continent, 'Other'),
@@ -1105,7 +1101,7 @@ def get_countries_with_counts():
         LEFT JOIN topath tf ON tf.country_full  = n.country_full AND tf.gender = 'female'
         ORDER BY COALESCE(ath.athlete_count, 0) DESC, n.country_full
     """).fetchall()
-    cols = ["country_full", "alpha3", "emoji",
+    cols = ["country_full", "alpha3",
             "athlete_count", "race_host_count", "continent",
             "top_male_id",   "top_male_name",   "top_male_img",   "top_male_rating",   "top_male_rank",   "top_male_course",
             "top_female_id", "top_female_name", "top_female_img", "top_female_rating", "top_female_rank", "top_female_course"]
@@ -1214,7 +1210,7 @@ def get_athlete_info(athlete_id):
         SELECT a.athlete_id, a.name,
                COALESCE(l.country_full, a.country_full) AS country_full,
                a.year_of_birth, a.gender, a.profile_img,
-               n.alpha3 AS country_alpha3, n.emoji AS country_emoji,
+               n.alpha3 AS country_alpha3,
                a.height_cm, a.weight_kg, a.nickname
         FROM athletes a
         LEFT JOIN latest l ON l.athlete_id = a.athlete_id AND l.rn = 1
@@ -1224,7 +1220,7 @@ def get_athlete_info(athlete_id):
     if not row:
         return None
     cols = ["athlete_id", "name", "country_full", "year_of_birth",
-            "gender", "profile_img", "country_alpha3", "country_emoji",
+            "gender", "profile_img", "country_alpha3",
             "height_cm", "weight_kg", "nickname"]
     return dict(zip(cols, row))
 
@@ -1306,7 +1302,7 @@ def get_athlete_nationality_history(athlete_id):
     """Ordered list of countries the athlete has represented, with date ranges.
 
     Returns most-recent-first. The current country has end_date = None.
-    Joins nationalities so the UI has the flag emoji + alpha3 for linking.
+    Joins nationalities so the UI has the alpha3 for the flag + country link.
 
     Excludes England / Scotland / Wales: those entries come from one-off
     Commonwealth Games observations rather than permanent federation
@@ -1317,7 +1313,7 @@ def get_athlete_nationality_history(athlete_id):
     nation slice.
     """
     rows = _get_conn().execute("""
-        SELECT h.country_full, n.alpha3, n.emoji, h.start_date, h.end_date
+        SELECT h.country_full, n.alpha3, h.start_date, h.end_date
         FROM athlete_nationality_history h
         JOIN nationalities n ON h.country_full = n.country_full
         WHERE h.athlete_id = ?
@@ -1326,15 +1322,15 @@ def get_athlete_nationality_history(athlete_id):
     """, [athlete_id]).fetchall()
 
     merged = []
-    for cf, a3, em, sd, ed in rows:
+    for cf, a3, sd, ed in rows:
         if merged and merged[-1][0] == cf:
-            prev_cf, prev_a3, prev_em, prev_sd, prev_ed = merged[-1]
+            prev_cf, prev_a3, prev_sd, prev_ed = merged[-1]
             new_ed = None if (prev_ed is None or ed is None) else max(prev_ed, ed)
-            merged[-1] = (prev_cf, prev_a3, prev_em, prev_sd, new_ed)
+            merged[-1] = (prev_cf, prev_a3, prev_sd, new_ed)
         else:
-            merged.append((cf, a3, em, sd, ed))
+            merged.append((cf, a3, sd, ed))
 
-    cols = ["country_full", "country_alpha3", "country_emoji", "start_date", "end_date"]
+    cols = ["country_full", "country_alpha3", "start_date", "end_date"]
     return [dict(zip(cols, r)) for r in reversed(merged)]
 
 
@@ -2116,7 +2112,7 @@ def get_event_races_detail(event_id):
     # seconds are returned alongside formatted strings so the template +
     # any JS can compute leg gaps without re-parsing.
     podium_rows = conn.execute(f"""
-        SELECT res.race_id, res.position, a.athlete_id, a.name, n.emoji,
+        SELECT res.race_id, res.position, a.athlete_id, a.name, n.alpha3,
                res.overall_s, res.swim_s, res.t1_s, res.bike_s, res.t2_s, res.run_s,
                a.profile_img
         FROM results res
@@ -2129,13 +2125,13 @@ def get_event_races_detail(event_id):
     """, race_ids).fetchall()
 
     podium_by_race = {}
-    for (race_id, pos, athlete_id, name, emoji,
+    for (race_id, pos, athlete_id, name, alpha3,
          overall_s, swim_s, t1_s, bike_s, t2_s, run_s, profile_img) in podium_rows:
         podium_by_race.setdefault(race_id, []).append({
             "position":   pos,
             "athlete_id": athlete_id,
             "name":       name,
-            "emoji":      emoji,
+            "country_alpha3": alpha3,
             "overall_s":  overall_s,
             "swim_s":     swim_s,
             "t1_s":       t1_s,
@@ -2293,7 +2289,6 @@ def get_race_results(race_id):
             cr.overall_s, cr.swim_s, cr.bike_s, cr.run_s, cr.t1_s, cr.t2_s,
             a.name, a.year_of_birth, a.profile_img,
             n.alpha3 AS country_alpha3,
-            n.emoji  AS country_emoji,
             -- behind times computed on corrected splits
             CASE WHEN cr.overall_s > 0 THEN
                 cr.overall_s - MIN(CASE WHEN cr.overall_s > 0 THEN cr.overall_s END) OVER ()
@@ -2332,7 +2327,7 @@ def get_race_results(race_id):
     cols = [
         "athlete_id", "position", "status",
         "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
-        "name", "year_of_birth", "profile_img", "country_alpha3", "country_emoji",
+        "name", "year_of_birth", "profile_img", "country_alpha3",
         "overall_behind_s", "swim_behind_s", "bike_behind_s", "run_behind_s",
         "t1_behind_s", "t2_behind_s",
     ]
@@ -2370,7 +2365,7 @@ def get_race_corrections(race_id):
         SELECT
             cw.athlete_id,
             a.name,
-            n.emoji AS country_emoji,
+            n.alpha3 AS country_alpha3,
             res.position,
             res.status,
             COALESCE(cw.notes, '') AS notes,
@@ -2388,7 +2383,7 @@ def get_race_corrections(race_id):
     """, [race_id, race_id]).fetchall()
 
     cols = [
-        "athlete_id", "name", "country_emoji", "position", "status", "notes",
+        "athlete_id", "name", "country_alpha3", "position", "status", "notes",
         "orig_overall", "corr_overall",
         "orig_swim",    "corr_swim",
         "orig_t1",      "corr_t1",
@@ -2410,7 +2405,6 @@ def get_race_ratings(race_id):
             ra.athlete_id,
             a.name,
             n.alpha3  AS country_alpha3,
-            n.emoji   AS country_emoji,
             a.year_of_birth,
             res.position,
             res.status,
@@ -2428,7 +2422,7 @@ def get_race_ratings(race_id):
     """, [race_id]).fetchall()
 
     cols = [
-        "athlete_id", "name", "country_alpha3", "country_emoji", "year_of_birth", "position", "status",
+        "athlete_id", "name", "country_alpha3", "year_of_birth", "position", "status",
         "overall_rating",    "overall_change",
         "swim_rating",       "swim_change",
         "bike_rating",       "bike_change",
@@ -2994,7 +2988,7 @@ def get_common_athletes_in_races(race1_id, race2_id):
     conn = _get_conn()
     rows = conn.execute("""
         SELECT
-            a.athlete_id, a.name, n.emoji AS country_emoji,
+            a.athlete_id, a.name, n.alpha3 AS country_alpha3,
             r1.position AS r1_position, r1.status AS r1_status,
             r1.overall_s AS r1_overall_s, r1.swim_s AS r1_swim_s,
             r1.bike_s AS r1_bike_s, r1.run_s AS r1_run_s,
@@ -3009,7 +3003,7 @@ def get_common_athletes_in_races(race1_id, race2_id):
         ORDER BY LEAST(COALESCE(r1.position, 9999), COALESCE(r2.position, 9999)) ASC,
                  a.name ASC
     """, [race1_id, race2_id]).fetchall()
-    cols = ["athlete_id", "name", "country_emoji",
+    cols = ["athlete_id", "name", "country_alpha3",
             "r1_position", "r1_status",
             "r1_overall_s", "r1_swim_s", "r1_bike_s", "r1_run_s",
             "r2_position", "r2_status",
@@ -3293,7 +3287,7 @@ def get_athlete_rivals(athlete_id, category='elite', course='short', limit=6):
               AND r.distance IN {course_in}
             ORDER BY ra.athlete_id, r.race_date DESC, ra.race_id DESC
         )
-        SELECT a.athlete_id, a.name, a.profile_img, n.emoji,
+        SELECT a.athlete_id, a.name, a.profile_img, n.alpha3,
                os.n_meets, os.wins, os.losses, olr.overall,
                SQRT(os.n_meets) * LEAST(os.wins, os.losses)::DOUBLE
                                 / GREATEST(os.wins, os.losses)
@@ -3313,7 +3307,7 @@ def get_athlete_rivals(athlete_id, category='elite', course='short', limit=6):
         "athlete_id":   r[0],
         "name":         r[1],
         "profile_img":  r[2],
-        "country_emoji": r[3],
+        "country_alpha3": r[3],
         "n_meets":      r[4],
         "wins":         r[5],
         "losses":       r[6],
@@ -3382,7 +3376,6 @@ def get_upcoming_race_entries(race_id, course='short'):
             a.year_of_birth,
             a.profile_img,
             n.alpha3 AS country_alpha3,
-            n.emoji  AS country_emoji,
             ra.overall    AS overall_rating,
             ra.swim       AS swim_rating,
             ra.bike       AS bike_rating,
@@ -3404,7 +3397,7 @@ def get_upcoming_race_entries(race_id, course='short'):
         ORDER BY sle.start_num
     """, [race_id]).fetchall()
     cols = ["athlete_id", "start_num", "name", "year_of_birth", "profile_img",
-            "country_alpha3", "country_emoji",
+            "country_alpha3",
             "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating"]
     return [dict(zip(cols, r)) for r in rows]
 
@@ -3479,7 +3472,6 @@ def get_upcoming_race_entries_bulk(race_ids, course='short'):
             a.year_of_birth,
             a.profile_img,
             n.alpha3 AS country_alpha3,
-            n.emoji  AS country_emoji,
             ra.overall    AS overall_rating,
             ra.swim       AS swim_rating,
             ra.bike       AS bike_rating,
@@ -3501,7 +3493,7 @@ def get_upcoming_race_entries_bulk(race_ids, course='short'):
         ORDER BY sle.race_id, sle.start_num
     """, race_ids).fetchall()
     cols = ["athlete_id", "start_num", "name", "year_of_birth", "profile_img",
-            "country_alpha3", "country_emoji",
+            "country_alpha3",
             "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating"]
     result = {rid: [] for rid in race_ids}
     for row in rows:
@@ -3626,7 +3618,7 @@ def get_upcoming_events(country=None, course='short'):
     ph = ",".join("?" * len(all_race_ids))
 
     top3_rows = conn.execute(f"""
-        SELECT sle.race_id, a.athlete_id, a.name, n.emoji, a.profile_img, ra.overall
+        SELECT sle.race_id, a.athlete_id, a.name, n.alpha3, a.profile_img, ra.overall
         FROM start_list_entries sle
         JOIN athletes a ON sle.athlete_id = a.athlete_id
         JOIN nationalities n ON a.country_full = n.country_full
@@ -3647,9 +3639,9 @@ def get_upcoming_events(country=None, course='short'):
     """, all_race_ids).fetchall()
 
     top3_by_race = {}
-    for race_id, athlete_id, name, emoji, profile_img, overall in top3_rows:
+    for race_id, athlete_id, name, alpha3, profile_img, overall in top3_rows:
         top3_by_race.setdefault(race_id, []).append(
-            {"athlete_id": athlete_id, "name": name, "emoji": emoji,
+            {"athlete_id": athlete_id, "name": name, "country_alpha3": alpha3,
              "profile_img": profile_img, "overall_rating": overall}
         )
 
@@ -3698,7 +3690,7 @@ def get_upcoming_race_leaderboard(gender, course, country=None):
     # are computed in a second pass so the SQL stays readable.
     race_rows = conn.execute(f"""
         SELECT ur.race_id, ur.race_title, ur.prog_name, ur.race_date,
-               e.venue, e.country, n.emoji AS event_country_emoji
+               e.venue, e.country, n.alpha3 AS event_country_alpha3
         FROM upcoming_races ur
         JOIN events e ON ur.event_id = e.event_id
         LEFT JOIN nationalities n ON e.country = n.country_full
@@ -3761,7 +3753,7 @@ def get_upcoming_race_leaderboard(gender, course, country=None):
         }
 
     race_cols = ["race_id", "race_title", "prog_name", "race_date",
-                 "venue", "country", "event_country_emoji"]
+                 "venue", "country", "event_country_alpha3"]
     out = []
     for r in race_rows:
         rec = dict(zip(race_cols, r))
@@ -3770,7 +3762,7 @@ def get_upcoming_race_leaderboard(gender, course, country=None):
         # Match get_race_leaderboard shape: no winner, no stored ranks
         rec["winner_id"] = None
         rec["winner_name"] = None
-        rec["winner_country_emoji"] = None
+        rec["winner_country_alpha3"] = None
         rec["overall_rank"] = None
         rec["swim_rank"] = None
         rec["bike_rank"] = None
@@ -3820,7 +3812,7 @@ def get_upcoming_event_races_detail(event_id, course='short'):
     # ratings too so the predicted-podium can break the projected total
     # into swim / bike / run splits.
     top3_rows = conn.execute(f"""
-        SELECT sle.race_id, a.athlete_id, a.name, n.emoji, a.profile_img,
+        SELECT sle.race_id, a.athlete_id, a.name, n.alpha3, a.profile_img,
                ra.overall, ra.swim, ra.bike, ra.run, ra.transition
         FROM start_list_entries sle
         JOIN athletes a ON sle.athlete_id = a.athlete_id
@@ -3842,12 +3834,12 @@ def get_upcoming_event_races_detail(event_id, course='short'):
     """, race_ids).fetchall()
 
     top3_by_race = {}
-    for (race_id, athlete_id, name, emoji, profile_img,
+    for (race_id, athlete_id, name, alpha3, profile_img,
          overall, swim, bike, run, transition) in top3_rows:
         top3_by_race.setdefault(race_id, []).append({
             "athlete_id":        athlete_id,
             "name":              name,
-            "emoji":             emoji,
+            "country_alpha3":    alpha3,
             "profile_img":       profile_img,
             "overall_rating":    overall,
             "swim_rating":       swim,
@@ -4035,7 +4027,7 @@ def get_series_index_highlights(series_ids):
           WHERE es.series_id IN ({ph})
           GROUP BY es.series_id, r.event_id
         )
-        SELECT l.series_id, l.event_id, l.race_date, e.name, e.venue, e.country, nat.emoji, l.rn
+        SELECT l.series_id, l.event_id, l.race_date, e.name, e.venue, e.country, nat.alpha3, l.rn
         FROM ranked l
         JOIN events e ON e.event_id = l.event_id
         LEFT JOIN nationalities nat ON nat.country_full = e.country
@@ -4045,13 +4037,13 @@ def get_series_index_highlights(series_ids):
 
     editions_by_series = {}
     all_event_ids = []
-    for sid, event_id, race_date, ename, venue, country, emoji, _rn in event_rows:
+    for sid, event_id, race_date, ename, venue, country, alpha3, _rn in event_rows:
         editions_by_series.setdefault(sid, []).append({
             "event_id":       event_id,
             "event_name":     ename,
             "venue":          venue,
             "country":        country,
-            "country_emoji":  emoji,
+            "country_alpha3": alpha3,
             "race_date":      race_date,
             "male_race_id":   None,
             "female_race_id": None,
@@ -4118,7 +4110,7 @@ def get_series_index_highlights(series_ids):
         rph = ','.join(['?'] * len(all_race_ids))
         pod_rows = conn.execute(f"""
             SELECT res.race_id, res.position, res.overall_s,
-                   a.athlete_id, a.name, a.profile_img, nat.emoji
+                   a.athlete_id, a.name, a.profile_img, nat.alpha3
             FROM results res
             JOIN athletes a        ON a.athlete_id = res.athlete_id
             JOIN nationalities nat ON nat.country_full = a.country_full
@@ -4127,11 +4119,11 @@ def get_series_index_highlights(series_ids):
               AND res.status = 'Finished'
             ORDER BY res.race_id, res.position
         """, all_race_ids).fetchall()
-        for race_id, pos, overall_s, aid, name, img, emoji in pod_rows:
+        for race_id, pos, overall_s, aid, name, img, alpha3 in pod_rows:
             podiums.setdefault(race_id, []).append({
                 "position": pos, "overall_s": overall_s,
                 "athlete_id": aid, "name": name,
-                "profile_img": img, "country_emoji": emoji,
+                "profile_img": img, "country_alpha3": alpha3,
             })
 
     for eds in editions_by_series.values():
@@ -4166,7 +4158,7 @@ def get_series_index_highlights(series_ids):
           FROM counts
         )
         SELECT rk.series_id, rk.gender, rk.athlete_id, rk.n, rk.latest_date,
-               a.name, a.profile_img, nat.emoji
+               a.name, a.profile_img, nat.alpha3
         FROM ranked rk
         JOIN athletes a        ON a.athlete_id = rk.athlete_id
         JOIN nationalities nat ON nat.country_full = a.country_full
@@ -4187,13 +4179,13 @@ def get_series_index_highlights(series_ids):
                           or primary_prog.get((sid, "female"), (None, None))[0] == "ag",
     } for sid in series_ids}
     leader_keys = set()
-    for sid, gender, aid, n, latest_date, name, img, emoji in leader_rows:
+    for sid, gender, aid, n, latest_date, name, img, alpha3 in leader_rows:
         key = "top_male" if gender == 'male' else "top_female"
         out[sid][key].append({
             "athlete_id":    aid,
             "name":          name,
             "profile_img":   img,
-            "country_emoji": emoji,
+            "country_alpha3": alpha3,
             "wins":          n,
             "latest_date":   latest_date,
             "editions":      [],
@@ -4250,9 +4242,9 @@ def get_series_index_records(series_ids):
 
     Return shape: ``{series_id: {"male": {...}, "female": {...}}}`` where
     each gender dict contains any subset of:
-      participations: {athlete_id, name, country_emoji, profile_img, n}
-      podiums:        {athlete_id, name, country_emoji, profile_img, n}
-      top10s:         {athlete_id, name, country_emoji, profile_img, n}
+      participations: {athlete_id, name, country_alpha3, profile_img, n}
+      podiums:        {athlete_id, name, country_alpha3, profile_img, n}
+      top10s:         {athlete_id, name, country_alpha3, profile_img, n}
       strongest_overall, strongest_swim, strongest_bike, strongest_run:
           {race_id, event_name, venue, race_date, value}
     """
@@ -4324,15 +4316,15 @@ def get_series_index_records(series_ids):
         SELECT r.series_id, r.gender, r.athlete_id,
                r.n_starts, r.n_podiums, r.n_top10,
                r.rn_starts, r.rn_podiums, r.rn_top10,
-               a.name, a.profile_img, n.emoji
+               a.name, a.profile_img, n.alpha3
         FROM ranked r
         JOIN athletes a       ON a.athlete_id = r.athlete_id
         JOIN nationalities n  ON n.country_full = a.country_full
         WHERE r.rn_starts = 1 OR r.rn_podiums = 1 OR r.rn_top10 = 1
     """, params + params).fetchall()
 
-    for sid, gender, aid, n_starts, n_podiums, n_top10, rn_s, rn_p, rn_t, name, img, emoji in ath_rows:
-        base = {"athlete_id": aid, "name": name, "profile_img": bool(img), "country_emoji": emoji}
+    for sid, gender, aid, n_starts, n_podiums, n_top10, rn_s, rn_p, rn_t, name, img, alpha3 in ath_rows:
+        base = {"athlete_id": aid, "name": name, "profile_img": bool(img), "country_alpha3": alpha3}
         bucket = out[sid][gender]
         if rn_s == 1 and n_starts:  bucket["participations"] = {**base, "n": int(n_starts)}
         if rn_p == 1 and n_podiums: bucket["podiums"]        = {**base, "n": int(n_podiums)}
@@ -4711,7 +4703,7 @@ def get_year_options_for_recurring(recurring_event_id, gender, sub_category):
               AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
         )
         SELECT yr.year, yr.race_id, yr.race_handle, yr.race_date, yr.gender,
-               a.name AS winner_name, n.emoji AS winner_emoji, res.overall_s
+               a.name AS winner_name, n.alpha3 AS winner_country_alpha3, res.overall_s
         FROM year_race yr
         LEFT JOIN results res
                ON res.race_id = yr.race_id AND res.position = 1 AND res.status = 'Finished'
@@ -4721,7 +4713,7 @@ def get_year_options_for_recurring(recurring_event_id, gender, sub_category):
         ORDER BY yr.year DESC
     """, [gender, recurring_event_id, sub_category]).fetchall()
     cols = ["year", "race_id", "race_handle", "race_date", "gender",
-            "winner_name", "winner_emoji", "overall_s"]
+            "winner_name", "winner_country_alpha3", "overall_s"]
     return [dict(zip(cols, r)) for r in rows]
 
 
@@ -4756,7 +4748,7 @@ def _scoped_races(scope, program=None):
     podium_rows = conn.execute(f"""
         SELECT res.race_id, res.position, res.overall_s,
                res.swim_s, res.bike_s, res.run_s, res.t1_s, res.t2_s,
-               a.athlete_id, a.name, n.emoji, a.profile_img
+               a.athlete_id, a.name, n.alpha3, a.profile_img
         FROM results res
         JOIN athletes a ON a.athlete_id = res.athlete_id
         JOIN nationalities n ON n.country_full = a.country_full
@@ -4767,13 +4759,13 @@ def _scoped_races(scope, program=None):
     """, race_ids).fetchall()
 
     podiums = defaultdict(list)
-    for race_id, pos, overall_s, swim_s, bike_s, run_s, t1_s, t2_s, athlete_id, name, emoji, profile_img in podium_rows:
+    for race_id, pos, overall_s, swim_s, bike_s, run_s, t1_s, t2_s, athlete_id, name, alpha3, profile_img in podium_rows:
         podiums[race_id].append({
             "position": pos, "overall_s": overall_s,
             "swim_s": swim_s, "bike_s": bike_s, "run_s": run_s,
             "t1_s": t1_s, "t2_s": t2_s,
             "athlete_id": athlete_id, "name": name,
-            "country_emoji": emoji, "profile_img": profile_img,
+            "country_alpha3": alpha3, "profile_img": profile_img,
         })
 
     std_rows = conn.execute(f"""
@@ -4810,7 +4802,7 @@ def _scoped_all_time_leaders(scope, program=None):
     conn = _get_conn()
     prog_sql, prog_params = _program_filter(program)
     rows = conn.execute(f"""
-        SELECT a.athlete_id, a.name, n.emoji, a.profile_img,
+        SELECT a.athlete_id, a.name, n.alpha3, a.profile_img,
                COUNT(CASE WHEN res.position = 1 THEN 1 END) AS wins,
                COUNT(CASE WHEN res.position = 2 THEN 1 END) AS seconds,
                COUNT(CASE WHEN res.position = 3 THEN 1 END) AS thirds,
@@ -4825,13 +4817,13 @@ def _scoped_all_time_leaders(scope, program=None):
           AND res.status = 'Finished'
           AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
           {prog_sql}
-        GROUP BY a.athlete_id, a.name, n.emoji, a.profile_img
+        GROUP BY a.athlete_id, a.name, n.alpha3, a.profile_img
         HAVING wins > 0
         ORDER BY wins DESC, seconds DESC, thirds DESC, latest_win DESC
     """, scope['params'] + prog_params).fetchall()
 
     leaders = [
-        {"athlete_id": r[0], "name": r[1], "country_emoji": r[2], "profile_img": r[3],
+        {"athlete_id": r[0], "name": r[1], "country_alpha3": r[2], "profile_img": r[3],
          "wins": r[4], "seconds": r[5], "thirds": r[6]}
         for r in rows  # r[7] is latest_win date, used for ordering only
     ]
@@ -4890,7 +4882,7 @@ def _scoped_medal_table(scope, program=None):
     prog_sql, prog_params = _program_filter(program)
     rows = conn.execute(f"""
         SELECT a.country_full,
-               n.alpha3, n.emoji,
+               n.alpha3,
                COUNT(CASE WHEN res.position = 1 THEN 1 END) AS gold,
                COUNT(CASE WHEN res.position = 2 THEN 1 END) AS silver,
                COUNT(CASE WHEN res.position = 3 THEN 1 END) AS bronze
@@ -4904,10 +4896,10 @@ def _scoped_medal_table(scope, program=None):
           AND res.status = 'Finished'
           AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
           {prog_sql}
-        GROUP BY a.country_full, n.alpha3, n.emoji
+        GROUP BY a.country_full, n.alpha3
         ORDER BY gold DESC, silver DESC, bronze DESC, a.country_full
     """, scope['params'] + prog_params).fetchall()
-    cols = ["country_full", "country_alpha3", "country_emoji",
+    cols = ["country_full", "country_alpha3",
             "gold", "silver", "bronze"]
     return [dict(zip(cols, r)) for r in rows]
 
@@ -5048,7 +5040,7 @@ def _scoped_winners_with_age(scope, program=None):
     conn = _get_conn()
     prog_sql, prog_params = _program_filter(program)
     rows = conn.execute(f"""
-        SELECT a.athlete_id, a.name, n.emoji, a.profile_img,
+        SELECT a.athlete_id, a.name, n.alpha3, a.profile_img,
                res.race_id, r.race_date, r.race_handle,
                EXTRACT(YEAR FROM r.race_date) - a.year_of_birth AS age
         FROM {scope['table']}
@@ -5065,11 +5057,11 @@ def _scoped_winners_with_age(scope, program=None):
         ORDER BY r.race_date DESC
     """, scope['params'] + prog_params).fetchall()
     out = []
-    for athlete_id, name, emoji, profile_img, race_id, race_date, race_handle, age in rows:
+    for athlete_id, name, alpha3, profile_img, race_id, race_date, race_handle, age in rows:
         out.append({
             "athlete_id":    athlete_id,
             "name":          name,
-            "country_emoji": emoji,
+            "country_alpha3": alpha3,
             "profile_img":   profile_img,
             "race_id":       race_id,
             "race_date":     race_date,

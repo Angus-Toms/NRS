@@ -34,3 +34,6 @@ data/
 *.duckdb.wal
 *.csv
 *.log
+
+# Work in progress
+social/

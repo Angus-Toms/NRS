@@ -5,7 +5,7 @@ import numpy as np
 from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE, YEAR_REF
@@ -14,6 +14,7 @@ from app.routers.router_utils import format_time, format_time_behind, format_rat
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
@@ -79,8 +80,8 @@ def _build_breadcrumb(race, race_id, recurring_meta):
                 'year':           r['year'],
                 'race_id':        r['race_id'],
                 'race_handle':    r['race_handle'],
-                'winner_name':    r['winner_name'],
-                'winner_emoji':   r['winner_emoji'],
+                'winner_name':           r['winner_name'],
+                'winner_country_alpha3': r['winner_country_alpha3'],
                 'overall_s':      format_time(r['overall_s']) if r['overall_s'] else '',
                 'is_current':     r['race_id'] == race_id,
             })
@@ -263,7 +264,7 @@ def _compute_race_predictions(race_id, race, results, models):
         pred_rows.append({
             'athlete_id':    aid,
             'name':          r['name'],
-            'country_emoji': r.get('country_emoji', ''),
+            'country_alpha3': r.get('country_alpha3', ''),
             'year_of_birth': r.get('year_of_birth'),
             'is_debut':      aid not in pre_ratings,
             '_overall_raw':  p.get('overall', 9_999_999),
@@ -483,7 +484,7 @@ def _compute_upcoming_predictions(race, entries, models):
         pred_rows.append({
             'athlete_id':    aid,
             'name':          e['name'],
-            'country_emoji': e.get('country_emoji', ''),
+            'country_alpha3': e.get('country_alpha3', ''),
             'year_of_birth': e.get('year_of_birth'),
             'profile_img':   e.get('profile_img', ''),
             'is_debut':      e['overall_rating'] is None,
@@ -673,7 +674,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         corrections_data.append({
             "athlete_id":    c["athlete_id"],
             "name":          c["name"],
-            "country_emoji": c["country_emoji"],
+            "country_alpha3": c["country_alpha3"],
             "position":      c["position"],
             "status":        c["status"],
             "notes":         c["notes"].strip(),

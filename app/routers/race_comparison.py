@@ -3,7 +3,7 @@ import numpy as np
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from app.routers import race_page
@@ -20,6 +20,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 
 
 def _classify_standard(val, thresholds):
@@ -178,7 +179,7 @@ def _race_card_data(race_id: int):
                 "position":      r["position"],
                 "athlete_id":    r["athlete_id"],
                 "name":          r["name"],
-                "country_emoji": r.get("country_emoji", ""),
+                "country_alpha3": r.get("country_alpha3", ""),
                 "profile_img":   r.get("profile_img"),
                 "time":          format_time(overall_s) if overall_s else "",
                 "gap":           gap,
@@ -369,7 +370,7 @@ async def get_race_comparison_html(request: Request, race1_id: int, race2_id: in
         common_athletes.append({
             "athlete_id":    c["athlete_id"],
             "name":          c["name"],
-            "country_emoji": c["country_emoji"],
+            "country_alpha3": c["country_alpha3"],
             "r1_position":   pos1,
             "r1_status":     c["r1_status"],
             "r2_position":   pos2,

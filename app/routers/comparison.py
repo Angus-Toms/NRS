@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from app.routers import router_utils
@@ -15,6 +15,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 
 
 def _format_h2h_times(time1_s, time2_s):
@@ -106,7 +107,6 @@ async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
         "athlete_id":     info["athlete_id"],
         "name":           info["name"],
         "gender":         info["gender"],
-        "country_emoji":  info["country_emoji"],
         "country_name":   info["country_full"],
         "country_alpha3": info["country_alpha3"],
         "year_of_birth":  info["year_of_birth"] or "",
@@ -185,7 +185,6 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     athlete1_data = {
         "id":      info1["athlete_id"],
         "name":    info1["name"],
-        "country": info1["country_emoji"],
         "country_alpha3": info1["country_alpha3"],
         "year_of_birth":  info1["year_of_birth"],
         "stats": {
@@ -198,7 +197,6 @@ async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: i
     athlete2_data = {
         "id":      info2["athlete_id"],
         "name":    info2["name"],
-        "country": info2["country_emoji"],
         "country_alpha3": info2["country_alpha3"],
         "year_of_birth":  info2["year_of_birth"],
         "stats": {

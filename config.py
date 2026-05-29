@@ -27,6 +27,18 @@ def _compute_asset_version() -> str:
 # share the same value.
 ASSET_VERSION = _compute_asset_version()
 
+# Country flag SVG helper, exposed as a Jinja global by each router.
+def flag(code, country="", cls=""):
+    if not code:
+        return ""
+    from markupsafe import Markup
+    cls_attr = "flag" + (f" {cls}" if cls else "")
+    return Markup(
+        f'<img src="{STATIC_BASE_URL}flags/{code}.svg" alt="{country or code}" '
+        f'class="{cls_attr}" loading="lazy">'
+    )
+
+
 # Runtime data (local: ./data, render: /var/data via DATA_ROOT)
 RUNTIME_ATHLETE_IMAGES_DIR = RUNTIME_DATA_DIR / "athlete_imgs"
 

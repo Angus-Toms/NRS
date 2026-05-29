@@ -22,10 +22,7 @@ from starlette.responses import Response
 _CACHEABLE_PATH = re.compile(r"^/(athlete|race)/\d+$")
 
 TTL_SECONDS = 30 * 60       # 30 min - data only changes after a ratings rebuild
-# Sized for a 512MB Render Starter instance. HTML compresses ~10-12x with gzip,
-# so 1500 entries averaging ~25KB compressed sits around 35-40MB total. The
-# compressed-size cap below stops one outlier page from dominating memory.
-MAX_ENTRIES = 1500
+MAX_ENTRIES = 1000
 MAX_BYTES_PER_ENTRY = 500_000        # uncompressed safety cap
 MAX_COMPRESSED_BYTES_PER_ENTRY = 100_000  # ~10x worst-case observed
 GZIP_LEVEL = 6

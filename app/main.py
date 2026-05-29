@@ -7,13 +7,22 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, race_leaderboard, comparison, race_comparison, about, robots, series_page, country_page, upcoming_page
 from app.page_cache import page_cache_middleware
-from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION
+from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION, flag
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
 ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
 
 app = FastAPI()
 app.middleware("http")(page_cache_middleware)
+
+# Long-cache flag SVGs: filenames are alpha3-stable, content effectively immutable.
+@app.middleware("http")
+async def flag_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/flags/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
 # /static/athlete_imgs must be mounted before /static so it takes precedence in dev.
 # In prod the CDN serves athlete images; this mount is a no-op there.
 athlete_imgs_dir = RUNTIME_DATA_DIR / "athlete_imgs"
@@ -25,6 +34,8 @@ app.mount("/data", StaticFiles(directory=RUNTIME_DATA_DIR), name="data")
 templates = Jinja2Templates(directory = BASE_DIR / "templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"]   = ASSET_VERSION
+
+templates.env.globals["flag"] = flag
 
 # @app.middleware("http")
 # async def enforce_host(request: Request, call_next):

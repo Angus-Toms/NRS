@@ -179,7 +179,7 @@
                      class="athlete-profile-img">
 
                 <div class="athlete-details">
-                    <div class="athlete-name">{{ athlete.name }} {{ athlete.country_emoji }}</div>
+                    <div class="athlete-name">{{ athlete.name }} {{ flag(athlete.country_alpha3, athlete.country_full) }}</div>
                     <div class="athlete-meta">
                         <span class="meta-item-sep"> · </span><span class="meta-item">{{ athlete.country_full }}</span>
                         {% if athlete.year_of_birth > 0 %}

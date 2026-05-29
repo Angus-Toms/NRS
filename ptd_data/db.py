@@ -41,8 +41,7 @@ def create_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS nationalities (
             country_full    VARCHAR PRIMARY KEY,
-            alpha3          VARCHAR NOT NULL,
-            emoji           VARCHAR NOT NULL
+            alpha3          VARCHAR NOT NULL
         )
     """)
 
@@ -317,52 +316,52 @@ def create_schema(conn):
 # --- Country resolution ---
 
 _COUNTRY_SPECIAL_CASES = {
-    "Individual Neutral Athlete": ("INA", "🇺🇳"),
-    "Great Britain": ("GBR", "🇬🇧"),
-    "Republic of Korea": ("KOR", "🇰🇷"),
-    "Czech Republic": ("CZE", "🇨🇿"),
-    "Hong Kong, China": ("HKG", "🇭🇰"),
-    "Russia": ("RUS", "🇷🇺"),
-    "Syria": ("SYR", "🇸🇾"),
-    "Macau, China": ("MAC", "🇲🇴"),
-    "Venezuela": ("VEN", "🇻🇪"),
-    "Chinese Taipei": ("TPE", "🇹🇼"),
-    "Virgin Islands": ("ISV", "🇻🇮"),
-    "Tahiti": ("PYF", "🇵🇫"),
-    "Bolivia": ("BOL", "🇧🇴"),
-    "Moldova": ("MDA", "🇲🇩"),
-    "Saint Maarten": ("SXM", "🇸🇽"),
-    "Czechoslovakia": ("CSK", "🇨🇿"),
-    "Iran": ("IRN", "🇮🇷"),
-    "Netherlands Antilles": ("ANT", "🇧🇶"),
-    "Swaziland": ("SWZ", "🇸🇿"),
+    "Individual Neutral Athlete": "INA",
+    "Great Britain": "GBR",
+    "Republic of Korea": "KOR",
+    "Czech Republic": "CZE",
+    "Hong Kong, China": "HKG",
+    "Russia": "RUS",
+    "Syria": "SYR",
+    "Macau, China": "MAC",
+    "Venezuela": "VEN",
+    "Chinese Taipei": "TPE",
+    "Virgin Islands": "ISV",
+    "Tahiti": "PYF",
+    "Bolivia": "BOL",
+    "Moldova": "MDA",
+    "Saint Maarten": "SXM",
+    "Czechoslovakia": "CSK",
+    "Iran": "IRN",
+    "Netherlands Antilles": "ANT",
+    "Swaziland": "SWZ",
     # Historical German states (pre-1990). Kept distinct from modern "Germany"
     # (DEU) so each athlete's alpha3/URL matches the flag they competed under.
-    "Federal Republic of Germany":   ("FRG", "🇩🇪"),  # West Germany 1949-1990
-    "Democratic Republic of Germany": ("GDR", "🏴"),  # East Germany 1949-1990
+    "Federal Republic of Germany":   "FRG",  # West Germany 1949-1990
+    "Democratic Republic of Germany": "GDR",  # East Germany 1949-1990
     # Other historical / non-standard entities
-    "Soviet Union":                    ("URS", "🏴"),
-    "Yugoslavia":                      ("YUG", "🏴"),
-    "Myanmar (Burma)":                 ("MMR", "🇲🇲"),
-    "Cote d'Ivoire":                   ("CIV", "🇨🇮"),
-    "Vietnam":                         ("VNM", "🇻🇳"),
-    "United Republic of Tanzania":     ("TZA", "🇹🇿"),
-    "The Gambia":                      ("GMB", "🇬🇲"),
-    "Palestine":                       ("PSE", "🇵🇸"),
-    "Democratic People's Republic of Korea": ("PRK", "🇰🇵"),
+    "Soviet Union":                    "URS",
+    "Yugoslavia":                      "YUG",
+    "Myanmar (Burma)":                 "MMR",
+    "Cote d'Ivoire":                   "CIV",
+    "Vietnam":                         "VNM",
+    "United Republic of Tanzania":     "TZA",
+    "The Gambia":                      "GMB",
+    "Palestine":                       "PSE",
+    "Democratic People's Republic of Korea": "PRK",
     # Federation / neutral banner
-    "World Triathlon":                 ("WTR", "🇺🇳"),
+    "World Triathlon":                 "WTR",
 }
 
 
 def _resolve_country(country_full):
-    """Returns (alpha3, emoji) for a country name."""
+    """Returns alpha3 for a country name."""
     if country_full in _COUNTRY_SPECIAL_CASES:
         return _COUNTRY_SPECIAL_CASES[country_full]
     country = pycountry.countries.get(name=country_full)
     if country is None:
-        return ("UNK", "🏳️")
-    return (country.alpha_3, country.flag)
+        return "UNK"
+    return country.alpha_3
 
 
 # --- Write methods ---
@@ -374,10 +373,10 @@ def upsert_nationality(conn, country_full):
     ).fetchone()
     if exists:
         return
-    alpha3, emoji = _resolve_country(country_full)
+    alpha3 = _resolve_country(country_full)
     conn.execute(
-        "INSERT INTO nationalities (country_full, alpha3, emoji) VALUES (?, ?, ?)",
-        [country_full, alpha3, emoji],
+        "INSERT INTO nationalities (country_full, alpha3) VALUES (?, ?)",
+        [country_full, alpha3],
     )
 
 

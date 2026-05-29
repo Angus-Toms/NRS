@@ -43,7 +43,7 @@
                 <a href="/country/{{ c.alpha3 }}" class="country-index-overlay" aria-label="{{ c.country_full }}"></a>
                 <div class="country-index-left">
                     <div class="country-index-head">
-                        <span class="country-index-flag">{{ c.emoji }}</span>
+                        <span class="country-index-flag">{{ flag(c.alpha3, c.country_full, 'flag-lg') }}</span>
                         <span class="country-index-name">{{ c.country_full }}</span>
                     </div>
                     <div class="country-index-meta">

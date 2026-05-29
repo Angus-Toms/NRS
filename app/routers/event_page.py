@@ -3,7 +3,7 @@ import re
 from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
@@ -13,6 +13,7 @@ from app.routers.race_page import _course_signal_for_race
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 router = APIRouter()
 
 _DISCS = ["overall", "swim", "bike", "run", "transition"]
@@ -173,7 +174,7 @@ def _predicted_podium(top3, gender, event_spec_ids, models):
             'position':    position,
             'athlete_id':  athlete['athlete_id'],
             'name':        athlete['name'],
-            'emoji':       athlete['emoji'],
+            'country_alpha3': athlete['country_alpha3'],
             'profile_img': athlete['profile_img'],
             'time':        format_time(o) if o else None,
             'gap':         format_time_behind(o - overall_t[0])
@@ -206,7 +207,7 @@ async def get_event(request: Request, event_id: int):
         for race in upcoming_races:
             raw = race.pop("standards_raw", None)
             if raw:
-                race["standards"]        = {d: round(raw[d]) for d in _DISCS}
+                race["standards"]        = {d: round(raw[d]) if raw.get(d) is not None else None for d in _DISCS}
                 race["standard_classes"] = {
                     d: _classify(raw[d], thresholds_by_gender.get(race["gender"], {}))
                     for d in _DISCS
@@ -238,7 +239,7 @@ async def get_event(request: Request, event_id: int):
         t = thresholds_by_gender.get(race.get("gender"), {})
         raw = race.pop("standards_raw", None)   # remove raw, attach formatted + classes
         if raw:
-            race["standards"]        = {d: round(raw[d]) for d in _DISCS}
+            race["standards"]        = {d: round(raw[d]) if raw.get(d) is not None else None for d in _DISCS}
             race["standard_classes"] = {
                 d: _classify(raw[d], queries.get_race_standard_thresholds(race["gender"]))
                 for d in _DISCS

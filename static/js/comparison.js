@@ -81,14 +81,13 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
                         data-id="${athlete.athlete_id}"
                         data-name="${athlete.name}"
                         data-gender="${athlete.gender}"
-                        data-country-emoji="${athlete.country_emoji}"
                         data-country-name="${athlete.country_name}"
                         data-country-alpha3="${athlete.country_alpha3}"
                         data-yob="${athlete.year_of_birth || ''}">
                         <img class="result-avatar" src="${imgSrc}" onerror="this.src='${defaultImg}'" alt="${escapeHtml(athlete.name)}">
                         <div class="result-info">
                             <div class="result-name">${escapeHtml(athlete.name)}</div>
-                            <div class="result-meta"><span>${athlete.country_emoji} ${escapeHtml(athlete.country_name)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</span>${badgesHtml(athlete)}</div>
+                            <div class="result-meta"><span>${flagImg(athlete.country_alpha3, athlete.country_name)} ${escapeHtml(athlete.country_name)}${athlete.year_of_birth ? ' · ' + athlete.year_of_birth : ''}</span>${badgesHtml(athlete)}</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -101,7 +100,6 @@ function initSearch(searchId, resultsId, selectedId, athleteKey, genderFilter = 
                             id: parseInt(item.dataset.id),
                             name: item.dataset.name,
                             gender: item.dataset.gender,
-                            country_emoji: item.dataset.countryEmoji,
                             country_name: item.dataset.countryName,
                             country_alpha3: item.dataset.countryAlpha3,
                             year_of_birth: item.dataset.yob
@@ -209,8 +207,8 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
     } catch (_) { /* fall back to basic info */ }
 
     const name         = escapeHtml(full.name         || athlete.name         || '');
-    const countryEmoji = full.country_emoji            || athlete.country_emoji || '';
-    const countryName  = escapeHtml(full.country_name || athlete.country_name  || '');
+    const countryAlpha3 = full.country_alpha3          || athlete.country_alpha3 || '';
+    const countryName  = full.country_name             || athlete.country_name  || '';
     const yob          = full.year_of_birth            || athlete.year_of_birth || '';
 
     selectedDiv.innerHTML = `
@@ -220,7 +218,7 @@ async function selectAthlete(athleteKey, athlete, searchInput, resultsDiv, selec
                 onerror="this.src='${defaultImg}'"
                 alt="${name}">
             <div class="sel-athlete-details">
-                <div class="sel-athlete-name">${name} ${countryEmoji}</div>
+                <div class="sel-athlete-name">${name} ${flagImg(countryAlpha3, countryName)}</div>
                 ${statsBlockHtml(full)}
             </div>
         </div>
@@ -374,7 +372,7 @@ async function prefillFromUrl() {
             if (!ath1?.athlete_id || !ath2?.athlete_id) return;
 
             const toPayload = a => ({ id: a.athlete_id, name: a.name, gender: a.gender,
-                country_emoji: a.country_emoji, country_name: a.country_name,
+                country_name: a.country_name,
                 country_alpha3: a.country_alpha3, year_of_birth: a.year_of_birth });
 
             const i1 = _athleteInputs(1), i2 = _athleteInputs(2);
@@ -393,7 +391,7 @@ async function prefillFromUrl() {
             if (!ath?.athlete_id) return;
             const i1 = _athleteInputs(1);
             selectAthlete('athlete1', { id: ath.athlete_id, name: ath.name, gender: ath.gender,
-                country_emoji: ath.country_emoji, country_name: ath.country_name,
+                country_name: ath.country_name,
                 country_alpha3: ath.country_alpha3, year_of_birth: ath.year_of_birth },
                 i1.searchInput, i1.resultsDiv, i1.selectedDiv, i1.searchWrapper);
         }

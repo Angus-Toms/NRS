@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL
+from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
@@ -11,6 +11,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
+templates.env.globals["flag"]          = flag
 
 START_RATING = 1500
 
@@ -43,7 +44,7 @@ def _build_podium(top3, gender, event_spec_ids, models):
             'position':    position,
             'athlete_id':  athlete['athlete_id'],
             'name':        athlete['name'],
-            'emoji':       athlete['emoji'],
+            'country_alpha3': athlete['country_alpha3'],
             'profile_img': athlete['profile_img'],
             'time':        format_time(t) if t else None,
             'gap':         format_time_behind(t - times[0]) if (t and times[0] and position > 1) else None,

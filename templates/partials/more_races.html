@@ -20,7 +20,7 @@
                     {% for p in race.podium %}
                     <li class="podium-entry podium-pos-{{ p.position }}">
                         <span class="podium-num">{{ p.position }}</span>
-                        <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ p.emoji }} {{ p.name }}</a>
+                        <a href="/athlete/{{ p.athlete_id }}" class="podium-name">{{ flag(p.country_alpha3) }} {{ p.name }}</a>
                         {% if p.time %}<span class="podium-time">{{ p.time }}</span>{% endif %}
                     </li>
                     {% endfor %}

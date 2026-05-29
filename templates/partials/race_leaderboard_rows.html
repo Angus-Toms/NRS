@@ -14,7 +14,7 @@
                     {% if race.is_upcoming %}
                     <span class="meta-item-sep"> · </span><span class="meta-item"><span class="upcoming-pill">Upcoming</span></span>
                     {% elif race.winner_name %}
-                    <span class="meta-item-sep"> · </span><span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ race.winner_country_emoji or '' }}</span></span>
+                    <span class="meta-item-sep"> · </span><span class="meta-item">Winner: <span class="meta-val">{{ race.winner_name }} {{ flag(race.winner_country_alpha3) }}</span></span>
                     {% endif %}
                 </div>
             </div>

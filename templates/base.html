@@ -238,8 +238,8 @@
             const pane = modal.querySelector('[data-search-pane="athletes"]');
             if (!list.length) { pane.innerHTML = '<div class="search-modal-no-results">No athletes found.</div>'; return; }
             pane.innerHTML = list.map(a => {
-                const flag = a.country_emoji ? a.country_emoji + ' ' : '';
-                const sub  = [flag + escapeHtml(a.country_full || ''), a.year_of_birth || ''].filter(Boolean).join(' &middot; ');
+                const fl = flagImg(a.country_alpha3, a.country_full);
+                const sub  = [(fl ? fl + ' ' : '') + escapeHtml(a.country_full || ''), a.year_of_birth || ''].filter(Boolean).join(' &middot; ');
                 return `
                 <a class="search-modal-row" href="/athlete/${a.athlete_id}">
                     <div class="search-modal-row-main">
@@ -337,6 +337,8 @@
     })();
     </script>
 
+    <!-- Shared JS helpers (flagImg, sort icons, etc.) -->
+    <script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
     <!-- Chart.js loaded here so it doesn't block initial render -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>

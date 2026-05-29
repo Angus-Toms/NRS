@@ -169,7 +169,7 @@ function initPrediction() {
                     closeModal();
                     await _addPredictionRow(
                         { id: parseInt(item.dataset.id), name: item.dataset.name,
-                          emoji: item.dataset.emoji, yob: item.dataset.yob },
+                          country_alpha3: item.dataset.alpha3, yob: item.dataset.yob },
                         models, disc, existingIds, tbody, raceYear
                     );
                 });
@@ -187,14 +187,14 @@ function _renderPredictionResults(athletes, container) {
     const base = window.STATIC_BASE_URL || '';
     container.innerHTML = athletes.slice(0, 8).map(a => `
         <div class="pred-result-item" data-id="${a.athlete_id}"
-             data-name="${escapeHtml(a.name)}" data-emoji="${a.country_emoji}"
+             data-name="${escapeHtml(a.name)}" data-alpha3="${a.country_alpha3 || ''}"
              data-yob="${a.year_of_birth || ''}">
             <img class="pred-result-avatar"
                  src="${base}athlete_imgs/128/${a.athlete_id}.webp"
                  onerror="this.src='${base}imgs/default_user.jpg'" alt="">
             <div>
                 <div class="pred-result-name">${escapeHtml(a.name)}</div>
-                <div class="pred-result-meta">${a.country_emoji} ${escapeHtml(a.country_name)}</div>
+                <div class="pred-result-meta">${flagImg(a.country_alpha3, a.country_name)} ${escapeHtml(a.country_name)}</div>
             </div>
         </div>`).join('');
     container.classList.add('active');
@@ -273,7 +273,7 @@ async function _addPredictionRow(athlete, models, disc, existingIds, tbody, race
             <button class="pred-delete-btn" title="Remove prediction" aria-label="Remove prediction">${deleteSvg}</button>
         </td>
         <td class="athlete-col" data-value="${escapeHtml(athlete.name)}">
-            <span class="pred-name">${escapeHtml(athlete.name)}</span> <span class="pred-label">${label}</span> ${athlete.emoji}
+            <span class="pred-name">${escapeHtml(athlete.name)}</span> <span class="pred-label">${label}</span> ${flagImg(athlete.country_alpha3)}
         </td>
         <td class="yob-col" data-value="${athlete.yob || 0}">${yobDisplay}</td>
         ${splitCells}`;

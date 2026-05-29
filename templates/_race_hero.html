@@ -26,7 +26,7 @@
                         {% for y in breadcrumb.years %}
                         <a href="/race/{{ y.race_id }}" class="race-yp-row{% if y.is_current %} current{% endif %}"{% if y.is_current %} aria-current="true"{% endif %}>
                             <span class="race-yp-year">{{ y.year }}</span>
-                            <span class="race-yp-winner">{% if y.winner_name %}{{ y.winner_name }}{% if y.winner_emoji %} {{ y.winner_emoji }}{% endif %}{% else %}<span class="race-yp-winner-empty">No result</span>{% endif %}</span>
+                            <span class="race-yp-winner">{% if y.winner_name %}{{ y.winner_name }} {{ flag(y.winner_country_alpha3) }}{% else %}<span class="race-yp-winner-empty">No result</span>{% endif %}</span>
                             <span class="race-yp-time">{{ y.overall_s }}</span>
                         </a>
                         {% endfor %}
@@ -99,7 +99,7 @@
                     <div class="podium-row-left">
                         <span class="pos-circle {{ 'gold' if athlete.position == 1 else 'silver' if athlete.position == 2 else 'bronze' }}">{{ athlete.position }}</span>
                         <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}" alt="{{ athlete.name }}" class="podium-row-img">
-                        <a href="/athlete/{{ athlete.athlete_id }}" class="podium-row-name">{{ athlete.name }} {{ athlete.country_emoji }}</a>
+                        <a href="/athlete/{{ athlete.athlete_id }}" class="podium-row-name">{{ athlete.name }} {{ flag(athlete.country_alpha3) }}</a>
                     </div>
                     <div class="podium-row-right">
                         {% if athlete.overall_behind_s %}
