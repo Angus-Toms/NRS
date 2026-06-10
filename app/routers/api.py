@@ -1,25 +1,19 @@
-# Public read-only JSON/CSV API (v1) plus the human-readable docs page at /api.
-# All data endpoints reuse queries.py; responses carry attribution and an
+# Data download endpoints (CSV/JSON) backing the table download buttons.
+# All endpoints reuse queries.py; responses carry attribution and an
 # hour-long cache header (data updates weekly).
 
 import csv
 import io
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
-from fastapi.templating import Jinja2Templates
 
-from config import ASSET_VERSION, STATIC_BASE_URL, flag
 from ptd_data import queries
 from app.routers.router_utils import format_time
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
-templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
-templates.env.globals["ASSET_VERSION"]   = ASSET_VERSION
-templates.env.globals["flag"]            = flag
 
 CACHE_HEADERS = {"Cache-Control": "public, max-age=3600"}
 
@@ -76,25 +70,6 @@ def _require_athlete(athlete_id: int) -> dict:
 
 # ---------------------------------------------------------------- athletes ---
 
-@router.get("/api/v1/athletes/{athlete_id}")
-async def api_athlete(athlete_id: int, category: str = _CATEGORY, course: str = _COURSE):
-    info = _require_athlete(athlete_id)
-    current = queries.get_athlete_current_ratings(athlete_id, category, course=course)
-    ratings  = None
-    rankings = None
-    if current:
-        ratings  = {k: v for k, v in current.items() if k.endswith("_rating")}
-        rankings = queries.get_athlete_active_rankings(athlete_id, category, course=course)
-    return _json({
-        "athlete":         info,
-        "category":        category,
-        "course":          course,
-        "programs":        queries.get_athlete_programs(athlete_id),
-        "current_ratings": ratings,
-        "rankings":        rankings,
-    })
-
-
 @router.get("/api/v1/athletes/{athlete_id}/results")
 async def api_athlete_results(athlete_id: int, category: str = _CATEGORY,
                               course: str = _COURSE, format: str = _FORMAT):
@@ -131,17 +106,6 @@ async def api_athlete_ratings(athlete_id: int, category: str = _CATEGORY,
 
 
 # ------------------------------------------------------------------- races ---
-
-@router.get("/api/v1/races/{race_id}")
-async def api_race(race_id: int):
-    race = queries.get_race_info(race_id)
-    if not race:
-        raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
-    return _json({
-        "race":      race,
-        "standards": queries.get_race_standards(race_id),
-    })
-
 
 @router.get("/api/v1/races/{race_id}/results")
 async def api_race_results(race_id: int, format: str = _FORMAT):
@@ -203,14 +167,4 @@ async def api_leaderboard(
         "offset":   offset,
         "count":    len(rows),
         "athletes": rows,
-    })
-
-
-# -------------------------------------------------------------- docs page ---
-
-@router.get("/api")
-async def api_docs(request: Request):
-    return templates.TemplateResponse("api_docs.html", {
-        "request":     request,
-        "active_page": None,
     })

@@ -88,18 +88,16 @@ function initActiveOnlyToggle() {
     });
 }
 
-// Point the Download CSV link at the API with the currently active filters.
-function initCsvDownload() {
-    const btn  = document.getElementById("downloadCsvBtn");
+// Keep the download button's URL in sync with the active filters.
+function initDownloadUrl() {
+    const btn  = document.getElementById("downloadBtn");
     const form = document.getElementById("filtersForm");
-    if (!btn || !form) return;
-    const setHref = () => {
+    const setUrl = () => {
         const params = new URLSearchParams(new FormData(form));
-        params.set("format", "csv");
-        btn.href = `/api/v1/leaderboard?${params.toString()}`;
+        btn.dataset.downloadUrl = `/api/v1/leaderboard?${params.toString()}`;
     };
-    setHref();
-    form.addEventListener("change", setHref);
+    setUrl();
+    form.addEventListener("change", setUrl);
 }
 
 initLoadMore();
@@ -107,4 +105,4 @@ initFilterPanelToggle();
 initFilterAutoSubmit();
 initAgePresets();
 initActiveOnlyToggle();
-initCsvDownload();
+initDownloadUrl();

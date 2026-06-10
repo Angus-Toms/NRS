@@ -3327,10 +3327,10 @@ a.rt-best-race:hover { color: var(--primary-color); }
 }
 
 /* ============================================
-   CSV DOWNLOAD BUTTON
-   Small secondary action next to results tables.
-   Same chrome as .btn-filter-toggle but link-safe. */
-.btn-download-csv {
+   TABLE DOWNLOAD BUTTON + FORMAT MODAL
+   Same chrome as .btn-filter-toggle; collapses
+   to icon-only on small displays. */
+.btn-download {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -3341,7 +3341,6 @@ a.rt-best-race:hover { color: var(--primary-color); }
     background: transparent;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
     transition: color var(--transition-fast), border-color var(--transition-fast);
@@ -3349,75 +3348,74 @@ a.rt-best-race:hover { color: var(--primary-color); }
     font-family: inherit;
 }
 
-.btn-download-csv:hover {
+.btn-download:hover {
     color: var(--primary-color);
     border-color: var(--primary-color);
 }
 
-/* ============================================
-   API DOCS PAGE */
-.api-docs-text {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: var(--text-color);
-    max-width: 760px;
+@media (max-width: 640px) {
+    .btn-download { padding: 0.4rem 0.55rem; }
+    .btn-download .btn-download-label { display: none; }
+}
+
+.dl-modal[hidden] { display: none; }
+.dl-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.dl-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 24, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.dl-modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    background: #fff;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+    padding: 1.1rem 1.1rem 0.85rem;
+}
+
+.dl-modal-title {
+    font-size: 0.95rem;
+    font-weight: 700;
     margin-bottom: 0.75rem;
 }
 
-.api-docs code,
-.api-params code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.82em;
-    background: var(--border-color);
-    border-radius: var(--border-radius-sm);
-    padding: 0.1em 0.35em;
-}
-
-.api-endpoint {
-    background: var(--white);
+.dl-modal-option {
+    display: block;
+    padding: 0.55rem 0.8rem;
+    margin-bottom: 0.5rem;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    padding: 1.25rem;
-    margin-bottom: 1.25rem;
-}
-
-.api-endpoint-path {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.api-method {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-    border-radius: var(--border-radius-sm);
-    padding: 0.1rem 0.4rem;
-    margin-right: 0.5rem;
-    vertical-align: middle;
-}
-
-.api-params {
-    list-style: none;
-    margin: 0 0 0.75rem;
-    padding: 0;
-    font-size: 0.85rem;
+.dl-modal-option span {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 400;
     color: var(--text-light);
-    line-height: 1.8;
 }
 
-.api-example {
-    background: var(--navy);
-    color: rgba(255, 255, 255, 0.85);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.78rem;
-    border-radius: var(--border-radius-sm);
-    padding: 0.6rem 0.85rem;
-    overflow-x: auto;
-    margin: 0;
+.dl-modal-option:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
 }
+

@@ -331,14 +331,7 @@
 
 <div class="page-section-head">
     <span>Race Results</span>
-    <a class="btn-download-csv" href="/api/v1/athletes/{{ athlete.athlete_id }}/results?category={{ category }}&course={{ course }}&format=csv" title="Download results as CSV">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download CSV
-    </a>
+    {% with download_url = "/api/v1/athletes/" ~ athlete.athlete_id ~ "/results?category=" ~ category ~ "&course=" ~ course %}{% include "partials/download_button.html" %}{% endwith %}
 </div>
 <div class="results-sort-chips" role="tablist" aria-label="Sort race results">
     <button class="sort-chip" data-sort-col="0" type="button">Date<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -490,7 +483,10 @@
 </div>
 
 {% if has_ratings %}
-<div class="page-section-head">Rating History</div>
+<div class="page-section-head">
+    <span>Rating History</span>
+    {% with download_url = "/api/v1/athletes/" ~ athlete.athlete_id ~ "/ratings?category=" ~ category ~ "&course=" ~ course %}{% include "partials/download_button.html" %}{% endwith %}
+</div>
 <div class="ratings-sort-chips" role="tablist" aria-label="Sort rating history">
     <button class="sort-chip" data-sort-col="0" data-sort-axis="date"       type="button">Date<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
     <button class="sort-chip" data-sort-col="3" data-sort-axis="position"   type="button">Position<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>

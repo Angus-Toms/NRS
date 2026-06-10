@@ -28,6 +28,47 @@ function initSortIcons() {
 document.addEventListener('DOMContentLoaded', initSortIcons);
 if (document.readyState !== 'loading') { initSortIcons(); }
 
+// --- Download modal: format picker for table download buttons ---
+// Buttons carry data-download-url; the modal appends &format=csv|json.
+function initDownloadButtons() {
+    if (!document.querySelector('.btn-download')) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'dl-modal';
+    modal.hidden = true;
+    modal.innerHTML = `
+        <div class="dl-modal-backdrop"></div>
+        <div class="dl-modal-panel" role="dialog" aria-modal="true" aria-label="Download table">
+            <div class="dl-modal-title">Download table</div>
+            <a class="dl-modal-option" data-format="csv">CSV<span>Opens in Excel and Sheets</span></a>
+            <a class="dl-modal-option" data-format="json" target="_blank">JSON<span>Raw values with metadata</span></a>
+        </div>`;
+    document.body.appendChild(modal);
+
+    function open(btn) {
+        const url = btn.dataset.downloadUrl;
+        const sep = url.includes('?') ? '&' : '?';
+        modal.querySelectorAll('.dl-modal-option').forEach(a => {
+            a.href = `${url}${sep}format=${a.dataset.format}`;
+        });
+        modal.hidden = false;
+    }
+    const close = () => { modal.hidden = true; };
+
+    // Delegated so buttons inside AJAX-swapped partials (race page) still work
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-download');
+        if (btn) open(btn);
+    });
+    modal.querySelector('.dl-modal-backdrop').addEventListener('click', close);
+    modal.querySelectorAll('.dl-modal-option').forEach(a => a.addEventListener('click', close));
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !modal.hidden) close();
+    });
+}
+document.addEventListener('DOMContentLoaded', initDownloadButtons);
+if (document.readyState !== 'loading') { initDownloadButtons(); }
+
 // --- Hint popup ---
 function toggleHint(icon) {
     const popup = icon.nextElementSibling;
