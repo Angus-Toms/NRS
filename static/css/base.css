@@ -3325,3 +3325,99 @@ a.rt-best-race:hover { color: var(--primary-color); }
     .results-table tr.sub-race-row.visible { display: none; }
     .results-table .sub-race-toggle { display: none; }
 }
+
+/* ============================================
+   CSV DOWNLOAD BUTTON
+   Small secondary action next to results tables.
+   Same chrome as .btn-filter-toggle but link-safe. */
+.btn-download-csv {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-light);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.btn-download-csv:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* ============================================
+   API DOCS PAGE */
+.api-docs-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-color);
+    max-width: 760px;
+    margin-bottom: 0.75rem;
+}
+
+.api-docs code,
+.api-params code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82em;
+    background: var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 0.1em 0.35em;
+}
+
+.api-endpoint {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.api-endpoint-path {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.api-method {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    border-radius: var(--border-radius-sm);
+    padding: 0.1rem 0.4rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.api-params {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    line-height: 1.8;
+}
+
+.api-example {
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.85);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+    border-radius: var(--border-radius-sm);
+    padding: 0.6rem 0.85rem;
+    overflow-x: auto;
+    margin: 0;
+}
