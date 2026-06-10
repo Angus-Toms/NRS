@@ -143,6 +143,7 @@ async def sitemap_static(request: Request) -> Response:
         _url(f"{base}/athlete-compare", today, "monthly", 0.5),
         _url(f"{base}/race-compare",    today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
+        _url(f"{base}/api",         today, "monthly", 0.5),
     ]
     for blog in load_blogs():
         urls.append(_url(f"{base}/about/blog/{blog['slug']}", today, "monthly", 0.5))
