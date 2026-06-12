@@ -440,11 +440,16 @@ def _build_rating_histograms(rating_values, bins=20):
 def _compute_upcoming_predictions(race, entries, models):
     """Compute predicted results for an upcoming race from current ratings.
 
-    Returns list of pred_rows sorted by predicted overall time, or None if no models available.
+    Returns (pred_rows, raw_times): pred_rows sorted by predicted overall
+    time, raw_times keyed by discipline for the histograms. Returns
+    (None, {}) when predictions aren't available - no models for the
+    (gender, distance), or the distance can't be classified (e.g. a start
+    list whose event_spec_ids list both sprint and standard). The caller
+    unpacks the pair and falls back to start-list order.
     """
     distance = queries.get_upcoming_race_distance_type(race['race_id'])
     if not distance:
-        return None
+        return None, {}
 
     gender      = race['gender']
     target_year = race['race_date'].year if race.get('race_date') else None
@@ -475,7 +480,7 @@ def _compute_upcoming_predictions(race, entries, models):
             preds.setdefault(aid, {})[disc] = max(0, round(t))
 
     if not preds:
-        return None
+        return None, {}
 
     pred_rows = []
     for e in entries:
