@@ -61,6 +61,10 @@ Disallow: /*?*course=
 Disallow: /*?*category=
 Disallow: /*?*partial=
 
+# Data download endpoints back the table download buttons via JS; they are
+# not pages to index.
+Disallow: /download/
+
 # Static assets & internal paths
 Disallow: /static/
 Disallow: /favicon.ico

@@ -77,7 +77,7 @@
 <div class="results-section-head">
     <div class="page-section-head" id="results-section-title">Race Results</div>
     <div class="results-section-controls">
-        {% with download_url = "/api/v1/races/" ~ race.race_id ~ "/results" %}{% include "partials/download_button.html" %}{% endwith %}
+        {% with download_url = "/download/races/" ~ race.race_id ~ "/results" %}{% include "partials/download_button.html" %}{% endwith %}
         {% if has_predictions %}
         <div class="race-view-toggle">
             <button class="race-view-btn" data-view="predictions">Predictions</button>

@@ -1,6 +1,6 @@
 # Data download endpoints (CSV/JSON) backing the table download buttons.
-# All endpoints reuse queries.py; responses carry attribution and an
-# hour-long cache header (data updates weekly).
+# Served under /download (not a public /api surface); all endpoints reuse
+# queries.py and carry an hour-long cache header (data updates weekly).
 
 import csv
 import io
@@ -70,9 +70,9 @@ def _require_athlete(athlete_id: int) -> dict:
 
 # ---------------------------------------------------------------- athletes ---
 
-@router.get("/api/v1/athletes/{athlete_id}/results")
-async def api_athlete_results(athlete_id: int, category: str = _CATEGORY,
-                              course: str = _COURSE, format: str = _FORMAT):
+@router.get("/download/athletes/{athlete_id}/results")
+async def download_athlete_results(athlete_id: int, category: str = _CATEGORY,
+                                   course: str = _COURSE, format: str = _FORMAT):
     info = _require_athlete(athlete_id)
     rows = queries.get_athlete_race_history(athlete_id, category, course=course)
     rows = _add_formatted_times(rows)
@@ -88,9 +88,9 @@ async def api_athlete_results(athlete_id: int, category: str = _CATEGORY,
     })
 
 
-@router.get("/api/v1/athletes/{athlete_id}/ratings")
-async def api_athlete_ratings(athlete_id: int, category: str = _CATEGORY,
-                              course: str = _COURSE, format: str = _FORMAT):
+@router.get("/download/athletes/{athlete_id}/ratings")
+async def download_athlete_ratings(athlete_id: int, category: str = _CATEGORY,
+                                   course: str = _COURSE, format: str = _FORMAT):
     info = _require_athlete(athlete_id)
     rows = queries.get_athlete_rating_history(athlete_id, category, course=course)
     if format == "csv":
@@ -107,8 +107,8 @@ async def api_athlete_ratings(athlete_id: int, category: str = _CATEGORY,
 
 # ------------------------------------------------------------------- races ---
 
-@router.get("/api/v1/races/{race_id}/results")
-async def api_race_results(race_id: int, format: str = _FORMAT):
+@router.get("/download/races/{race_id}/results")
+async def download_race_results(race_id: int, format: str = _FORMAT):
     race = queries.get_race_info(race_id)
     if not race:
         raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
@@ -130,8 +130,8 @@ async def api_race_results(race_id: int, format: str = _FORMAT):
 
 # ------------------------------------------------------------- leaderboard ---
 
-@router.get("/api/v1/leaderboard")
-async def api_leaderboard(
+@router.get("/download/leaderboard")
+async def download_leaderboard(
     gender:      str           = Query("female", regex="^(male|female)$"),
     disc:        str           = Query("overall", regex="^(overall|swim|bike|run|transition)$"),
     order:       str           = Query("top", regex="^(top|hot)$"),
