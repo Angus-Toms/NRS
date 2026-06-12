@@ -53,6 +53,14 @@ Disallow: /compare/
 Disallow: /athlete-compare/
 Disallow: /race-compare/
 
+# Course/category mode variants serve different content under a single
+# path-only canonical. Crawling them wastes budget and lands them in
+# "Crawled - currently not indexed"; the bare canonical paths are in the
+# sitemap, so block the parameterised variants and the AJAX partials.
+Disallow: /*?*course=
+Disallow: /*?*category=
+Disallow: /*?*partial=
+
 # Static assets & internal paths
 Disallow: /static/
 Disallow: /favicon.ico
