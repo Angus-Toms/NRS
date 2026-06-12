@@ -3848,28 +3848,50 @@ def get_upcoming_event_races_detail(event_id, course='short'):
             "transition_rating": transition,
         })
 
-    # Field average ratings for standards
+    # Field standards: top-K exp-decay weighted, identical to the per-race
+    # get_upcoming_race_standards so the event widget and the race page agree.
+    # (A plain AVG over the whole start list used to sit here, which read far
+    # lower than the race page since it gave every weak entrant equal weight.)
     std_rows = conn.execute(f"""
-        SELECT sle.race_id,
-            AVG(ra.overall), AVG(ra.swim), AVG(ra.bike), AVG(ra.run), AVG(ra.transition)
-        FROM start_list_entries sle
-        JOIN (
-            SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
-            FROM ratings ra2
-            JOIN races r2 ON ra2.race_id = r2.race_id
-            WHERE r2.distance IN {course_in}
-            QUALIFY ROW_NUMBER() OVER (
-                PARTITION BY ra2.athlete_id ORDER BY r2.race_date DESC, ra2.race_id DESC
-            ) = 1
-        ) ra ON ra.athlete_id = sle.athlete_id
-        WHERE sle.race_id IN ({ph})
-        GROUP BY sle.race_id
+        WITH field AS (
+            SELECT sle.race_id, ra.overall, ra.swim, ra.bike, ra.run, ra.transition,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.overall    DESC) AS overall_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.swim       DESC) AS swim_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.bike       DESC) AS bike_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.run        DESC) AS run_pos,
+                   ROW_NUMBER() OVER (PARTITION BY sle.race_id ORDER BY ra.transition DESC) AS transition_pos
+            FROM start_list_entries sle
+            JOIN (
+                SELECT ra2.athlete_id, ra2.overall, ra2.swim, ra2.bike, ra2.run, ra2.transition
+                FROM ratings ra2
+                JOIN races r2 ON ra2.race_id = r2.race_id
+                WHERE r2.distance IN {course_in}
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY ra2.athlete_id ORDER BY r2.race_date DESC, ra2.race_id DESC
+                ) = 1
+            ) ra ON ra.athlete_id = sle.athlete_id
+            WHERE sle.race_id IN ({ph})
+        )
+        SELECT race_id, COUNT(*),
+            SUM(overall    * CASE WHEN overall_pos    <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (overall_pos    - 1)) ELSE 0 END),
+            SUM(swim       * CASE WHEN swim_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (swim_pos       - 1)) ELSE 0 END),
+            SUM(bike       * CASE WHEN bike_pos       <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (bike_pos       - 1)) ELSE 0 END),
+            SUM(run        * CASE WHEN run_pos        <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (run_pos        - 1)) ELSE 0 END),
+            SUM(transition * CASE WHEN transition_pos <= {STANDARD_POS_CAP} THEN EXP(-{STANDARD_K} * (transition_pos - 1)) ELSE 0 END)
+        FROM field
+        GROUP BY race_id
     """, race_ids).fetchall()
 
-    std_by_race = {
-        r[0]: {"overall": r[1], "swim": r[2], "bike": r[3], "run": r[4], "transition": r[5]}
-        for r in std_rows
-    }
+    std_by_race = {}
+    for race_id, n, ov, sw, bk, rn_, tr in std_rows:
+        denom = standard_denom(n)
+        std_by_race[race_id] = {
+            "overall":    (ov  or 0.0) / denom,
+            "swim":       (sw  or 0.0) / denom,
+            "bike":       (bk  or 0.0) / denom,
+            "run":        (rn_ or 0.0) / denom,
+            "transition": (tr  or 0.0) / denom,
+        }
 
     for race in races:
         rid = race["race_id"]
