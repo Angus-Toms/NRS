@@ -1378,13 +1378,15 @@ table td a.link:hover   { color: var(--primary-color); }
 
 /* Country flag SVGs (replaces emoji flags). Default: inline next to names.
  * The .flag.flag selector beats avatar-img rules (.w1-ath img etc.) in series.css
- * that would otherwise round these into circles. */
+ * that would otherwise round these into circles or bleed a thick 2px avatar
+ * border onto the flag. Keep only the radius and a thin shadow everywhere. */
 .flag.flag {
     display: inline-block;
     width: 1em;
     height: 0.7em;
     object-fit: cover;
     vertical-align: 0;
+    border: none;
     border-radius: 2px;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
     flex-shrink: 0;
@@ -1392,6 +1394,26 @@ table td a.link:hover   { color: var(--primary-color); }
 }
 .flag.flag-lg { width: 1.1em; height: 0.75em; border-radius: 2px; }
 .flag.flag-xl { width: 2em;   height: 1.35em; border-radius: 4px; }
+
+/* "Upcoming" pill appended to a title (race hero, event hero). Sized in em so
+   it scales with whatever title it sits in. */
+.upcoming-badge {
+    display: inline-block;
+    background: var(--primary-color);
+    color: var(--white);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.55em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.25em 0.55em;
+    margin-left: 0.4em;
+    vertical-align: middle;
+    /* Sit a touch above the typographic baseline so the pill aligns with
+       the cap height of the title, not the descender. */
+    position: relative;
+    top: -0.15em;
+}
 .champ-name {
     font-size: 1.05rem;
     font-weight: 600;

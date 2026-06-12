@@ -25,7 +25,7 @@
 {% block hero %}
 <div class="event-hero">
     <div class="event-hero-inner">
-        <h1 class="event-hero-title">{{ event.name }}</h1>
+        <h1 class="event-hero-title">{{ event.name }}{% if is_upcoming %} <span class="upcoming-badge">Upcoming</span>{% endif %}</h1>
         <div class="event-hero-meta">
             {% if event.venue %}
             <span>{{ event.venue }}</span>
@@ -66,7 +66,7 @@
     <div class="ep-head">
         <div class="ep-head-l">
             <span class="ep-kicker">{{ race.race_date.strftime('%d %B %Y') }}</span>
-            <a href="/race/{{ race.race_id }}" class="ep-title">{{ race.prog_name }}</a>
+            <a href="/race/{{ race.race_id }}" class="ep-title">{{ race.prog_name }}{% if is_upcoming %} <span class="ep-subtitle">predicted podium</span>{% endif %}</a>
         </div>
         {% if race.standards %}
         <div class="ep-head-stds">
@@ -86,13 +86,14 @@
     <table class="w1-table">
         <thead>
             <tr>
+                {% set pred = 'Pred. ' if is_upcoming else '' %}
                 <th>#</th>
                 <th>Athlete</th>
-                <th class="num">Swim</th>
+                <th class="num">{{ pred }}Swim</th>
                 <th class="num w1-num--t">T1</th>
-                <th class="num">Bike</th>
+                <th class="num">{{ pred }}Bike</th>
                 <th class="num w1-num--t">T2</th>
-                <th class="num">Run</th>
+                <th class="num">{{ pred }}Run</th>
                 <th class="num w1-num--total">{{ 'Predicted' if is_upcoming else 'Total' }}</th>
             </tr>
         </thead>

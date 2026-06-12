@@ -671,6 +671,16 @@
     overflow-wrap: anywhere;
 }
 .ep-title:hover { color: var(--primary-color); }
+/* "predicted podium" sublabel sitting after an upcoming race's prog name. */
+.ep-subtitle {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-left: 0.4em;
+    white-space: nowrap;
+}
 .ep-meta {
     font-size: 0.72rem;
     color: rgba(255, 255, 255, 0.55);
@@ -776,6 +786,10 @@
     }
     .ch-std-v { font-size: 0.8rem; }
     .ch-std-d { font-size: 0.5rem; letter-spacing: 0.05em; }
+
+    /* Drop the transition columns so the three real splits (swim/bike/run)
+       stay on one line instead of wrapping. */
+    .w1-table td.w1-num--t { display: none; }
 }
 
 /* Mobile: collapse the dense w1-table into a stacked card per row.
@@ -795,13 +809,14 @@
         padding: 0.55rem 0.7rem;
         border-bottom: 0;
     }
-    /* Force splits onto their own line, with a subtle separator. */
+    /* Force splits onto their own line, with a subtle separator. Keep the
+       separator close under the name/info row rather than floating far below. */
     .w1-table tr::after {
         content: "";
         flex-basis: 100%;
         height: 1px;
         background: rgba(0, 0, 0, 0.06);
-        margin: 0.7rem 0 0.2rem;
+        margin: 0.2rem 0;
         order: 50;
     }
     .w1-table tbody td {

@@ -258,23 +258,7 @@
     user-select: none;
 }
 
-.upcoming-badge {
-    display: inline-block;
-    background: var(--primary-color);
-    color: var(--white);
-    border-radius: var(--border-radius-sm);
-    font-size: 0.55em;          /* relative to the title (~1rem on mobile, ~1rem on desktop) */
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.25em 0.55em;
-    margin-left: 0.4em;
-    vertical-align: middle;
-    /* Sit a touch above the typographic baseline so the pill aligns with
-       the cap height of the title, not the descender. */
-    position: relative;
-    top: -0.15em;
-}
+/* .upcoming-badge now lives in base.css (shared by race + event heroes). */
 
 /* Podium - right column */
 .race-hero-podium {
