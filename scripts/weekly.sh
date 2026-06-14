@@ -128,6 +128,20 @@ if [ "$STATUS" = "success" ]; then
     fi
 fi
 
+# Publish pending social posts. A failure here doesn't fail the overall run
+# (data ingestion + deploy are the load-bearing pieces) — just logs and
+# notifies. The scheduler is idempotent, so anything missed retries next run.
+if [ "$STATUS" = "success" ]; then
+    run_step "social.scheduler" python -m social.scheduler
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        {
+            echo "[WARN] social.scheduler exited $rc"
+        } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+        notify_fail "social.scheduler exited $rc. tail $LATEST_LOG"
+    fi
+fi
+
 EVENTS_AFTER=$(db_count events)
 RACES_AFTER=$(db_count races)
 ATHLETES_AFTER=$(db_count athletes)

@@ -1,3 +1,4 @@
+import math
 from collections import OrderedDict
 from datetime import date, timedelta
 
@@ -322,6 +323,49 @@ async def get_athlete(request: Request, athlete_id: int,
         if peak_ranks:
             for disc in ["overall", "swim", "bike", "run", "transition"]:
                 peak_rankings[f"world_{disc}"] = _make_ranking(peak_ranks.get(f"world_{disc}"))
+
+    # --- current form card ---
+    # Equivalent race-day splits from the form model (ptd_data/form.py): the
+    # athlete's blended form mapped through the typical recent split for each
+    # distance. Elite only, and only disciplines where the athlete is both
+    # established (>= FORM_MIN_STARTS observed splits) and current (raced the
+    # course within 18 months) - e.g. Blummenfelt gets long-course form but
+    # his dormant short-course profile shows none.
+    FORM_MIN_STARTS = 5
+    current_form = None
+    if category == 'elite':
+        form = queries.get_athlete_form(athlete_id, course)
+        refs = queries.get_form_reference_times(course)
+        form_cutoff = date.today() - timedelta(days=int(18 * 30.44))
+        if course == 'short':
+            form_cols = [('Sprint', 'sprint'), ('Standard', 'standard')]
+            form_discs = ('swim', 'run')
+            legs = {('sprint', 'swim'): '750m', ('standard', 'swim'): '1500m',
+                    ('sprint', 'run'): '5km', ('standard', 'run'): '10km'}
+        else:
+            form_cols = [('70.3', 'middle'), ('140.6', 'long')]
+            form_discs = ('swim', 'bike', 'run')
+            legs = {('middle', 'swim'): '1.9km', ('long', 'swim'): '3.8km',
+                    ('middle', 'bike'): '90km', ('long', 'bike'): '180km',
+                    ('middle', 'run'): '21.1km', ('long', 'run'): '42.2km'}
+        form_rows = []
+        as_of = None
+        for disc in form_discs:
+            f = form.get(disc)
+            if not f or f['n_obs'] < FORM_MIN_STARTS or f['last_race_date'] < form_cutoff:
+                continue
+            cells = []
+            for _, dist in form_cols:
+                ref = refs.get((info['gender'], dist, disc))
+                cells.append({
+                    'leg':  legs[(dist, disc)],
+                    'time': format_time(round(ref * math.exp(f['form_rel']))) if ref else '-',
+                })
+            form_rows.append({'label': disc.capitalize(), 'cells': cells})
+            as_of = max(as_of, f['last_race_date']) if as_of else f['last_race_date']
+        if form_rows:
+            current_form = {'cols': [label for label, _ in form_cols],
+                            'rows': form_rows, 'as_of': as_of}
 
     # --- 1yr changes card ---
     rating_changes_1yr = {}
@@ -695,6 +739,7 @@ async def get_athlete(request: Request, athlete_id: int,
         "ag_notable_col2":     ag_notable_col2,
         "long_notable_col1":   long_notable_col1,
         "long_notable_col2":   long_notable_col2,
+        "current_form":        current_form,
         "current_ratings":     current_ratings,
         "current_rankings":    current_rankings,
         "peak_rankings":       peak_rankings,

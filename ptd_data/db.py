@@ -252,6 +252,29 @@ def create_schema(conn):
     # COALESCE to 0 so pre-migration rows act as "no year term".
     conn.execute("ALTER TABLE prediction_models ADD COLUMN IF NOT EXISTS year_coef DOUBLE")
 
+    # Form model state (see ptd_data/form.py). athlete_form mirrors the
+    # ratings table's temporal semantics: one row per observation holding the
+    # athlete's blended form *after* that race, so "latest row strictly
+    # before date X" is the leakage-free pre-race form at X.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS athlete_form (
+            race_id     INTEGER NOT NULL REFERENCES races(race_id),
+            athlete_id  INTEGER NOT NULL,  -- see results.athlete_id note
+            discipline  VARCHAR NOT NULL,  -- 'overall' | 'swim' | 'bike' | 'run'
+            form_rel    DOUBLE NOT NULL,   -- blended Kalman+Elo form, rel space
+            n_obs       INTEGER NOT NULL,  -- observations to date incl this race
+            PRIMARY KEY (race_id, athlete_id, discipline)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS form_race_constants (
+            race_id     INTEGER NOT NULL REFERENCES races(race_id),
+            discipline  VARCHAR NOT NULL,
+            c           DOUBLE NOT NULL,   -- ln(median_split) + ALS field adj
+            PRIMARY KEY (race_id, discipline)
+        )
+    """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS upcoming_races (
             race_id         INTEGER PRIMARY KEY,
@@ -299,6 +322,22 @@ def create_schema(conn):
         )
     """)
 
+    # Social posts: one row per (race, post_type) once successfully published.
+    # The social scheduler diffs candidate races against this to avoid re-posting.
+    # post_type is 'pre_race' (predictions) or 'post_race' (recap). No FK on
+    # race_id - pre_race rows reference upcoming_races, post_race rows reference
+    # races, and a race graduates from one table to the other over time.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS social_posts (
+            race_id     BIGINT      NOT NULL,
+            post_type   VARCHAR     NOT NULL,
+            posted_at   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ig_post_id  VARCHAR,
+            fb_post_ids VARCHAR,
+            PRIMARY KEY (race_id, post_type)
+        )
+    """)
+
     # ART indexes on non-PK columns used in WHERE/JOIN clauses
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_date ON events(start_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_event_series_series_id ON event_series(series_id)")
@@ -309,6 +348,7 @@ def create_schema(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_anh_country ON athlete_nationality_history(country_full)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_results_athlete_id ON results(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_athlete_id ON ratings(athlete_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_athlete_form_athlete ON athlete_form(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rankings_athlete_id ON rankings(athlete_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_race_rankings_gc ON race_rankings(gender, course)")
 
@@ -732,6 +772,36 @@ def load_corrections(conn):
         long_rows,
     )
     print(f"Loaded {n_csv} manual corrections ({len(long_rows)} long rows)")
+
+
+def social_already_posted(conn, race_id, post_type):
+    """True if (race_id, post_type) has a social_posts row."""
+    return conn.execute(
+        "SELECT 1 FROM social_posts WHERE race_id = ? AND post_type = ?",
+        [race_id, post_type],
+    ).fetchone() is not None
+
+
+def mark_social_posted(conn, race_id, post_type, ig_post_id, fb_post_ids):
+    """Record a published post. fb_post_ids is a list (joined to CSV) or None.
+
+    DuckDB's INSERT ... ON CONFLICT DO UPDATE chokes on CURRENT_TIMESTAMP in
+    the SET list (parses the bare keyword as a column reference) and also
+    doesn't fill the DEFAULT for posted_at on a parameterised INSERT path,
+    so we set the timestamp explicitly on both sides.
+    """
+    csv = ",".join(fb_post_ids) if fb_post_ids else None
+    conn.execute(
+        """
+        INSERT INTO social_posts (race_id, post_type, posted_at, ig_post_id, fb_post_ids)
+        VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
+        ON CONFLICT (race_id, post_type) DO UPDATE SET
+            posted_at   = excluded.posted_at,
+            ig_post_id  = excluded.ig_post_id,
+            fb_post_ids = excluded.fb_post_ids
+        """,
+        [race_id, post_type, ig_post_id, csv],
+    )
 
 
 def slug_id(slug):

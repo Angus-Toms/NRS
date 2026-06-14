@@ -273,6 +273,110 @@
 }
 
 
+/* ============================================
+    CURRENT FORM - navy-header card, equivalent splits per distance
+    ============================================ */
+.form-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.form-card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    background: var(--navy);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.6rem 1.25rem;
+}
+
+.form-card-note {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: default;
+}
+
+.form-table {
+    padding: 0.25rem 0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 6rem repeat(var(--form-cols, 2), 1fr);
+    align-items: baseline;
+    padding: 0.5rem 1.25rem;
+    position: relative;
+}
+
+.form-row:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 1.25rem;
+    right: 1.25rem;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.form-row-head {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+}
+
+.form-col-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-lighter);
+}
+
+.form-disc {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.form-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.form-time {
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-color);
+}
+
+.form-leg {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+}
+
+@media (max-width: 768px) {
+    .form-row { grid-template-columns: 4.5rem repeat(var(--form-cols, 2), 1fr); }
+}
+
+@media (max-width: 480px) {
+    .form-row { padding: 0.45rem 1rem; }
+    .form-row:not(:last-child)::after { left: 1rem; right: 1rem; }
+    .form-card-note { display: none; }
+    .form-time { font-size: 0.875rem; }
+    .form-cell { flex-direction: column; gap: 0.1rem; }
+}
+
 /* Generic .disc-list / .disc-row / .substat rules live in base.css since
    they're shared between the athlete and race pages. */
 

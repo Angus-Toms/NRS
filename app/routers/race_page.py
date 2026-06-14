@@ -211,6 +211,33 @@ def _course_signal_for_race(race_id, gender, models):
     return signal, total_w, avg_pred_overall
 
 
+def _apply_form_overrides(preds, form_map, c_map, field, discs):
+    """Replace anchor-based predicted times with form-based ones on long
+    course: exp(pre-race form + event course constant) per discipline.
+
+    Athletes without enough form history (debuts, <3 prior splits) keep the
+    anchor prediction, but rescaled onto the form level - the two models'
+    absolute levels aren't mutually calibrated, and mixing them raw scrambles
+    the cross-group ordering (full-field Spearman drops ~0.07).
+    """
+    for disc in discs:
+        c = c_map.get(disc)
+        if c is None:
+            continue
+        form_t = {aid: math.exp(f[disc] + c)
+                  for aid, f in form_map.items() if disc in f}
+        if not form_t:
+            continue
+        ratios = sorted(t / preds[aid][disc] for aid, t in form_t.items()
+                        if preds.get(aid, {}).get(disc))
+        scale = ratios[len(ratios) // 2] if ratios else 1.0
+        for aid in field:
+            if aid in form_t:
+                preds.setdefault(aid, {})[disc] = max(0, round(form_t[aid]))
+            elif preds.get(aid, {}).get(disc):
+                preds[aid][disc] = max(0, round(preds[aid][disc] * scale))
+
+
 def _compute_race_predictions(race_id, race, results, models):
     """Compute full-field predicted times, position diffs, and course conditions.
 
@@ -255,6 +282,16 @@ def _compute_race_predictions(race_id, race, results, models):
 
     if not preds:
         return None, None, None
+
+    # Long course: the form model beats the winner-anchored pipeline on both
+    # ordering and outright times (analysis/form_only_eval.py), so override
+    # each athlete's times with exp(pre-race form + event course constant).
+    if distance not in _SHORT_DISTANCES:
+        field = tuple(sorted(r['athlete_id'] for r in results))
+        form_map = queries.get_field_form(field, 'long', before_date=target_date)
+        c_map = queries.get_form_course_constants(
+            race.get('event_id'), gender, distance, target_date)
+        _apply_form_overrides(preds, form_map, c_map, field, DISCS)
 
     # Build rows sorted by predicted overall time
     pred_rows = []
@@ -481,6 +518,15 @@ def _compute_upcoming_predictions(race, entries, models):
 
     if not preds:
         return None, {}
+
+    # Long course: form-based time overrides, same as completed races but
+    # from current form (no date cutoff - there is no future to leak).
+    if distance not in _SHORT_DISTANCES:
+        field = tuple(sorted(e['athlete_id'] for e in entries))
+        form_map = queries.get_field_form(field, 'long')
+        c_map = queries.get_form_course_constants(
+            race.get('event_id'), gender, distance, race['race_date'])
+        _apply_form_overrides(preds, form_map, c_map, field, DISCS)
 
     pred_rows = []
     for e in entries:

@@ -981,6 +981,9 @@ if __name__ == "__main__":
         print("Refitting prediction models...")
         conn.execute("DELETE FROM prediction_models")
         _fit_prediction_models(conn)
+        print("Recomputing athlete form...")
+        from ptd_data.form import compute_form
+        compute_form(conn)
 
     conn.close()
     print("Done.")

@@ -156,6 +156,36 @@
 </div>
 {% endif %}
 
+{% if current_form %}
+{# Current form: equivalent race-day splits from the form model, mapped to
+   a typical course against a typical field. One column per distance. #}
+<div class="form-card">
+    <div class="form-card-header">
+        <span>Current Form</span>
+        <span class="form-card-note" title="Estimated race-day splits on a typical course, from recent race history">est. splits · after {{ current_form.as_of.strftime('%b %Y') }}</span>
+    </div>
+    <div class="form-table" style="--form-cols: {{ current_form.cols|length }}">
+        <div class="form-row form-row-head">
+            <span class="form-disc"></span>
+            {% for col in current_form.cols %}
+            <span class="form-col-label">{{ col }}</span>
+            {% endfor %}
+        </div>
+        {% for row in current_form.rows %}
+        <div class="form-row">
+            <span class="form-disc">{{ row.label }}</span>
+            {% for cell in row.cells %}
+            <span class="form-cell">
+                <span class="form-time">{{ cell.time }}</span>
+                <span class="form-leg">{{ cell.leg }}</span>
+            </span>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if has_ratings %}
 {# Ratings: radar visual on the left, full data table on the right (and
    below at narrow widths). Active athletes get a 1y change column with a

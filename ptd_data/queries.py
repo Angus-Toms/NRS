@@ -5,11 +5,14 @@ All functions return plain dicts/lists - no custom objects, no DataFrames.
 Formatting stays in the routers.
 """
 
+import math
 import re
+import statistics
 from ast import literal_eval
 from functools import lru_cache
 
 from ptd_data import db
+from ptd_data.form import _tier_for
 from ptd_data.ratings import STANDARD_K, STANDARD_POS_CAP, standard_denom
 
 # Module-level read-only connection, opened on first use
@@ -3206,6 +3209,139 @@ def get_race_pre_race_ratings(race_id):
     """, [race_id, target_date, target_date]).fetchall()
     cols = ["athlete_id", "overall", "swim", "bike", "run", "transition", "prior_starts"]
     return [dict(zip(cols, r)) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Form model (see ptd_data/form.py)
+# ---------------------------------------------------------------------------
+
+FORM_MIN_PRIOR = 3   # observations before a form value feeds race predictions
+
+
+@lru_cache(maxsize=1024)
+def get_field_form(athlete_ids, course, before_date=None):
+    """Latest form per (athlete, discipline) in the course bucket.
+
+    athlete_ids must be a tuple (hashable for the cache). `before_date`
+    restricts to races strictly before that date - pass the race date on
+    historical race pages (mirrors get_race_pre_race_ratings); leave None
+    for upcoming races where current form is wanted.
+
+    Returns {athlete_id: {discipline: form_rel}}, only for athletes with at
+    least FORM_MIN_PRIOR observations behind the value.
+    """
+    if not athlete_ids:
+        return {}
+    conn = _get_conn()
+    ids_in = ", ".join("?" * len(athlete_ids))
+    params = [*athlete_ids]
+    date_clause = ""
+    if before_date is not None:
+        date_clause = "AND r.race_date < ?"
+        params.append(before_date)
+    rows = conn.execute(f"""
+        SELECT DISTINCT ON (af.athlete_id, af.discipline)
+               af.athlete_id, af.discipline, af.form_rel
+        FROM athlete_form af
+        JOIN races r ON af.race_id = r.race_id
+        WHERE af.athlete_id IN ({ids_in})
+          AND r.distance IN {_course_in(course)}
+          AND af.n_obs >= {FORM_MIN_PRIOR}
+          {date_clause}
+        ORDER BY af.athlete_id, af.discipline, r.race_date DESC, af.race_id DESC
+    """, params).fetchall()
+    out = {}
+    for aid, disc, form_rel in rows:
+        out.setdefault(aid, {})[disc] = form_rel
+    return out
+
+
+@lru_cache(maxsize=2048)
+def get_form_course_constants(event_id, gender, distance, before_date):
+    """Pre-race course constants {discipline: C} for predicting outright
+    times as exp(form_rel + C).
+
+    Mean C of the event's last 3 editions (same recurring event, gender and
+    distance, strictly before the race date); disciplines without event
+    history fall back to the all-time mean for the (gender, distance).
+    Validated in analysis/model_compare.py.
+    """
+    conn = _get_conn()
+    out = {}
+    if event_id is not None:
+        rows = conn.execute("""
+            SELECT fc.discipline, fc.c
+            FROM form_race_constants fc
+            JOIN races r ON fc.race_id = r.race_id
+            JOIN event_recurring er ON er.event_id = r.event_id
+            WHERE er.recurring_event_id IN (
+                      SELECT recurring_event_id FROM event_recurring WHERE event_id = ?)
+              AND r.gender = ? AND r.distance = ? AND r.race_date < ?
+            ORDER BY fc.discipline, r.race_date DESC
+        """, [event_id, gender, distance, before_date]).fetchall()
+        by_disc = {}
+        for disc, c in rows:
+            if len(by_disc.setdefault(disc, [])) < 3:
+                by_disc[disc].append(c)
+        out = {disc: sum(cs) / len(cs) for disc, cs in by_disc.items()}
+    rows = conn.execute("""
+        SELECT fc.discipline, AVG(fc.c)
+        FROM form_race_constants fc
+        JOIN races r ON fc.race_id = r.race_id
+        WHERE r.gender = ? AND r.distance = ? AND r.race_date < ?
+        GROUP BY fc.discipline
+    """, [gender, distance, before_date]).fetchall()
+    for disc, c in rows:
+        out.setdefault(disc, c)
+    return out
+
+
+def get_athlete_form(athlete_id, course):
+    """Athlete's current form per discipline for the profile display.
+
+    Returns {discipline: {form_rel, n_obs, last_race_date}} from the latest
+    observation per discipline in the course bucket.
+    """
+    conn = _get_conn()
+    rows = conn.execute(f"""
+        SELECT DISTINCT ON (af.discipline)
+               af.discipline, af.form_rel, af.n_obs, r.race_date
+        FROM athlete_form af
+        JOIN races r ON af.race_id = r.race_id
+        WHERE af.athlete_id = ?
+          AND r.distance IN {_course_in(course)}
+        ORDER BY af.discipline, r.race_date DESC, af.race_id DESC
+    """, [athlete_id]).fetchall()
+    return {disc: {"form_rel": f, "n_obs": n, "last_race_date": d}
+            for disc, f, n, d in rows}
+
+
+@lru_cache(maxsize=4)
+def get_form_reference_times(course):
+    """Typical split per (gender, distance, discipline) for mapping form to
+    a real time: median exp(C) over the last 3 years of races. C is field-
+    strength adjusted, so this is a neutral-course, neutral-field split.
+
+    Short course is restricted to world-level races: lower-tier courses run
+    ~5% slow even after field correction (inaccurately measured courses),
+    and the display labels promise true distances (750m, 5km, ...). Long
+    course has no tier structure and IM-brand courses are consistent.
+    """
+    conn = _get_conn()
+    rows = conn.execute(f"""
+        SELECT r.gender, r.distance, fc.discipline, fc.c, r.cat_ids
+        FROM form_race_constants fc
+        JOIN races r ON fc.race_id = r.race_id
+        WHERE r.distance IN {_course_in(course)}
+          AND r.race_date >= CURRENT_DATE - INTERVAL 3 YEAR
+    """).fetchall()
+    world = {'Games', 'WTCS', 'World Cup'}
+    by_key = {}
+    for g, dist, disc, c, cat_ids in rows:
+        if course == 'short' and _tier_for(cat_ids) not in world:
+            continue
+        by_key.setdefault((g, dist, disc), []).append(math.exp(c))
+    return {k: statistics.median(v) for k, v in by_key.items()}
 
 
 @lru_cache(maxsize=2048)
