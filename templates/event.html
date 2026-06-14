@@ -66,7 +66,7 @@
     <div class="ep-head">
         <div class="ep-head-l">
             <span class="ep-kicker">{{ race.race_date.strftime('%d %B %Y') }}</span>
-            <a href="/race/{{ race.race_id }}" class="ep-title">{{ race.prog_name }}{% if is_upcoming %} <span class="ep-subtitle">predicted podium</span>{% endif %}</a>
+            <a href="/race/{{ race.race_id }}" class="ep-title">{{ race.prog_name }}{% if is_upcoming %} <span class="ep-subtitle">Predicted Podium</span>{% endif %}</a>
         </div>
         {% if race.standards %}
         <div class="ep-head-stds">

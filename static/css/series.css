@@ -630,6 +630,10 @@
     border-radius: var(--border-radius-lg);
     overflow: hidden;
     box-shadow: var(--box-shadow);
+    transition: border-color var(--transition-fast);
+}
+.edition-panel:hover {
+    border-color: var(--primary-color);
 }
 .ep-empty {
     padding: 2rem 1.25rem;
