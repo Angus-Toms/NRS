@@ -9,6 +9,7 @@ from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE, YEAR_REF
+from ptd_data.form import BOUNDS
 from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
 
 templates = Jinja2Templates(directory="templates")
@@ -44,6 +45,19 @@ ANCHOR_TOP_K = 3
 ANCHOR_POOL_QUANTILE = {'short': 0.50, 'long': 0.33}
 
 _SHORT_DISTANCES = {'sprint', 'standard'}
+
+# Short-course prediction (analysis/absolute_eval.py). Swim and run are
+# course-stable, so for low-confidence athletes their own recency-weighted
+# observed splits are the best signal we have - much better than the ELO anchor,
+# which is inflated for weak-field beaters and deflated for strong-field
+# newcomers. As an athlete's split count grows (CONF_LO->CONF_HI) we fade back
+# to the anchor (cross-field info matters once we have it). The bike always uses
+# the anchor: draft-legal packs make individual bike times noise. Overall is
+# summed from the legs plus a typical transition. Long course is unaffected -
+# it keeps the pure form override (_apply_form_overrides).
+RECENCY_DECAY = 0.6        # weight of the i-th most-recent split = RECENCY_DECAY**i
+CONF_LO, CONF_HI = 3, 10   # anchor weight ramps 0->1 as prior-split count goes LO->HI
+TRANSITION_S = {'sprint': 81, 'standard': 71}   # empirical median overall - sum(legs)
 
 
 def _build_breadcrumb(race, race_id, recurring_meta):
@@ -238,6 +252,55 @@ def _apply_form_overrides(preds, form_map, c_map, field, discs):
                 preds[aid][disc] = max(0, round(preds[aid][disc] * scale))
 
 
+def _recency_split(vals):
+    """Recency-weighted geometric mean of observed splits (newest first)."""
+    ws = [RECENCY_DECAY ** i for i in range(len(vals))]
+    return math.exp(sum(w * math.log(v) for w, v in zip(ws, vals)) / sum(ws))
+
+
+def _apply_short_course(preds, splits, field, distance):
+    """Short course: swim/run from the athlete's own recency-weighted observed
+    splits, blended toward the ELO anchor as their record grows; bike from the
+    anchor (draft-legal packs make individual bike times noise); overall summed
+    from the legs plus a typical transition. Athletes with no prior split for a
+    leg take the field median of that leg. Validated in analysis/absolute_eval.py.
+
+    `preds` already holds the ELO anchor for every discipline. `splits[aid][disc]`
+    is the athlete's prior in-bounds splits at this distance, newest first.
+    """
+    abs_t, n_obs = {}, {}
+    for aid in field:
+        s = splits.get(aid, {})
+        for disc in ('swim', 'run'):
+            lo, hi = BOUNDS[disc][distance]
+            vals = [v for v in s.get(disc, []) if lo <= v <= hi]
+            n_obs.setdefault(aid, {})[disc] = len(vals)
+            if vals:
+                abs_t.setdefault(aid, {})[disc] = _recency_split(vals)
+
+    field_med = {}
+    for disc in ('swim', 'run'):
+        vals = sorted(abs_t[aid][disc] for aid in abs_t if disc in abs_t[aid])
+        if vals:
+            field_med[disc] = vals[len(vals) // 2]
+
+    T = TRANSITION_S.get(distance, 80)
+    for aid in field:
+        p = preds.setdefault(aid, {})
+        for disc in ('swim', 'run'):  # bike keeps the anchor already in preds
+            ab = abs_t.get(aid, {}).get(disc)
+            anchor_t = p.get(disc)
+            if ab and anchor_t:
+                w = max(0.0, min(1.0, (n_obs[aid][disc] - CONF_LO) / (CONF_HI - CONF_LO)))
+                p[disc] = max(0, round(math.exp(w * math.log(anchor_t) + (1 - w) * math.log(ab))))
+            elif ab:
+                p[disc] = max(0, round(ab))
+            elif disc in field_med:   # debut for this leg: stand in with the field median
+                p[disc] = max(0, round(field_med[disc]))
+        if p.get('swim') and p.get('bike') and p.get('run'):
+            p['overall'] = p['swim'] + p['bike'] + p['run'] + T
+
+
 def _compute_race_predictions(race_id, race, results, models):
     """Compute full-field predicted times, position diffs, and course conditions.
 
@@ -283,11 +346,14 @@ def _compute_race_predictions(race_id, race, results, models):
     if not preds:
         return None, None, None
 
-    # Long course: the form model beats the winner-anchored pipeline on both
-    # ordering and outright times (analysis/form_only_eval.py), so override
-    # each athlete's times with exp(pre-race form + event course constant).
-    if distance not in _SHORT_DISTANCES:
-        field = tuple(sorted(r['athlete_id'] for r in results))
+    # Short course: recency-weighted observed swim/run + anchor bike + summed
+    # overall. Long course: the form model wins outright, so fully override with
+    # it. Both leakage-safe via before_date=target_date.
+    field = tuple(sorted(r['athlete_id'] for r in results))
+    if distance in _SHORT_DISTANCES:
+        splits = queries.get_field_observed_splits(field, distance, before_date=target_date)
+        _apply_short_course(preds, splits, field, distance)
+    else:
         form_map = queries.get_field_form(field, 'long', before_date=target_date)
         c_map = queries.get_form_course_constants(
             race.get('event_id'), gender, distance, target_date)
@@ -474,19 +540,16 @@ def _build_rating_histograms(rating_values, bins=20):
     return chart_data
 
 
-def _compute_upcoming_predictions(race, entries, models):
-    """Compute predicted results for an upcoming race from current ratings.
-
-    Returns (pred_rows, raw_times): pred_rows sorted by predicted overall
-    time, raw_times keyed by discipline for the histograms. Returns
-    (None, {}) when predictions aren't available - no models for the
-    (gender, distance), or the distance can't be classified (e.g. a start
-    list whose event_spec_ids list both sprint and standard). The caller
-    unpacks the pair and falls back to start-list order.
+def _upcoming_pred_seconds(race, entries, models):
+    """Raw per-athlete predicted seconds {athlete_id: {disc: sec}} for an
+    upcoming race - anchor, then short-course blend / long-course form override,
+    plus momentum - and the classified distance. Returns (None, None) when the
+    distance is unclassifiable or no models exist. Shared by the race-page table
+    and the event-page podium so the two always agree.
     """
     distance = queries.get_upcoming_race_distance_type(race['race_id'])
     if not distance:
-        return None, {}
+        return None, None
 
     gender      = race['gender']
     target_year = race['race_date'].year if race.get('race_date') else None
@@ -517,16 +580,37 @@ def _compute_upcoming_predictions(race, entries, models):
             preds.setdefault(aid, {})[disc] = max(0, round(t))
 
     if not preds:
-        return None, {}
+        return None, None
 
-    # Long course: form-based time overrides, same as completed races but
-    # from current form (no date cutoff - there is no future to leak).
-    if distance not in _SHORT_DISTANCES:
-        field = tuple(sorted(e['athlete_id'] for e in entries))
+    # Short course: recency-weighted observed swim/run + anchor bike + summed
+    # overall. Long course: full form override. Current form (no date cutoff -
+    # there is no future to leak).
+    field = tuple(sorted(e['athlete_id'] for e in entries))
+    if distance in _SHORT_DISTANCES:
+        splits = queries.get_field_observed_splits(field, distance)
+        _apply_short_course(preds, splits, field, distance)
+    else:
         form_map = queries.get_field_form(field, 'long')
         c_map = queries.get_form_course_constants(
             race.get('event_id'), gender, distance, race['race_date'])
         _apply_form_overrides(preds, form_map, c_map, field, DISCS)
+    return preds, distance
+
+
+def _compute_upcoming_predictions(race, entries, models):
+    """Compute predicted results for an upcoming race from current ratings.
+
+    Returns (pred_rows, raw_times): pred_rows sorted by predicted overall
+    time, raw_times keyed by discipline for the histograms. Returns
+    (None, {}) when predictions aren't available - no models for the
+    (gender, distance), or the distance can't be classified (e.g. a start
+    list whose event_spec_ids list both sprint and standard). The caller
+    unpacks the pair and falls back to start-list order.
+    """
+    preds, distance = _upcoming_pred_seconds(race, entries, models)
+    if not preds:
+        return None, {}
+    DISCS = ['overall', 'swim', 'bike', 'run']
 
     pred_rows = []
     for e in entries:

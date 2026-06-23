@@ -37,3 +37,6 @@ data/
 
 # Work in progress
 social/
+
+# Model research / backtest scripts (not part of the live app)
+analysis/

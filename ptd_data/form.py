@@ -11,7 +11,13 @@ their last race - and the posterior is blended with the rating-implied form
 Validated in analysis/{form_model,model_compare,form_only_eval}.py: on long
 course the form model beats the winner-anchored prediction pipeline on both
 ordering and outright times, so long-course race predictions read from here.
-On short course it powers the athlete-page form display only.
+Short-course race predictions do NOT use form - they use observed splits
+directly (race_page._apply_short_course); short course only computes swim/run
+form, for the athlete-page form display.
+
+Weak, poorly-connected tiers (Development Regional Cups) get their course
+constant anchored to the neutral baseline (see compute_form), since ALS can't
+gauge their field strength and would otherwise leave their form inflated.
 
 Two tables, rebuilt by compute_form() during the ratings 'models' phase:
 
@@ -41,13 +47,14 @@ ALS_ITERS  = 3
 
 COURSE_DISTANCES = {'short': ('sprint', 'standard'),
                     'long':  ('middle', 't100', 'long')}
-# overall/bike form is only consumed by long-course race predictions; short
-# course keeps the winner-anchored pipeline and only displays swim/run form
+# Long course computes all four (they drive long-course race predictions).
+# Short course only needs swim/run, for the athlete-page form display - short
+# race predictions use observed splits, not form (race_page._apply_short_course).
 COURSE_DISCS = {'short': ('swim', 'run'),
                 'long':  ('overall', 'swim', 'bike', 'run')}
 
 # (q_per_day, r_default, blend_weight) per (course, discipline), tuned on
-# pre-2024 data in analysis/form_model.py / model_compare.py
+# pre-2024 data in analysis/form_model.py / model_compare.py.
 PARAMS = {
     ('short', 'swim'):    (1e-6, 2e-3, 0.7),
     ('short', 'run'):     (1e-6, 2e-3, 0.7),
@@ -72,7 +79,14 @@ BOUNDS = {
 # WT category ids -> tier, for per-tier Kalman observation noise. Long course
 # has no WT tier structure; the distance itself buckets the noise.
 TIER_RULES = [({348, 351}, 'WTCS'), ({343, 346}, 'Games'), ({349}, 'World Cup'),
-              ({340}, 'Continental Champs'), ({341}, 'Continental Cup')]
+              ({340}, 'Continental Champs'), ({341}, 'Continental Cup'),
+              ({477}, 'Development')]
+
+# Tiers whose fields are too weak and too poorly connected for ALS to gauge
+# their strength. Their course constant C is anchored to the neutral baseline
+# in compute_form (see the tier-anchor step) rather than left at the weak
+# field's slow median, which would inflate the form of anyone who races them.
+WEAK_TIERS = {'Development'}
 
 
 def _tier_for(cat_ids_json):
@@ -162,6 +176,22 @@ def compute_form(conn):
                     form[aid] = statistics.median(rels[i] - race_adj[obs[i][1]] for i in idxs)
                 for rid, idxs in by_race_idx.items():
                     race_adj[rid] = statistics.median(rels[i] - form[obs[i][0]] for i in idxs)
+
+            # Tier-anchor weak, poorly-connected fields. Development Regional
+            # Cups are an isolated cluster, so ALS can't gauge their field
+            # strength: race_adj stays ~0 and C sits at the weak field's slow
+            # median, which inflates the form of anyone who races them. Anchor
+            # their C to the neutral baseline (median C of the well-connected
+            # non-weak races) so form measures absolute pace, comparable across
+            # tiers. (Pace is ~tier-independent, especially on the run.)
+            race_tier = {rid: obs[idxs[0]][3] for rid, idxs in by_race_idx.items()}
+            well = [log_median[rid] + race_adj[rid] for rid in by_race_idx
+                    if race_tier[rid] not in WEAK_TIERS]
+            if well:
+                neutral = statistics.median(well)
+                for rid in by_race_idx:
+                    if race_tier[rid] in WEAK_TIERS:
+                        race_adj[rid] = neutral - log_median[rid]
 
             # per-athlete chronological sequences of adjusted observations
             by_athlete = defaultdict(list)  # aid -> [(date, tier, rid, adj_rel)]

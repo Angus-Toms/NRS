@@ -4,7 +4,7 @@ from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from app.routers.about import load_blogs
-from app.routers.upcoming_page import _build_podium
+from app.routers.event_page import _predicted_podium
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -33,10 +33,15 @@ async def index(request: Request):
 
     upcoming_events = queries.get_upcoming_events()[:3]
     models = queries.get_prediction_models()
+    entries_by_race = queries.get_upcoming_race_entries_bulk(
+        [r["race_id"] for e in upcoming_events for r in e["races"]])
     for event in upcoming_events:
         for race in event["races"]:
-            race["podium"] = _build_podium(
-                race.pop("top3"), race["gender"], race["event_spec_ids"], models
+            race["podium"] = _predicted_podium(
+                entries_by_race.get(race["race_id"], []),
+                {"race_id": race["race_id"], "gender": race["gender"],
+                 "event_id": race["event_id"], "race_date": race["start_date"]},
+                models,
             )
 
     blogs = load_blogs()
