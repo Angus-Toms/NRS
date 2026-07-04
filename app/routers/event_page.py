@@ -99,8 +99,14 @@ def _predicted_podium(entries, race, models):
     podium and the race page agree exactly. Transitions don't have their own
     model, so we estimate them as the slack between predicted overall and the
     predicted leg sum, split evenly between T1 and T2. `race` needs race_id,
-    gender, race_date and event_id.
+    gender, race_date, event_id and category.
+
+    Only elite races get a predicted podium: AG start lists are athletes without
+    a meaningful rating history, so the prediction machinery has nothing to work
+    with (matches the race page, which only predicts when category == 'elite').
     """
+    if race.get('category') != 'elite':
+        return []
     preds, _distance = _upcoming_pred_seconds(race, entries, models)
     if not preds:
         return []

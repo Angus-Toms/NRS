@@ -3745,7 +3745,15 @@ def get_upcoming_events(country=None, course='short'):
     via the shared prediction core (race_page._upcoming_pred_seconds).
     """
     conn = _get_conn()
-    country_sql, country_params = ("WHERE e.country = ?", [country]) if country else ("", [])
+    # Only events that haven't finished yet. Gate on the event's own latest race
+    # date, not start_date, so a multi-day event still shows on its final day.
+    where = ["e.event_id IN (SELECT event_id FROM upcoming_races GROUP BY event_id "
+             "HAVING MAX(race_date) >= CURRENT_DATE)"]
+    country_params = []
+    if country:
+        where.append("e.country = ?")
+        country_params.append(country)
+    where_sql = "WHERE " + " AND ".join(where)
     race_rows = conn.execute(f"""
         SELECT
             e.event_id, e.name, e.venue, e.country, e.start_date,
@@ -3754,7 +3762,7 @@ def get_upcoming_events(country=None, course='short'):
         FROM events e
         JOIN upcoming_races ur ON ur.event_id = e.event_id
         LEFT JOIN start_list_entries sle ON sle.race_id = ur.race_id
-        {country_sql}
+        {where_sql}
         GROUP BY e.event_id, e.name, e.venue, e.country, e.start_date,
                  ur.race_id, ur.prog_name, ur.gender, ur.category, ur.event_spec_ids
         ORDER BY e.start_date, e.event_id,
