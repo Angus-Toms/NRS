@@ -899,20 +899,24 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
     race_id    = race['race_id']
     entries    = queries.get_upcoming_race_entries(race_id)
     upcoming_distance = queries.get_upcoming_race_distance_type(race_id)
-    # AG races are bucketed separately in race_rankings so the rank reflects
-    # peer competition rather than mixing with elite short-course fields.
-    upcoming_course = ('ag' if race.get('category') == 'ag'
-                       else (queries.course_for_distance(upcoming_distance) or 'short'))
-    standards  = queries.get_upcoming_race_standards(race_id, course=upcoming_course)
+    # Two distinct notions of "course" here:
+    #  - rating_course ('short'|'long') scopes which ratings feed the standards,
+    #    keyed off the actual distance. Passed to the rating/standard queries,
+    #    which map it to distance enums (short/long only - not 'ag').
+    #  - rank_bucket adds 'ag' on top: race_rankings buckets AG races separately
+    #    so the rank reflects peer competition, not the elite short-course field.
+    rating_course = queries.course_for_distance(upcoming_distance) or 'short'
+    rank_bucket   = 'ag' if race.get('category') == 'ag' else rating_course
+    standards  = queries.get_upcoming_race_standards(race_id, course=rating_course)
     is_elite   = race.get('category') == 'elite'
 
     # Live race rank vs the existing race_rankings universe for this
     # (gender, course). No table row exists for the upcoming race yet, so we
     # compute by counting historic races with a higher standard.
     upcoming_race_ranks = queries.get_upcoming_race_ranks(
-        race['gender'], upcoming_course, standards,
+        race['gender'], rank_bucket, standards,
     )
-    upcoming_rank_total = queries.get_race_rankings_total(race['gender'], upcoming_course)
+    upcoming_rank_total = queries.get_race_rankings_total(race['gender'], rank_bucket)
 
     predictions, pred_raw_times = _compute_upcoming_predictions(
         race, entries, queries.get_prediction_models()
@@ -987,7 +991,7 @@ async def _get_upcoming_race(request: Request, race, partial: bool):
         "race_standard_classes": race_standard_classes,
         "race_ranks":            upcoming_race_ranks,
         "race_rank_total":       upcoming_rank_total,
-        "race_course":           upcoming_course,
+        "race_course":           rank_bucket,
         "splits_data":           [],
         "predictions":           predictions,
         "has_predictions":       predictions is not None,

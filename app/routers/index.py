@@ -40,7 +40,8 @@ async def index(request: Request):
             race["podium"] = _predicted_podium(
                 entries_by_race.get(race["race_id"], []),
                 {"race_id": race["race_id"], "gender": race["gender"],
-                 "event_id": race["event_id"], "race_date": race["start_date"]},
+                 "event_id": race["event_id"], "race_date": race["start_date"],
+                 "category": race["category"]},
                 models,
             )
 
