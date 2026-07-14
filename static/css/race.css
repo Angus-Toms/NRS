@@ -727,6 +727,12 @@
 .debut-row td { color: var(--text-light); font-style: italic; }
 .debut-label { font-size: 0.75em; color: var(--text-lighter); font-style: italic; }
 
+/* Low-confidence prediction rows (few career starts): de-emphasised, marked with
+   the sprout badge next to the name. */
+.low-conf-row td { color: var(--text-light); }
+.low-conf-mark { margin-left: 0.2rem; }
+.low-conf-mark svg { width: 0.95em; height: 0.95em; }
+
 /* Corrections table */
 .corrections-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .corrections-table thead th {

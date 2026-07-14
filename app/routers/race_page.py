@@ -9,7 +9,6 @@ from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE, YEAR_REF
-from ptd_data.form import BOUNDS
 from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
 
 templates = Jinja2Templates(directory="templates")
@@ -46,18 +45,12 @@ ANCHOR_POOL_QUANTILE = {'short': 0.50, 'long': 0.33}
 
 _SHORT_DISTANCES = {'sprint', 'standard'}
 
-# Short-course prediction (analysis/absolute_eval.py). Swim and run are
-# course-stable, so for low-confidence athletes their own recency-weighted
-# observed splits are the best signal we have - much better than the ELO anchor,
-# which is inflated for weak-field beaters and deflated for strong-field
-# newcomers. As an athlete's split count grows (CONF_LO->CONF_HI) we fade back
-# to the anchor (cross-field info matters once we have it). The bike always uses
-# the anchor: draft-legal packs make individual bike times noise. Overall is
-# summed from the legs plus a typical transition. Long course is unaffected -
-# it keeps the pure form override (_apply_form_overrides).
-RECENCY_DECAY = 0.6        # weight of the i-th most-recent split = RECENCY_DECAY**i
-CONF_LO, CONF_HI = 3, 10   # anchor weight ramps 0->1 as prior-split count goes LO->HI
-TRANSITION_S = {'sprint': 81, 'standard': 71}   # empirical median overall - sum(legs)
+# Predictions for athletes with fewer than this many prior elite starts (in the
+# race's course bucket) are flagged low-confidence in the UI: their ELO rating
+# hasn't converged, so the prediction is less reliable. Backtest: within-race
+# ordering rho climbs from ~0.04 (0-2 starts) to ~0.42 by 5-7 and ~0.46 by 8-10
+# (analysis/k_replay.py).
+LOW_CONF_STARTS = 8
 
 
 def _build_breadcrumb(race, race_id, recurring_meta):
@@ -252,55 +245,6 @@ def _apply_form_overrides(preds, form_map, c_map, field, discs):
                 preds[aid][disc] = max(0, round(preds[aid][disc] * scale))
 
 
-def _recency_split(vals):
-    """Recency-weighted geometric mean of observed splits (newest first)."""
-    ws = [RECENCY_DECAY ** i for i in range(len(vals))]
-    return math.exp(sum(w * math.log(v) for w, v in zip(ws, vals)) / sum(ws))
-
-
-def _apply_short_course(preds, splits, field, distance):
-    """Short course: swim/run from the athlete's own recency-weighted observed
-    splits, blended toward the ELO anchor as their record grows; bike from the
-    anchor (draft-legal packs make individual bike times noise); overall summed
-    from the legs plus a typical transition. Athletes with no prior split for a
-    leg take the field median of that leg. Validated in analysis/absolute_eval.py.
-
-    `preds` already holds the ELO anchor for every discipline. `splits[aid][disc]`
-    is the athlete's prior in-bounds splits at this distance, newest first.
-    """
-    abs_t, n_obs = {}, {}
-    for aid in field:
-        s = splits.get(aid, {})
-        for disc in ('swim', 'run'):
-            lo, hi = BOUNDS[disc][distance]
-            vals = [v for v in s.get(disc, []) if lo <= v <= hi]
-            n_obs.setdefault(aid, {})[disc] = len(vals)
-            if vals:
-                abs_t.setdefault(aid, {})[disc] = _recency_split(vals)
-
-    field_med = {}
-    for disc in ('swim', 'run'):
-        vals = sorted(abs_t[aid][disc] for aid in abs_t if disc in abs_t[aid])
-        if vals:
-            field_med[disc] = vals[len(vals) // 2]
-
-    T = TRANSITION_S.get(distance, 80)
-    for aid in field:
-        p = preds.setdefault(aid, {})
-        for disc in ('swim', 'run'):  # bike keeps the anchor already in preds
-            ab = abs_t.get(aid, {}).get(disc)
-            anchor_t = p.get(disc)
-            if ab and anchor_t:
-                w = max(0.0, min(1.0, (n_obs[aid][disc] - CONF_LO) / (CONF_HI - CONF_LO)))
-                p[disc] = max(0, round(math.exp(w * math.log(anchor_t) + (1 - w) * math.log(ab))))
-            elif ab:
-                p[disc] = max(0, round(ab))
-            elif disc in field_med:   # debut for this leg: stand in with the field median
-                p[disc] = max(0, round(field_med[disc]))
-        if p.get('swim') and p.get('bike') and p.get('run'):
-            p['overall'] = p['swim'] + p['bike'] + p['run'] + T
-
-
 def _compute_race_predictions(race_id, race, results, models):
     """Compute full-field predicted times, position diffs, and course conditions.
 
@@ -346,18 +290,18 @@ def _compute_race_predictions(race_id, race, results, models):
     if not preds:
         return None, None, None
 
-    # Short course: recency-weighted observed swim/run + anchor bike + summed
-    # overall. Long course: the form model wins outright, so fully override with
-    # it. Both leakage-safe via before_date=target_date.
+    # Short course: pure ELO anchor for the whole field. The observed-split
+    # blend was retired - it over-fit thin records (a few fast splits against
+    # weak fields could vault a low-start athlete to the front). Long course:
+    # the form model still beats the anchor outright, so override with it.
     field = tuple(sorted(r['athlete_id'] for r in results))
-    if distance in _SHORT_DISTANCES:
-        splits = queries.get_field_observed_splits(field, distance, before_date=target_date)
-        _apply_short_course(preds, splits, field, distance)
-    else:
+    course = 'short' if distance in _SHORT_DISTANCES else 'long'
+    if course == 'long':
         form_map = queries.get_field_form(field, 'long', before_date=target_date)
         c_map = queries.get_form_course_constants(
             race.get('event_id'), gender, distance, target_date)
         _apply_form_overrides(preds, form_map, c_map, field, DISCS)
+    start_counts = queries.get_field_start_counts(field, course, before_date=target_date)
 
     # Build rows sorted by predicted overall time
     pred_rows = []
@@ -369,7 +313,7 @@ def _compute_race_predictions(race_id, race, results, models):
             'name':          r['name'],
             'country_alpha3': r.get('country_alpha3', ''),
             'year_of_birth': r.get('year_of_birth'),
-            'is_debut':      aid not in pre_ratings,
+            'is_low_confidence': start_counts.get(aid, 0) < LOW_CONF_STARTS,
             '_overall_raw':  p.get('overall', 9_999_999),
             '_swim_raw':     p.get('swim', 0),
             '_bike_raw':     p.get('bike', 0),
@@ -582,14 +526,11 @@ def _upcoming_pred_seconds(race, entries, models):
     if not preds:
         return None, None
 
-    # Short course: recency-weighted observed swim/run + anchor bike + summed
-    # overall. Long course: full form override. Current form (no date cutoff -
+    # Short course: pure ELO anchor for the whole field (observed-split blend
+    # retired). Long course: full form override. Current form (no date cutoff -
     # there is no future to leak).
     field = tuple(sorted(e['athlete_id'] for e in entries))
-    if distance in _SHORT_DISTANCES:
-        splits = queries.get_field_observed_splits(field, distance)
-        _apply_short_course(preds, splits, field, distance)
-    else:
+    if distance not in _SHORT_DISTANCES:
         form_map = queries.get_field_form(field, 'long')
         c_map = queries.get_form_course_constants(
             race.get('event_id'), gender, distance, race['race_date'])
@@ -612,6 +553,10 @@ def _compute_upcoming_predictions(race, entries, models):
         return None, {}
     DISCS = ['overall', 'swim', 'bike', 'run']
 
+    course = 'short' if distance in _SHORT_DISTANCES else 'long'
+    field = tuple(sorted(e['athlete_id'] for e in entries))
+    start_counts = queries.get_field_start_counts(field, course)
+
     pred_rows = []
     for e in entries:
         aid = e['athlete_id']
@@ -622,7 +567,7 @@ def _compute_upcoming_predictions(race, entries, models):
             'country_alpha3': e.get('country_alpha3', ''),
             'year_of_birth': e.get('year_of_birth'),
             'profile_img':   e.get('profile_img', ''),
-            'is_debut':      e['overall_rating'] is None,
+            'is_low_confidence': start_counts.get(aid, 0) < LOW_CONF_STARTS,
             '_overall_raw':  p.get('overall', 9_999_999),
             '_swim_raw':     p.get('swim', 0),
             '_bike_raw':     p.get('bike', 0),

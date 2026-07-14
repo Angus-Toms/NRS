@@ -9,7 +9,7 @@ from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from ptd_data.ratings import SCALE
-from app.routers.race_page import _anchor_time
+from app.routers.race_page import _anchor_time, LOW_CONF_STARTS
 from app.routers.router_utils import (
     format_time, format_time_behind, format_rating_change, format_1yr_rating_change,
 )
@@ -438,6 +438,7 @@ async def get_athlete(request: Request, athlete_id: int,
         "win_pct":       wins   / max(race_starts, 1),
         "podium_pct":    podiums / max(race_starts, 1),
         "active":        active,
+        "is_low_confidence": race_starts < LOW_CONF_STARTS,
     }
     if peaks and best:
         for disc in ["overall", "swim", "bike", "run", "transition"]:

@@ -83,6 +83,17 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* Low-confidence badge in the hero (few career starts). Brighter amber + pill
+   to read against the dark hero, sized to sit with the flag and status chip. */
+.low-conf-hero {
+    color: #f0b429;
+    background: rgba(240, 180, 41, 0.16);
+    padding: 0.2rem 0.4rem;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+.low-conf-hero svg { width: 0.9rem; height: 0.9rem; }
+
 .athlete-hero-meta,
 .athlete-hero-stats {
     display: flex;

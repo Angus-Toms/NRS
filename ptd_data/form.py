@@ -11,9 +11,8 @@ their last race - and the posterior is blended with the rating-implied form
 Validated in analysis/{form_model,model_compare,form_only_eval}.py: on long
 course the form model beats the winner-anchored prediction pipeline on both
 ordering and outright times, so long-course race predictions read from here.
-Short-course race predictions do NOT use form - they use observed splits
-directly (race_page._apply_short_course); short course only computes swim/run
-form, for the athlete-page form display.
+Short-course race predictions use the pure ELO anchor, not form; short course
+only computes swim/run form here, for the athlete-page form display.
 
 Weak, poorly-connected tiers (Development Regional Cups) get their course
 constant anchored to the neutral baseline (see compute_form), since ALS can't
@@ -49,7 +48,7 @@ COURSE_DISTANCES = {'short': ('sprint', 'standard'),
                     'long':  ('middle', 't100', 'long')}
 # Long course computes all four (they drive long-course race predictions).
 # Short course only needs swim/run, for the athlete-page form display - short
-# race predictions use observed splits, not form (race_page._apply_short_course).
+# race predictions use the pure ELO anchor, not form.
 COURSE_DISCS = {'short': ('swim', 'run'),
                 'long':  ('overall', 'swim', 'bike', 'run')}
 

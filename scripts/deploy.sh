@@ -134,7 +134,12 @@ fi
 if $DO_DB; then
     DB_SIZE=$(du -sh "$DB_LOCAL" | cut -f1)
     step "Render: copying DB ($DB_SIZE)"
-    # Upload to a temp path first, then mv - avoids a window where the file is half-written
+    # Upload to a temp path first, then mv - avoids a window where the app
+    # could open a half-written file. This needs room for two copies of the DB
+    # at once; build_db.sh's compact step keeps the local file small enough
+    # (~150-250MB) that two copies comfortably fit on the 974MB Render disk.
+    # Do NOT go back to overwrite-in-place - with an uncompacted DB that
+    # doubles-up too and fills the disk (see: the incident that added compact).
     scp "$DB_LOCAL" "$RENDER_SSH:${DB_REMOTE}.new"
     ssh "$RENDER_SSH" "mv '${DB_REMOTE}.new' '${DB_REMOTE}'"
     echo "  Copied."
@@ -155,6 +160,41 @@ if $DO_RESTART; then
         "https://api.render.com/v1/services/$RENDER_SERVICE_ID/restart" \
         > /dev/null
     echo "  Restart triggered for $RENDER_SERVICE_ID."
+fi
+
+# ── 5. Prediction-code drift check (data-only deploys) ───────────────────────
+# A --no-git deploy ships the DB but not the app code, so the live site can run
+# prediction logic older than the local tree - and the social-post generator
+# renders from the local tree, so the two silently disagree (Edmonton: local
+# had Pye 1st, the month-behind live site had him 6th). Compare Render's live
+# commit to local HEAD across the prediction-model core and warn loudly if they
+# diverge. Only meaningful on --no-git (a git deploy just pushed and Render's
+# rebuild is still in flight). Read-only; never fails the deploy.
+if ! $DO_GIT; then
+    step "Render: checking deployed code vs local"
+    # The prediction-model core. Deliberately narrow (not queries.py, which
+    # churns for unrelated page/leaderboard work) so the warning stays signal.
+    PRED_FILES="app/routers/race_page.py ptd_data/ratings.py ptd_data/form.py"
+    if [ -z "${RENDER_API_KEY:-}" ]; then
+        note "RENDER_API_KEY not set - skipping drift check."
+    else
+        RENDER_SERVICE_ID="${RENDER_SSH%%@*}"
+        LIVE_SHA=$(curl -fsS \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20" 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(next((x['deploy']['commit']['id'] for x in d if x.get('deploy',{}).get('status')=='live' and x.get('deploy',{}).get('commit')), ''))" 2>/dev/null || true)
+        if [ -z "$LIVE_SHA" ]; then
+            echo "  [WARN] CODE DRIFT: could not read Render's live commit (API/network issue)."
+        elif ! git cat-file -e "${LIVE_SHA}^{commit}" 2>/dev/null; then
+            echo "  [WARN] CODE DRIFT: Render live commit ${LIVE_SHA:0:8} not in local history - run 'git fetch' to compare."
+        elif git diff --quiet "$LIVE_SHA" HEAD -- $PRED_FILES; then
+            echo "  Prediction code in sync with Render (live ${LIVE_SHA:0:8})."
+        else
+            DRIFTED=$(git diff --name-only "$LIVE_SHA" HEAD -- $PRED_FILES | tr '\n' ' ')
+            echo "  [WARN] CODE DRIFT: Render runs ${LIVE_SHA:0:8}, local HEAD $(git rev-parse --short HEAD) - prediction code differs: ${DRIFTED}"
+            echo "  [WARN] Live-site predictions may not match freshly-generated social posts. Run ./deploy.sh (with git) to ship it."
+        fi
+    fi
 fi
 
 step "Done"

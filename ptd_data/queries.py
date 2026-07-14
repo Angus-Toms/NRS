@@ -3195,40 +3195,32 @@ def get_field_form(athlete_ids, course, before_date=None):
     return out
 
 
-def get_field_observed_splits(athlete_ids, distance, before_date=None):
-    """Prior observed swim & run splits per athlete at `distance`, newest first,
-    for the recency-weighted short-course prediction. `before_date` restricts to
-    races strictly before that date (pass the race date on historical pages;
-    leave None for upcoming). Sane-window filtering is left to the caller.
-    Returns {athlete_id: {'swim': [sec, ...], 'run': [sec, ...]}} (newest first).
+def get_field_start_counts(athlete_ids, course, before_date=None):
+    """Per-athlete count of prior elite starts in the course bucket (sprint/
+    standard for short, middle/t100/long for long), for the low-confidence
+    prediction flag. `before_date` restricts to races strictly before that date
+    (pass the race date on historical pages; leave None for upcoming, where
+    current counts are wanted). Returns {athlete_id: n_starts}; athletes with no
+    starts are absent (caller treats missing as 0).
     """
     if not athlete_ids:
         return {}
     conn = _get_conn()
     ids_in = ", ".join("?" * len(athlete_ids))
-    params = [*athlete_ids, distance]
+    params = [*athlete_ids]
     date_clause = ""
     if before_date is not None:
         date_clause = "AND r.race_date < ?"
         params.append(before_date)
     rows = conn.execute(f"""
-        SELECT res.athlete_id, res.swim_s, res.run_s
-        FROM results res
-        JOIN races r ON res.race_id = r.race_id
+        SELECT res.athlete_id, COUNT(DISTINCT res.race_id)
+        FROM results res JOIN races r ON res.race_id = r.race_id
         WHERE res.athlete_id IN ({ids_in})
-          AND r.category = 'elite' AND r.distance = ?
-          AND res.status = 'Finished'
+          AND r.category = 'elite' AND r.distance IN {_course_in(course)}
           {date_clause}
-        ORDER BY r.race_date DESC, res.race_id DESC
+        GROUP BY res.athlete_id
     """, params).fetchall()
-    out = {}
-    for aid, swim, run in rows:
-        d = out.setdefault(aid, {'swim': [], 'run': []})
-        if swim and swim > 0:
-            d['swim'].append(swim)
-        if run and run > 0:
-            d['run'].append(run)
-    return out
+    return {aid: n for aid, n in rows}
 
 
 @lru_cache(maxsize=1024)

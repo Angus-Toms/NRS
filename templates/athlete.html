@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_icons.html" import low_conf_badge %}
 
 {% block title %}{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data{% endblock %}
 
@@ -41,7 +42,8 @@
                 <h1 class="athlete-hero-name">
                     {{ athlete.name }}
                     {{ flag(athlete.country_alpha3, athlete.country_full, 'flag-lg') }}
-                    <span class="athlete-status-chip {{ 'status-active' if athlete.active else 'status-retired' }}">{{ 'Active' if athlete.active else 'Retired' }}</span>
+                    {% if not athlete.active %}<span class="athlete-status-chip status-retired">Retired</span>{% endif %}
+                    {% if athlete.is_low_confidence %}{{ low_conf_badge('low-conf-hero', 'Few career starts - ratings and predictions for this athlete are less settled') }}{% endif %}
                 </h1>
             </div>
             <div class="athlete-hero-meta">

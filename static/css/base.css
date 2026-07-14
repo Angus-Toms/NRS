@@ -1395,6 +1395,13 @@ table td a.link:hover   { color: var(--primary-color); }
 .flag.flag-lg { width: 1.1em; height: 0.75em; border-radius: 2px; }
 .flag.flag-xl { width: 2em;   height: 1.35em; border-radius: 4px; }
 
+/* Low-confidence marker: athletes with few career starts (race_page.LOW_CONF_STARTS),
+   whose ELO rating has not settled. Lucide "sprout"; amber reads as a gentle
+   "take this with a pinch of salt" note rather than an error. */
+.low-conf { display: inline-flex; align-items: center; color: #b7791f; vertical-align: -0.15em; }
+.low-conf svg { width: 1em; height: 1em; display: block; }
+.low-conf-inline { margin: 0 0.12em; }
+
 /* "Upcoming" pill appended to a title (race hero, event hero). Sized in em so
    it scales with whatever title it sits in. */
 .upcoming-badge {

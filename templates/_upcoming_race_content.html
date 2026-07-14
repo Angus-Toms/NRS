@@ -1,4 +1,5 @@
 <!-- Race Standards -->
+{% from "partials/_icons.html" import low_conf_badge %}
 {% set has_rank = race_ranks and race_ranks.values() | select | list | length > 0 %}
 {% set substat_cols = 1 if has_rank else 0 %}
 {% macro ordinal(n) -%}
@@ -50,7 +51,7 @@
     <div class="page-section-head">Predicted Results</div>
 </div>
 {% if predictions %}
-<p class="page-section-sub" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked italic are making their debut - their ratings have not yet converged so predictions are less reliable.</p>
+<p class="page-section-sub" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked {{ low_conf_badge('low-conf-inline') }} have few career starts, so their ratings haven't settled - we're less confident in their predictions.</p>
 <div class="results-sort-chips" role="tablist" aria-label="Sort predicted results">
         <button class="sort-chip" data-sort-col="0" type="button">Position<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
         <button class="sort-chip" data-sort-col="6" type="button">Overall<svg class="chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -74,7 +75,7 @@
             </thead>
             <tbody>
                 {% for row in predictions %}
-                <tr class="{{ 'debut-row' if row.is_debut else '' }}">
+                <tr class="{{ 'low-conf-row' if row.is_low_confidence else '' }}">
                     <td class="position-col" data-value="{{ row.predicted_position }}">
                         {% if row.predicted_position == 1 %}<span class="pos-circle gold">1</span>
                         {% elif row.predicted_position == 2 %}<span class="pos-circle silver">2</span>
@@ -84,7 +85,7 @@
                     <td class="athlete-col" data-value="{{ row.name }}">
                         <a href="/athlete/{{ row.athlete_id }}" class="link">
                             {{ row.name }} {{ flag(row.country_alpha3) }}
-                        </a>{% if row.is_debut %} <span class="debut-label">(debut)</span>{% endif %}
+                        </a>{% if row.is_low_confidence %} {{ low_conf_badge('low-conf-mark') }}{% endif %}
                     </td>
                     <td class="yob-col" data-value="{{ row.year_of_birth if row.year_of_birth else 0 }}">
                         {{ "{} ({})".format(row.year_of_birth, row.age) if row.year_of_birth else "" }}

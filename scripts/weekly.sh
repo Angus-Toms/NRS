@@ -62,10 +62,14 @@ PY
 # from build_db.sh start with "==>"; ingest progress prints "Done." /
 # "Checked"; explicit OK/FAIL markers from this script; the start/end
 # banners; rebuild-step summary lines that already contain counts.
-LATEST_FILTER='^(==>|====|  Run |  Baseline|  Final|  Net:|\[OK\]|\[FAIL\]|Done\.|Checked |Ingested |Loaded |Rule-based |Recurring fallback|Rebuilding |Wrote |Skipped )'
+LATEST_FILTER='^(==>|====|  Run |  Baseline|  Final|  Net:|\[OK\]|\[FAIL\]|Done\.|Checked |Ingested |Loaded |Rule-based |Recurring fallback|Rebuilding |Wrote |Skipped |Compacted DB)'
 
 notify_fail() {
     osascript -e "display notification \"$1\" with title \"PTD weekly FAILED\" sound name \"Basso\"" >/dev/null 2>&1 || true
+}
+
+notify_warn() {
+    osascript -e "display notification \"$1\" with title \"PTD weekly WARNING\"" >/dev/null 2>&1 || true
 }
 
 START_ISO=$(date '+%Y-%m-%dT%H:%M:%S%z')
@@ -125,6 +129,17 @@ if [ "$STATUS" = "success" ]; then
             echo "[FAIL] deploy.sh exited $rc"
         } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
         notify_fail "deploy.sh exited $rc. tail $LATEST_LOG"
+    fi
+
+    # deploy.sh's drift check writes "CODE DRIFT" lines to the verbose log when
+    # the live site's prediction code is behind local. A --no-git deploy ships
+    # the DB but not the code, so this catches the exact case where the site
+    # and the social posts (rendered locally) would silently disagree. Copy the
+    # detail into the condensed log and fire a notification - the whole point is
+    # that this drift is otherwise invisible.
+    if grep -q "CODE DRIFT" "$VERBOSE_LOG"; then
+        grep "CODE DRIFT" "$VERBOSE_LOG" | tee -a "$LATEST_LOG" >/dev/null
+        notify_warn "Prediction code drift: live site is behind local. Run ./deploy.sh (with git)."
     fi
 fi
 
