@@ -301,7 +301,7 @@
 /* Current-form widget lives in the hero right column, styled for the dark
    navy background like the race podium (transparent, white text, faint
    dividers). Shares the .form-table/.form-row markup, recoloured here. */
-.athlete-hero-form { min-width: 300px; }
+.athlete-hero-form { min-width: 260px; }
 
 .hero-form-label {
     font-size: 0.7rem;
@@ -314,18 +314,17 @@
 
 .athlete-hero-form .form-table { padding: 0; }
 .athlete-hero-form .form-row {
-    grid-template-columns: 4.5rem repeat(var(--form-cols, 2), 1fr);
-    padding: 0.5rem 0;
+    grid-template-columns: 3.5rem repeat(var(--form-cols, 2), 1fr);
+    padding: 0.3rem 0;
 }
 .athlete-hero-form .form-row:not(:last-child)::after {
     left: 0;
     right: 0;
     background: rgba(255, 255, 255, 0.12);
 }
-.athlete-hero-form .form-disc { color: #fff; }
-.athlete-hero-form .form-col-label { color: rgba(255, 255, 255, 0.45); }
-.athlete-hero-form .form-time { color: #fff; }
-.athlete-hero-form .form-leg { color: rgba(255, 255, 255, 0.5); }
+.athlete-hero-form .form-disc { color: #fff; font-size: 0.8rem; }
+.athlete-hero-form .form-time { color: #fff; font-size: 0.85rem; }
+.athlete-hero-form .form-leg { color: rgba(255, 255, 255, 0.5); font-size: 0.7rem; }
 
 .form-table {
     padding: 0.25rem 0;
