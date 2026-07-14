@@ -141,45 +141,44 @@
    selector on top, compare beneath. Pinned to the top of its grid cell so
    the compare button sits in the corner whether or not the mode switcher
    is present (single-program athletes have just the compare button here). */
-/* Mode switcher: sits in the info column under the stats, left-aligned (like
-   the race page's race-switcher pills). */
 .athlete-hero-actions {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
-    margin-top: 0.2rem;
 }
 
-/* Right column of the hero: mode switcher (top) + current-form widget below,
-   right-aligned. Mirrors the race hero's podium column. Empty (0 width) when
-   the athlete has neither, so the grid collapses cleanly. */
+/* Right column of the hero: compact mode switcher (top) + current-form widget
+   below, left-aligned so the switcher, title and table share a left edge.
+   Mirrors the race hero's podium column; empty (0 width) when the athlete has
+   neither, so the grid collapses cleanly. */
 .athlete-hero-right {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 1.1rem;
+    align-items: flex-start;
+    gap: 0.6rem;
     align-self: center;
 }
 
-/* Unified mode switcher: pill bar with active detail strip */
+/* Unified mode switcher: pill bar with active detail strip. Kept compact so it
+   tucks neatly above the form table. */
 .athlete-mode-switcher {
     display: flex;
     align-items: stretch;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 4px;
+    border-radius: 8px;
+    padding: 3px;
     gap: 2px;
 }
 
 .athlete-mode-pill {
     display: inline-flex;
     align-items: center;
-    padding: 0.35rem 0.8rem;
-    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
     text-decoration: none;
     color: rgba(255, 255, 255, 0.7);
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
     transition: background var(--transition-fast), color var(--transition-fast);
@@ -310,7 +309,7 @@
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.45);
     font-weight: 700;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.15rem;
 }
 
 .athlete-hero-form .form-table { padding: 0; }

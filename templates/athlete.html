@@ -96,6 +96,11 @@
                 <span class="hero-meta-dot">·</span>
                 <span class="hero-stat-n">{{ athlete.podium_count }}</span> podiums <span class="hero-stat-pct">({{ "%.1f"|format(athlete.podium_pct * 100) }}%)</span>
             </div>
+        </div>
+
+        <!-- Right column: compact mode switcher above the current-form widget
+             (mirrors the race hero's podium column). -->
+        <div class="athlete-hero-right">
             {% if mode_summaries and mode_summaries|length > 1 %}
             <div class="athlete-hero-actions">
                 <div class="athlete-mode-switcher" role="tablist" aria-label="Profile mode">
@@ -112,25 +117,14 @@
                 </div>
             </div>
             {% endif %}
-        </div>
 
-        <!-- Right column: current-form widget only (mirrors the race hero's
-             podium column). The mode switcher lives in the info column, like
-             the race page's race-switcher pills, so it never competes with
-             this table for space. -->
-        <div class="athlete-hero-right">
             {% if current_form %}
             {# Current form: equivalent race-day splits from the form model,
-               styled for the dark hero like the race podium. #}
+               styled for the dark hero like the race podium. The distance is
+               clear from each cell's leg subtitle, so no column headers. #}
             <div class="athlete-hero-form">
                 <div class="hero-form-label">Current Form</div>
                 <div class="form-table" style="--form-cols: {{ current_form.cols|length }}">
-                    <div class="form-row form-row-head">
-                        <span class="form-disc"></span>
-                        {% for col in current_form.cols %}
-                        <span class="form-col-label">{{ col }}</span>
-                        {% endfor %}
-                    </div>
                     {% for row in current_form.rows %}
                     <div class="form-row">
                         <span class="form-disc">{{ row.label }}</span>
