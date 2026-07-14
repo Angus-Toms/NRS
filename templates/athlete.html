@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "partials/_icons.html" import low_conf_badge %}
 
 {% block title %}{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data{% endblock %}
 
@@ -43,7 +42,6 @@
                     {{ athlete.name }}
                     {{ flag(athlete.country_alpha3, athlete.country_full, 'flag-lg') }}
                     {% if not athlete.active %}<span class="athlete-status-chip status-retired">Retired</span>{% endif %}
-                    {% if athlete.is_low_confidence %}{{ low_conf_badge('low-conf-hero', 'Few career starts - ratings and predictions for this athlete are less settled') }}{% endif %}
                 </h1>
             </div>
             <div class="athlete-hero-meta">
@@ -95,6 +93,10 @@
                 <span class="hero-stat-n">{{ athlete.win_count }}</span> wins <span class="hero-stat-pct">({{ "%.1f"|format(athlete.win_pct * 100) }}%)</span>
                 <span class="hero-meta-dot">·</span>
                 <span class="hero-stat-n">{{ athlete.podium_count }}</span> podiums <span class="hero-stat-pct">({{ "%.1f"|format(athlete.podium_pct * 100) }}%)</span>
+                {% if athlete.is_low_confidence %}
+                <span class="hero-meta-dot">·</span>
+                <span class="hero-lowconf" title="Few career starts - ratings and predictions for this athlete are less settled">Low confidence</span>
+                {% endif %}
             </div>
         </div>
 

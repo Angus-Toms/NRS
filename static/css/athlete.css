@@ -85,14 +85,13 @@
 
 /* Low-confidence badge in the hero (few career starts). Brighter amber + pill
    to read against the dark hero, sized to sit with the flag and status chip. */
-.low-conf-hero {
+/* Low-confidence marker in the hero stats line: clearer as text than an icon
+   (the asterisk icon still marks rows in the prediction tables). */
+.hero-lowconf {
     color: #f0b429;
-    background: rgba(240, 180, 41, 0.16);
-    padding: 0.2rem 0.4rem;
-    border-radius: 999px;
-    vertical-align: middle;
+    font-weight: 600;
+    cursor: default;
 }
-.low-conf-hero svg { width: 0.9rem; height: 0.9rem; }
 
 .athlete-hero-meta,
 .athlete-hero-stats {
@@ -146,6 +145,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    align-self: flex-end;   /* right edge aligns with the form table below */
 }
 
 /* Right column of the hero: compact mode switcher (top) + current-form widget
