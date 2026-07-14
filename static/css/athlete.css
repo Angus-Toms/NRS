@@ -141,13 +141,14 @@
    selector on top, compare beneath. Pinned to the top of its grid cell so
    the compare button sits in the corner whether or not the mode switcher
    is present (single-program athletes have just the compare button here). */
+/* Mode switcher: sits in the info column under the stats, left-aligned (like
+   the race page's race-switcher pills). */
 .athlete-hero-actions {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0.5rem;
-    flex-shrink: 0;
-    align-self: start;
+    margin-top: 0.2rem;
 }
 
 /* Right column of the hero: mode switcher (top) + current-form widget below,
@@ -310,15 +311,6 @@
     color: rgba(255, 255, 255, 0.45);
     font-weight: 700;
     margin-bottom: 0.4rem;
-}
-
-.hero-form-note {
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
-    color: rgba(255, 255, 255, 0.5);
-    margin-left: 0.5rem;
-    cursor: default;
 }
 
 .athlete-hero-form .form-table { padding: 0; }
@@ -736,7 +728,6 @@ tr.sub-race-row .link:hover {
         width: 100%;
     }
     .athlete-hero-form { max-width: 360px; }
-    .hero-form-note { display: none; }
 
     .athlete-hero-name {
         font-size: 1.375rem;

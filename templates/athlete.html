@@ -96,11 +96,6 @@
                 <span class="hero-meta-dot">·</span>
                 <span class="hero-stat-n">{{ athlete.podium_count }}</span> podiums <span class="hero-stat-pct">({{ "%.1f"|format(athlete.podium_pct * 100) }}%)</span>
             </div>
-        </div>
-
-        <!-- Right column: course/category switcher + current-form widget
-             (mirrors the race hero's podium column). -->
-        <div class="athlete-hero-right">
             {% if mode_summaries and mode_summaries|length > 1 %}
             <div class="athlete-hero-actions">
                 <div class="athlete-mode-switcher" role="tablist" aria-label="Profile mode">
@@ -117,12 +112,18 @@
                 </div>
             </div>
             {% endif %}
+        </div>
 
+        <!-- Right column: current-form widget only (mirrors the race hero's
+             podium column). The mode switcher lives in the info column, like
+             the race page's race-switcher pills, so it never competes with
+             this table for space. -->
+        <div class="athlete-hero-right">
             {% if current_form %}
             {# Current form: equivalent race-day splits from the form model,
                styled for the dark hero like the race podium. #}
             <div class="athlete-hero-form">
-                <div class="hero-form-label">Current Form<span class="hero-form-note" title="Estimated race-day splits on a typical course, from recent race history">est. splits · after {{ current_form.as_of.strftime('%b %Y') }}</span></div>
+                <div class="hero-form-label">Current Form</div>
                 <div class="form-table" style="--form-cols: {{ current_form.cols|length }}">
                     <div class="form-row form-row-head">
                         <span class="form-disc"></span>
