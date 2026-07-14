@@ -1,8 +1,8 @@
 {# Shared inline icons. #}
 
-{# Low-confidence marker (Lucide "gauge"): athletes with few career starts,
+{# Low-confidence marker (Lucide "asterisk"): athletes with few career starts,
    whose ELO rating hasn't settled, so predictions for them are less reliable.
    `cls` adds a modifier class; `title` is the hover/tooltip text. #}
 {% macro low_conf_badge(cls='', title='Few career starts - rating not yet settled, so this prediction is less reliable') -%}
-<span class="low-conf {{ cls }}" title="{{ title }}" aria-label="Low confidence: {{ title }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14-4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+<span class="low-conf {{ cls }}" title="{{ title }}" aria-label="Low confidence: {{ title }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/></svg></span>
 {%- endmacro %}

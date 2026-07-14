@@ -150,6 +150,17 @@
     align-self: start;
 }
 
+/* Right column of the hero: mode switcher (top) + current-form widget below,
+   right-aligned. Mirrors the race hero's podium column. Empty (0 width) when
+   the athlete has neither, so the grid collapses cleanly. */
+.athlete-hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1.1rem;
+    align-self: center;
+}
+
 /* Unified mode switcher: pill bar with active detail strip */
 .athlete-mode-switcher {
     display: flex;
@@ -287,34 +298,43 @@
 /* ============================================
     CURRENT FORM - navy-header card, equivalent splits per distance
     ============================================ */
-.form-card {
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
+/* Current-form widget lives in the hero right column, styled for the dark
+   navy background like the race podium (transparent, white text, faint
+   dividers). Shares the .form-table/.form-row markup, recoloured here. */
+.athlete-hero-form { min-width: 300px; }
 
-.form-card-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    background: var(--navy);
-    color: #fff;
+.hero-form-label {
     font-size: 0.7rem;
-    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 0.6rem 1.25rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 700;
+    margin-bottom: 0.4rem;
 }
 
-.form-card-note {
+.hero-form-note {
     font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 0.5rem;
     cursor: default;
 }
+
+.athlete-hero-form .form-table { padding: 0; }
+.athlete-hero-form .form-row {
+    grid-template-columns: 4.5rem repeat(var(--form-cols, 2), 1fr);
+    padding: 0.5rem 0;
+}
+.athlete-hero-form .form-row:not(:last-child)::after {
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.12);
+}
+.athlete-hero-form .form-disc { color: #fff; }
+.athlete-hero-form .form-col-label { color: rgba(255, 255, 255, 0.45); }
+.athlete-hero-form .form-time { color: #fff; }
+.athlete-hero-form .form-leg { color: rgba(255, 255, 255, 0.5); }
 
 .form-table {
     padding: 0.25rem 0;
@@ -381,9 +401,6 @@
 }
 
 @media (max-width: 480px) {
-    .form-row { padding: 0.45rem 1rem; }
-    .form-row:not(:last-child)::after { left: 1rem; right: 1rem; }
-    .form-card-note { display: none; }
     .form-time { font-size: 0.875rem; }
     .form-cell { flex-direction: column; gap: 0.1rem; }
 }
@@ -651,6 +668,16 @@ tr.sub-race-row .link:hover {
            it should sit at the left edge to match the info above. */
     }
 
+    /* Right column drops to a full-width row below the info (like the race
+       hero podium stacking under the title). */
+    .athlete-hero-right {
+        flex: 1 1 100%;
+        align-items: flex-start;
+        gap: 0.85rem;
+    }
+    .athlete-hero-form { width: 100%; min-width: 0; }
+    .athlete-hero-form .form-row { padding: 0.5rem 0; }
+
     .athlete-hero-name { font-size: 1.5rem; }
 
     /* Shrink the action chrome so the strip reads as secondary */
@@ -704,6 +731,12 @@ tr.sub-race-row .link:hover {
         align-self: center;     /* override align-self:start from base */
         justify-content: center;
     }
+    .athlete-hero-right {
+        align-items: center;
+        width: 100%;
+    }
+    .athlete-hero-form { max-width: 360px; }
+    .hero-form-note { display: none; }
 
     .athlete-hero-name {
         font-size: 1.375rem;
