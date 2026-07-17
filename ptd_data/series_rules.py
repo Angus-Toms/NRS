@@ -22,6 +22,8 @@ from ptd_data import db
 
 # World Triathlon event_categories cat_id constants
 CAT_WORLD_CHAMPS      = 348   # World Championships
+CAT_WTCS              = 351   # World Triathlon (Championship) Series - top tier since 2009
+CAT_WORLD_CUP         = 349   # World Cup - second tier
 CAT_CONTINENTAL_CUP   = 341   # Continental Cup
 CAT_CONTINENTAL_CHAMPS = 340  # Continental Championships (unused for now)
 CAT_AG                = 483   # Age-Group flag (paired with another tier cat_id)
@@ -131,6 +133,12 @@ RULES = [
                                               name_regex(r"world triathlon championship series"),
                                               name_regex(r"\bwtcs\b"),
                                               name_regex(r"grand final"),
+                                              # WTS-era rounds carry cat 351 but are named
+                                              # "ITU World Triathlon {Venue}" (2009-2020) with
+                                              # no series/cup modifier - cat_id is the only
+                                              # reliable signal that separates them from the
+                                              # second-tier World Cup (cat 349) at the same venue.
+                                              has_cat_id(CAT_WTCS),
                                           ),
                                           not_(has_cat_id(CAT_WORLD_CHAMPS)),
                                           not_(name_regex(r"world triathlon championship finals")),
@@ -195,13 +203,14 @@ RULES = [
     # don't have, but ordering is defensive.
     SeriesRule("dev-regional-cup",    name_regex(r"(development\s+regional|regional\s+development)\s+cup"),
                                       recurring=True),
-    # World Cup. Matches:
+    # World Cup (second tier). Matches:
     #   - "World Cup" / "World Triathlon Cup" naming
-    #   - WTS-era "ITU World Triathlon {Venue}" (2009-2020 World Triathlon
-    #     Series rounds). These names contain no other modifier — anything
-    #     with championship/series/cup/junior/youth/u23/age/para/development/
-    #     regional/relay/grand-final is some other category and excluded.
-    # Excludes "World Championships" outright.
+    #   - Bare "World Triathlon {Venue}" names with no other modifier.
+    # WTS-era "ITU World Triathlon {Venue}" rounds share this bare naming but
+    # are actually top-tier (cat 351) - the wtcs rule above catches them, and
+    # the cat-351 exclusion here keeps them out of the World Cup group so e.g.
+    # Edmonton's 2015-2019 WTS rounds don't land in the same recurring as its
+    # 2002-2013 / 2026 World Cups. Excludes "World Championships" outright.
     SeriesRule("world-cup",           all_of(
                                           any_of(
                                               name_regex(r"world (triathlon )?cup"),
@@ -215,6 +224,7 @@ RULES = [
                                               ),
                                           ),
                                           not_(name_regex(r"world championships")),
+                                          not_(has_cat_id(CAT_WTCS)),
                                       ),
                                       recurring=True),
     # Continental rules key off the event *name* rather than the host's continent:

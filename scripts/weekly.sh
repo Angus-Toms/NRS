@@ -1,7 +1,5 @@
 #!/bin/bash
-# weekly.sh - unattended ingest + ratings extend + DB sync to Render.
-# Fired by launchd (see ~/Library/LaunchAgents/com.angus.ptd.weekly.plist)
-# at 00:00 on Sun, Mon, Tue, Thu.
+# weekly.sh - ingest + ratings extend + DB sync to Render. Run by hand.
 #
 # Sends a macOS notification on non-zero exit. Two log files:
 #   weekly.latest.log   — current run only, cleared on start. Filtered down
