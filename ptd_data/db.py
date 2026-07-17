@@ -391,6 +391,19 @@ _COUNTRY_SPECIAL_CASES = {
     "Democratic People's Republic of Korea": "PRK",
     # Federation / neutral banner
     "World Triathlon":                 "WTR",
+    # Home nations, sports-only entities, and disputed territories that
+    # pycountry can't resolve (all otherwise fall through to "UNK").
+    "Scotland":                        "SCO",
+    "SCOTLAND":                        "SCO",
+    "England":                         "ENG",
+    "ENGLAND":                         "ENG",
+    "Wales":                           "WAL",
+    "WALES":                           "WAL",
+    "Russian Olympic Committee":       "ROC",
+    "Kosovo":                          "KOS",
+    # Alt spellings pycountry doesn't recognise (a few stray history rows each).
+    "USA":                             "USA",
+    "Korea, South":                    "KOR",
 }
 
 

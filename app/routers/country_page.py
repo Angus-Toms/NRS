@@ -51,14 +51,14 @@ async def countries_index(request: Request):
     })
 
 
-def _build_leaderboard(country_full, gender, discipline, limit=_LB_PAGE_SIZE, offset=0, course='short', active_only=False):
+def _build_leaderboard(alpha3, gender, discipline, limit=_LB_PAGE_SIZE, offset=0, course='short', active_only=False):
     """Fetch a page of leaderboard rows plus a has_more flag.
 
     Asks the DB for one extra row; if it came back, there are more rows available
     and the trailing extra is trimmed before decorating.
     """
     rows = queries.get_country_leaderboard(
-        country_full, gender, discipline,
+        alpha3, gender, discipline,
         limit=limit + 1, offset=offset, course=course, active_only=active_only,
     )
     has_more = len(rows) > limit
@@ -90,13 +90,13 @@ def _filter_map_outliers(locs, lat_thresh=15.0, lng_thresh=25.0):
             and abs(l["longitude"] - mid_lng) <= lng_thresh]
 
 
-def _resolve_defaults(country_full, discipline, gender, course='short'):
+def _resolve_defaults(alpha3, discipline, gender, course='short'):
     """Clamp discipline, auto-pick gender if unspecified."""
     if discipline not in _DISCS:
         discipline = "overall"
     if gender not in ("male", "female"):
-        m = queries.get_country_leaderboard(country_full, "male",   discipline, limit=1, course=course)
-        f = queries.get_country_leaderboard(country_full, "female", discipline, limit=1, course=course)
+        m = queries.get_country_leaderboard(alpha3, "male",   discipline, limit=1, course=course)
+        f = queries.get_country_leaderboard(alpha3, "female", discipline, limit=1, course=course)
         m_top = m[0]["overall_rating"] if m else -1
         f_top = f[0]["overall_rating"] if f else -1
         gender = "female" if f_top > m_top else "male"
@@ -118,9 +118,9 @@ async def country_detail(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
+    discipline, gender = _resolve_defaults(country["alpha3"], discipline, gender, course=course)
 
-    leaderboard, has_more = _build_leaderboard(country["country_full"], gender, discipline, course=course, active_only=active_only)
+    leaderboard, has_more = _build_leaderboard(country["alpha3"], gender, discipline, course=course, active_only=active_only)
     hosted_locations = _filter_map_outliers(queries.get_country_hosted_race_locations(country["country_full"]))
     medals           = queries.get_country_championship_medals(country["country_full"])
     recent_events    = queries.get_recent_events(offset=0, limit=6, country=country["country_full"])
@@ -193,8 +193,8 @@ async def country_leaderboard_partial(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
-    leaderboard, has_more = _build_leaderboard(country["country_full"], gender, discipline, course=course, active_only=active_only)
+    discipline, gender = _resolve_defaults(country["alpha3"], discipline, gender, course=course)
+    leaderboard, has_more = _build_leaderboard(country["alpha3"], gender, discipline, course=course, active_only=active_only)
 
     return templates.TemplateResponse("partials/country_leaderboard.html", {
         "request":     request,
@@ -221,9 +221,9 @@ async def country_leaderboard_more(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    discipline, gender = _resolve_defaults(country["country_full"], discipline, gender, course=course)
+    discipline, gender = _resolve_defaults(country["alpha3"], discipline, gender, course=course)
     leaderboard, has_more = _build_leaderboard(
-        country["country_full"], gender, discipline, offset=offset, course=course, active_only=active_only,
+        country["alpha3"], gender, discipline, offset=offset, course=course, active_only=active_only,
     )
 
     response = templates.TemplateResponse("partials/country_leaderboard_rows.html", {

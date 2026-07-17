@@ -479,7 +479,8 @@ _VALID_ORDERS = {"top", "hot"}
 
 
 def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
-                    active_only, offset, limit=100, category='elite', course='short'):
+                    active_only, offset, limit=100, category='elite', course='short',
+                    country_alpha3=None):
     """
     Paginated leaderboard with all filters applied in SQL, scoped to a course.
 
@@ -501,7 +502,18 @@ def get_leaderboard(gender, disc, order, country, yob_start, yob_end,
     filters = ["a.gender = ?"]
     params  = [gender]
 
-    if country and country != "all":
+    if country_alpha3 and country_alpha3 != "all":
+        # Country pages: everyone who has *ever* represented this alpha3. Match
+        # the athlete's current country OR any nationality-history row mapping to
+        # it (covers home-nation Commonwealth entries, mid-career switches, and
+        # the ~347 athletes with no history row who only match via current).
+        filters.append("""(n.alpha3 = ? OR a.athlete_id IN (
+            SELECT h.athlete_id FROM athlete_nationality_history h
+            JOIN nationalities hn ON hn.country_full = h.country_full
+            WHERE hn.alpha3 = ?))""")
+        params.append(country_alpha3)
+        params.append(country_alpha3)
+    elif country and country != "all":
         filters.append("a.country_full = ?")
         params.append(country)
     # Treat yob=0 as "unknown" and never exclude on it — otherwise the leaderboard
@@ -918,19 +930,36 @@ def get_alpha3_for_country(country_full):
 
 
 def get_country_by_alpha3(alpha3):
-    """Return {country_full, alpha3, athlete_count, race_host_count} or None."""
+    """Return {country_full, alpha3, athlete_count, race_host_count} or None.
+
+    athlete_count counts everyone who has *ever* represented this alpha3 (current
+    country or any nationality-history row), matching the leaderboard. Several
+    country_full spellings can share one alpha3, so we pick the most-used spelling
+    as the display name and aggregate host events across all of them.
+    """
     conn = _get_conn()
     row = conn.execute("""
-        SELECT n.country_full, n.alpha3,
-               (SELECT COUNT(*) FROM athletes a WHERE a.country_full = n.country_full) AS athlete_count,
-               (SELECT COUNT(*) FROM events e    WHERE e.country     = n.country_full) AS race_host_count
-        FROM nationalities n
-        WHERE n.alpha3 = ?
-    """, [alpha3]).fetchone()
-    if not row:
+        WITH spellings AS (SELECT country_full FROM nationalities WHERE alpha3 = ?)
+        SELECT
+            (SELECT country_full FROM athletes
+              WHERE country_full IN (SELECT country_full FROM spellings)
+              GROUP BY country_full ORDER BY COUNT(*) DESC LIMIT 1) AS by_athletes,
+            (SELECT country_full FROM spellings ORDER BY country_full LIMIT 1) AS any_spelling,
+            (SELECT COUNT(DISTINCT aid) FROM (
+                SELECT a.athlete_id AS aid FROM athletes a
+                JOIN nationalities n ON a.country_full = n.country_full WHERE n.alpha3 = ?
+                UNION
+                SELECT h.athlete_id AS aid FROM athlete_nationality_history h
+                JOIN nationalities n ON h.country_full = n.country_full WHERE n.alpha3 = ?
+            )) AS athlete_count,
+            (SELECT COUNT(*) FROM events e WHERE e.country IN (SELECT country_full FROM spellings)) AS race_host_count
+    """, [alpha3, alpha3, alpha3]).fetchone()
+    if not row or (row[0] is None and row[1] is None):
         return None
-    cols = ["country_full", "alpha3", "athlete_count", "race_host_count"]
-    return dict(zip(cols, row))
+    cols = ["country_full", "athlete_count", "race_host_count"]
+    result = dict(zip(cols, (row[0] or row[1], row[2], row[3])))
+    result["alpha3"] = alpha3
+    return result
 
 
 def get_countries_with_counts():
@@ -1076,17 +1105,18 @@ def get_countries_with_counts():
     return out
 
 
-def get_country_leaderboard(country_full, gender, discipline="overall",
+def get_country_leaderboard(alpha3, gender, discipline="overall",
                             limit=20, offset=0, active_only=True, category="elite", course='short'):
-    """Top athletes from a country in the given discipline + gender.
+    """Top athletes who have *ever* represented this country (by alpha3).
 
-    Thin wrapper over `get_leaderboard` that pre-sets `country`, `order='top'`,
-    and no year-of-birth filters.
+    Thin wrapper over `get_leaderboard` that pre-sets `country_alpha3`,
+    `order='top'`, and no year-of-birth filters. Keyed on alpha3 (not a single
+    country_full spelling) so home nations and mid-career switches all resolve.
     """
     assert discipline in _VALID_DISCS
     return get_leaderboard(
         gender=gender, disc=discipline, order="top",
-        country=country_full, yob_start=None, yob_end=None,
+        country=None, country_alpha3=alpha3, yob_start=None, yob_end=None,
         active_only=active_only, offset=offset, limit=limit, category=category, course=course,
     )
 
