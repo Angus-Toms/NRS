@@ -72,6 +72,12 @@ OVERALL_RECOMPUTE_MIN = 120.0
 # Plausible transition duration for T1/T2 recovery.
 T_MIN, T_MAX = 5, 300
 
+# Above this a transition is a parse artifact, not a real transition. No
+# elite short/middle-course T1/T2 is anywhere near 30 min, so this is a very
+# safe ceiling for detecting the H:MM:SS-parsed-as-MM:SS inflation (see the
+# de-inflation step in apply()).
+TRANSITION_CEILING = 1800
+
 
 def apply(conn):
     """Recompute auto corrections. Returns a summary dict of counts.
@@ -88,6 +94,7 @@ def apply(conn):
         'placeholders': 0,
         'mad': 0,
         'overall_recomputed': 0,
+        't_deinflated': 0,
         'recovered': 0,
         't_recovered': 0,
         'multi_zeroed': 0,
@@ -129,6 +136,38 @@ def apply(conn):
                     if leg in ('swim', 'bike', 'run'):
                         flagged.add(leg)
                     summary['impossible'] += 1
+
+            # Step A1b - de-inflate H:MM:SS-parsed transitions. Some sources
+            # render T1/T2 as H:MM:SS but the field is read as MM:SS, inflating
+            # the transition by exactly 60x (a 2:46 transition becomes
+            # 2:46:00 = 9960s). MAD (Step C) can't catch it because the whole
+            # field is inflated by the same factor, so no single value is an
+            # outlier; and left alone, Step A0 below would "reconcile" the
+            # bloat by folding it into overall. Divide by 60 when the result is
+            # a plausible transition and, where overall + main splits exist,
+            # reconciles the residual (overall - swim - bike - run). Runs
+            # before A0 so the corrected transitions feed the overall check.
+            for leg in ('t1', 't2'):
+                if s[leg] <= TRANSITION_CEILING:
+                    continue
+                cand = round(s[leg] / 60.0)
+                if not (T_MIN <= cand <= T_MAX):
+                    continue
+                if (is_finisher and s['overall'] > 0
+                        and s['swim'] > 0 and s['bike'] > 0 and s['run'] > 0):
+                    other = 't2' if leg == 't1' else 't1'
+                    other_val = (s[other] / 60.0 if s[other] > TRANSITION_CEILING
+                                 else s[other])
+                    residual = s['overall'] - s['swim'] - s['bike'] - s['run']
+                    if abs((cand + other_val) - residual) > OVERALL_RECOMPUTE_MIN:
+                        continue  # doesn't reconcile - leave it for A0/MAD
+                insert_batch.append((race_id, aid, leg, float(cand), 'auto',
+                                     f'{_leg_name(leg)} de-inflated from H:MM:SS parse'))
+                s[leg] = cand
+                # Drop any raw MAD flag so Step C doesn't re-zero the value we
+                # just fixed (matters when only some of the field is inflated).
+                mad_flags.pop((aid, leg), None)
+                summary['t_deinflated'] += 1
 
             # Step A0 - overall sanity. Two modes:
             #   (a) recompute: all three main splits present and their sum is
@@ -278,7 +317,8 @@ def apply(conn):
 
     print(
         "auto-corr: impossible={impossible} placeholders={placeholders} "
-        "mad={mad} overall_recomputed={overall_recomputed} recovered={recovered} "
+        "mad={mad} overall_recomputed={overall_recomputed} "
+        "t_deinflated={t_deinflated} recovered={recovered} "
         "t_recovered={t_recovered} multi_zeroed={multi_zeroed} "
         "dnf_kept={dnf_kept}".format(**summary)
     )

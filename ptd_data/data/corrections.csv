@@ -214,37 +214,6 @@ race_id,athlete_id,swim,t1,bike,t2,run,overall,notes
 677475,187074,00:10:08,00:00:59,00:31:10,00:00:30,00:18:02,01:00:49,Tymoteusz Jarząb swim parsed as HH:MM:SS instead of MM:SS; divided by 60
 677475,194946,00:10:21,00:00:56,00:30:17,00:00:30,00:19:03,01:01:07,Patryk Mościcki-Zanchi swim parsed as HH:MM:SS instead of MM:SS; divided by 60
 677475,195922,00:11:01,00:01:00,00:30:54,00:00:27,00:18:07,01:01:29,Wiktor Jankowiak swim parsed as HH:MM:SS instead of MM:SS; divided by 60
-365039516,1669910297,00:24:14,00:02:46,02:04:47,00:01:14,01:09:02,03:42:05,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,482667360,00:22:47,00:02:50,02:07:10,00:01:21,01:10:09,03:44:19,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,11535,00:22:47,00:03:03,02:08:50,00:01:27,01:08:37,03:44:46,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,2095757374,00:22:54,00:02:47,02:06:09,00:01:32,01:13:06,03:46:30,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1169315407,00:22:43,00:02:46,02:09:03,00:01:36,01:11:00,03:47:10,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,90121216,00:22:53,00:03:00,02:08:53,00:01:32,01:11:54,03:48:13,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,30653,00:24:10,00:03:11,02:09:48,00:01:35,01:12:05,03:50:50,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1911687199,00:22:47,00:02:56,02:08:58,00:01:38,01:16:23,03:52:44,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,115647,00:22:51,00:02:43,02:09:10,00:01:32,01:16:40,03:52:58,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,117780817,00:25:32,00:02:44,02:10:26,00:01:37,01:13:11,03:53:31,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,994885070,00:22:50,00:03:04,02:08:47,00:01:25,01:17:55,03:54:03,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1881838512,00:24:22,00:03:12,02:14:16,00:01:28,01:11:01,03:54:22,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1788354507,00:23:36,00:03:06,02:11:37,00:02:15,01:14:42,03:55:19,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,246873728,00:22:58,00:02:55,02:12:07,00:01:27,01:16:16,03:55:45,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1333014393,00:24:20,00:03:20,02:13:40,00:01:48,01:13:42,03:56:53,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,172077,00:24:28,00:03:18,02:11:01,00:01:41,01:16:42,03:57:13,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1582597081,00:24:20,00:03:18,02:13:38,00:01:41,01:14:19,03:57:17,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,2095101540,00:27:01,00:03:31,02:14:57,00:01:38,01:10:37,03:57:46,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,652042535,00:23:50,00:03:27,02:14:00,00:01:26,01:15:10,03:57:55,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,965429184,00:27:22,00:02:45,02:14:22,00:01:33,01:12:27,03:58:32,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,271817108,00:25:37,00:03:13,02:13:01,00:01:40,01:15:31,03:59:04,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1849277190,00:25:43,00:03:10,02:15:29,00:01:42,01:14:55,04:01:01,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,342865722,00:24:21,00:03:26,02:13:27,00:02:10,01:18:21,04:01:47,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,832042312,00:25:39,00:03:12,02:17:28,00:02:02,01:14:34,04:02:57,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1210780551,00:28:23,00:03:47,02:19:24,00:02:25,01:13:32,04:07:33,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1293729965,00:31:30,00:03:56,02:21:20,00:02:08,01:41:09,04:40:05,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1168511565,00:24:13,00:03:25,00:00:00,00:00:00,00:00:00,00:00:00,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1324132031,00:22:46,00:02:46,00:00:00,00:00:00,00:00:00,00:00:00,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1949751381,00:23:18,00:03:17,01:46:15,00:04:13,00:00:00,00:00:00,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,1971765750,00:25:36,00:03:01,00:00:00,00:00:00,00:00:00,00:00:00,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
-365039516,2061308032,00:24:17,00:03:06,02:04:31,00:01:31,00:00:00,00:00:00,Challenge Mogan-Gran Canaria 2025: PTO source rendered transitions H:MM:SS not MM:SS
 1973,5327,00:00:00,00:00:00,01:21:56,00:00:00,00:32:13,01:54:09,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
 1973,5776,00:00:00,00:00:00,01:21:58,00:00:00,00:32:39,01:54:38,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
 1973,5758,00:00:00,00:00:00,01:22:02,00:00:00,00:32:43,01:54:44,Race 1973: source had swim_s = overall_s for most finishers; zero out the bogus swim
