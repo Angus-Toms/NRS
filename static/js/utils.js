@@ -207,6 +207,25 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Vertical offset (px) of year labels above the x-axis on zebra-banded charts.
+// Kept just off the axis line so the labels don't collide with it.
+const YEAR_LABEL_OFFSET = 10;
+
+// Minimum horizontal px a year label needs before we start skipping labels
+// (a 4-digit year at 11px is ~28px; leave room so neighbours don't touch).
+const YEAR_LABEL_MIN_SPACING = 46;
+
+// How many years to advance between drawn labels so they don't overlap on
+// long careers or narrow screens. Snaps to a "round" stride (1/2/5/10...) so
+// the labelled years stay human-friendly (e.g. every 5th year).
+function yearLabelStep(numYears, axisWidthPx) {
+    const maxLabels = Math.max(1, Math.floor(axisWidthPx / YEAR_LABEL_MIN_SPACING));
+    if (numYears <= maxLabels) return 1;
+    const raw = numYears / maxLabels;
+    for (const s of [1, 2, 5, 10, 20, 25, 50, 100]) if (s >= raw) return s;
+    return 100;
+}
+
 // Chart.js plugin: alternating year bands + centered year labels.
 // Only fires on time-axis charts; no-ops on linear/category axes.
 const yearBandsPlugin = {
@@ -254,10 +273,38 @@ const yearBandsPlugin = {
         ctx.fillStyle = 'rgba(130, 130, 130, 0.9)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
+        const step = yearLabelStep(bands.length, right - left);
         for (const { year, xStart, xEnd } of bands) {
-            ctx.fillText(String(year), (xStart + xEnd) / 2, bottom - 4);
+            if (year % step !== 0) continue;  // round strides: 2000, 2005, ...
+            ctx.fillText(String(year), (xStart + xEnd) / 2, bottom - YEAR_LABEL_OFFSET);
         }
         ctx.restore();
     }
 };
 Chart.register(yearBandsPlugin);
+
+// Generate up to ~maxCount "nice" round tick values spanning [min, max].
+// Steps snap to 1 / 2 / 2.5 / 5 x 10^n so axis labels read as round numbers
+// (e.g. #20, #40, #60) instead of chart.js's data-fitted values (#19, #50, #81).
+function niceTickValues(min, max, maxCount = 6) {
+    if (!isFinite(min) || !isFinite(max) || max <= min) return null;
+    const rawStep = (max - min) / maxCount;
+    const base = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const f = rawStep / base;
+    const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    const step = nf * base;
+    const out = [];
+    for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-6; v += step) {
+        out.push(Math.round(v * 1e6) / 1e6);
+    }
+    return out;
+}
+
+// chart.js afterBuildTicks handler: replace auto ticks with nice round values.
+// opts.includeMin forces the axis min (e.g. rank #1) to appear as a tick.
+function applyNiceTicks(scale, opts = {}) {
+    const vals = niceTickValues(scale.min, scale.max, opts.maxCount || 6);
+    if (!vals) return;
+    if (opts.includeMin && vals[0] !== scale.min) vals.unshift(scale.min);
+    scale.ticks = vals.map(value => ({ value }));
+}

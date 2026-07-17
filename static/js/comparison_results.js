@@ -1,10 +1,15 @@
 (function () {
     'use strict';
 
-    // yearBandsPlugin only needs to exist once per page, even if this script re-runs
-    if (!window._yearBandsPlugin) {
-        window._yearBandsPlugin = {
-            id: 'yearBands',
+    // Career-aligned year bands. Distinct id from the global 'yearBands' plugin
+    // (utils.js) so the two don't collide: in actual-dates mode the x-axis is a
+    // time scale and the global plugin paints calendar-year bands; in aligned
+    // mode the x-axis is linear (ms-since-debut) so this one paints relative
+    // "Year N" bands instead. Sharing an id previously let this one shadow the
+    // global plugin, suppressing zebra stripes entirely in actual-dates mode.
+    if (!window._alignedYearBandsPlugin) {
+        window._alignedYearBandsPlugin = {
+            id: 'alignedYearBands',
             beforeDraw(chart) {
                 if (!isAligned) return;
                 const xScale = chart.scales.x;
@@ -16,6 +21,7 @@
                 const numYears = Math.ceil(xScale.max / msPerYear) + 1;
 
                 ctx.save();
+                const step = yearLabelStep(numYears, xScale.right - xScale.left);
                 for (let i = 0; i < numYears; i++) {
                     const x1 = Math.max(xScale.getPixelForValue(i * msPerYear), xScale.left);
                     const x2 = Math.min(xScale.getPixelForValue((i + 1) * msPerYear), xScale.right);
@@ -24,16 +30,17 @@
                         ctx.fillStyle = 'rgba(0,0,0,0.04)';
                         ctx.fillRect(x1, top, x2 - x1, bottom - top);
                     }
+                    if (i % step !== 0) continue;  // thin labels when years are dense
                     ctx.fillStyle = 'rgba(0,0,0,0.25)';
                     ctx.font = '10px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`Year ${i + 1}`, (x1 + x2) / 2, bottom - 4);
+                    ctx.fillText(`Year ${i + 1}`, (x1 + x2) / 2, bottom - YEAR_LABEL_OFFSET);
                 }
                 ctx.restore();
             }
         };
     }
-    const yearBandsPlugin = window._yearBandsPlugin;
+    const yearBandsPlugin = window._alignedYearBandsPlugin;
 
     // --- State (reset fresh on each comparison) ---
     let isAligned = false;
@@ -225,11 +232,13 @@
         const yAxis = isRankings
             ? { reverse: true, min: 1, beginAtZero: false,
                 grid: { color: 'rgba(0,0,0,0.05)' },
-                ticks: { color: '#999', stepSize: 1, callback: v => '#' + v },
+                afterBuildTicks: s => applyNiceTicks(s, { includeMin: true }),
+                ticks: { color: '#999', autoSkip: false, callback: v => '#' + v },
                 title: { display: true, text: 'Ranking' } }
             : { beginAtZero: false,
                 grid: { color: 'rgba(0,0,0,0.05)' },
-                ticks: { color: '#999' },
+                afterBuildTicks: s => applyNiceTicks(s),
+                ticks: { color: '#999', autoSkip: false },
                 title: { display: true, text: 'Rating' } };
 
         return new Chart(ctx, {

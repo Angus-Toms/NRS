@@ -138,7 +138,7 @@ function statsBlockHtml(data) {
             <div class="sel-stat-divider"></div>
             <div class="sel-stat">
                 <span class="sel-stat-num">${data.world_rank != null ? '#' + data.world_rank : '-'}</span>
-                <span class="sel-stat-lbl">World rank</span>
+                <span class="sel-stat-lbl">${data.world_rank_is_peak ? 'Peak rank' : 'World rank'}</span>
             </div>
             <div class="sel-stat-divider"></div>
             <div class="sel-stat">

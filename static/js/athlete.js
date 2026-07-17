@@ -224,7 +224,8 @@ function buildMainRankingChart(disc, type) {
                 y: {
                     reverse: true, min: 1, beginAtZero: false,
                     grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { color: '#999', callback: v => '#' + v },
+                    afterBuildTicks: s => applyNiceTicks(s, { includeMin: true }),
+                    ticks: { color: '#999', autoSkip: false, callback: v => '#' + v },
                 }
             }
         }
@@ -627,7 +628,9 @@ function buildMainChart(disc) {
             },
             scales: {
                 x: { type: 'time', grid: { display: false }, ticks: { display: false } },
-                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#999' } }
+                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' },
+                     afterBuildTicks: s => applyNiceTicks(s),
+                     ticks: { color: '#999', autoSkip: false } }
             }
         }
     });
@@ -786,7 +789,8 @@ function buildMainPctBehindChart(disc) {
                 y: {
                     min: 0,
                     grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { color: '#999', callback: v => v.toFixed(1) + '%' },
+                    afterBuildTicks: s => applyNiceTicks(s),
+                    ticks: { color: '#999', autoSkip: false, callback: v => v.toFixed(1) + '%' },
                 }
             }
         }

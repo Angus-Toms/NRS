@@ -103,6 +103,23 @@ async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
     course, category = _parse_program(active_program)
     ratings = queries.get_athlete_current_ratings(athlete_id, category=category, course=course)
     stats   = queries.get_athlete_stats(athlete_id, category=category, course=course)
+
+    # World rank: mirror the athlete page (where users arrive from) rather than
+    # the raw all-time snapshot in get_athlete_current_ratings. Active athletes
+    # (raced within 18 months) show their rank among active peers; retired ones
+    # show their best-ever rank instead of a rank against a list they've dropped
+    # out of. get_athlete_active_rankings returns None when the athlete isn't
+    # active, which is the signal to fall back to peak.
+    world_rank = None
+    world_rank_is_peak = False
+    if ratings:
+        active_ranks = queries.get_athlete_active_rankings(athlete_id, category=category, course=course)
+        if active_ranks and active_ranks.get("world_overall"):
+            world_rank = active_ranks["world_overall"]
+        else:
+            peak_ranks = queries.get_athlete_peak_rankings(athlete_id, category=category, course=course)
+            world_rank = peak_ranks.get("world_overall") if peak_ranks else None
+            world_rank_is_peak = world_rank is not None
     return JSONResponse({
         "athlete_id":     info["athlete_id"],
         "name":           info["name"],
@@ -114,9 +131,8 @@ async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
         "swim_rating":    int(round(ratings["swim_rating"])) if ratings and ratings.get("swim_rating") else None,
         "bike_rating":    int(round(ratings["bike_rating"])) if ratings and ratings.get("bike_rating") else None,
         "run_rating":     int(round(ratings["run_rating"]))  if ratings and ratings.get("run_rating")  else None,
-        # world_overall comes from the rankings table, which only carries
-        # currently-ranked athletes — no need for a separate active check.
-        "world_rank":     ratings.get("world_overall") if ratings else None,
+        "world_rank":     world_rank,
+        "world_rank_is_peak": world_rank_is_peak,
         "wins":           stats["wins"] if stats else None,
         "programs":       programs,
         "active_program": active_program,

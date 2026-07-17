@@ -337,11 +337,12 @@
     })();
     </script>
 
-    <!-- Shared JS helpers (flagImg, sort icons, etc.) -->
-    <script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
-    <!-- Chart.js loaded here so it doesn't block initial render -->
+    <!-- Chart.js before utils.js: utils.js registers a global Chart plugin
+         (yearBands) at load, so Chart must already be defined. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Shared JS helpers (flagImg, sort icons, chart plugins, etc.) -->
+    <script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
     <!-- Page-specific JavaScript -->
     {% block extra_js %}
     {% endblock %}
