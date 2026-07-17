@@ -399,6 +399,8 @@ _COUNTRY_SPECIAL_CASES = {
     "ENGLAND":                         "ENG",
     "Wales":                           "WAL",
     "WALES":                           "WAL",
+    "Northern Ireland":                "NIR",  # Commonwealth Games: Ulster Banner
+    "Russian Triathlon Federation":    "RUS",
     "Russian Olympic Committee":       "ROC",
     "Kosovo":                          "KOS",
     # Alt spellings pycountry doesn't recognise (a few stray history rows each).
