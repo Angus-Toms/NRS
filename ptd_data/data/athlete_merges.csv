@@ -1,0 +1,8 @@
+keep_athlete_id,merge_athlete_id,notes
+104983,355077353,Max Stapley - GBR. WT short-course account (104983) and PTO long-course account (355077353) are the same athlete; no overlap-race for the auto matcher to link them.
+1669910297,169583,Will Draper - GBR. PTO long-course account is canonical (34+ races); the WT account (169583, 'William Draper' under Isle of Man) is a one-off Commonwealth Games entry. Drop the IOM nationality observation.
+94515,13299610,Solveig Løvseth - NOR. WT account (94515) holds the bulk of her career; the PTO account (13299610, slug 'solveig-loevseth') only has long-course entries. Auto matcher missed them.
+74996,1336459614,Nagiho Ishida - JPN. WT account (74996) holds 25 short/sprint races; the PTO account (1336459614, slug 'nagiho-ishida') only has 2 ITU long-distance entries (2017-2018). No overlap race for the auto matcher.
+139677,1667990216,Joona Tuikka - FIN (yob 1988). WT account (139677) holds 5 short/standard races (2019-2023); PTO account (1667990216) holds 9 middle/long entries (2018-2022) but has yob=0 so the auto matcher refused to merge. No overlap race.
+137125,379496623,Joona Lehtonen - FIN (yob 2001). WT account (137125) holds 11 short/standard races (2019-2024); PTO account (379496623) holds 2 middle-distance entries (2025) with yob=0 so the auto matcher refused to merge. No overlap race.
+69143,2116501904,"Manoel Messias - BRA. WT short-course account (69143) holds 117 sprint/standard races (2013-2026); the PTO account (2116501904, slug 'manoel-messias-dos-santos') only has 9 long-course entries (2020-2025). No overlap race for the auto matcher."
