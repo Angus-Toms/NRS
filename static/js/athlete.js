@@ -45,6 +45,29 @@ if (!window._ptdAthleteNavBound) {
     window.addEventListener('popstate', () => { window.location.reload(); });
 }
 
+// ---------- Doping sanction interstitial -----------------------------------
+// Full-screen acknowledgement shown once per session per athlete before the
+// profile is revealed. The overlay lives outside the AJAX-swapped hero/content
+// so course switches leave it (and the rotating marquee) untouched.
+(function initDopingOverlay() {
+    const overlay = document.getElementById('dopingOverlay');
+    if (!overlay || overlay.dataset.bound) return;
+    overlay.dataset.bound = '1';
+    const key = 'dopingSeen:' + overlay.dataset.athlete;
+    if (sessionStorage.getItem(key)) {
+        overlay.remove();
+        return;
+    }
+    document.body.style.overflow = 'hidden';
+    const dismiss = () => {
+        sessionStorage.setItem(key, '1');
+        overlay.classList.add('is-hiding');
+        document.body.style.overflow = '';
+        setTimeout(() => overlay.remove(), 400);
+    };
+    document.getElementById('dopingContinue')?.addEventListener('click', dismiss);
+})();
+
 // Shared constants used by both rankings and ratings charts
 const DISC_COLORS = {
     overall:    '#E87722',  // orange

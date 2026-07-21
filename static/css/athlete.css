@@ -897,3 +897,159 @@ tr.sub-race-row .link:hover {
 
 /* The results / rating mobile accordion CSS now lives in base.css so the
    race page picks it up too. */
+
+/* ── Doping sanction: full-screen interstitial + rotating marquee ────────────
+   Shown for athletes with a doping_bans row. The overlay is a one-per-session
+   acknowledgement gate; the marquee is a persistent rotating header. Wording is
+   per-athlete (from the CSV) so it never over-claims. */
+
+/* Full-screen acknowledgement gate. */
+.doping-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background:
+        radial-gradient(circle at 50% 30%, rgba(120, 20, 20, 0.55), transparent 60%),
+        rgba(15, 12, 12, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: doping-fade-in 0.3s ease;
+}
+.doping-overlay.is-hiding { opacity: 0; transition: opacity 0.4s ease; }
+@keyframes doping-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.doping-overlay-card {
+    max-width: 30rem;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    animation: doping-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes doping-rise {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+.doping-overlay-icon {
+    color: #f87171;
+    filter: drop-shadow(0 0 18px rgba(248, 113, 113, 0.5));
+    animation: doping-pulse 2s ease-in-out infinite;
+}
+@keyframes doping-pulse {
+    0%, 100% { transform: scale(1);    opacity: 1;   }
+    50%      { transform: scale(1.08); opacity: 0.8; }
+}
+.doping-overlay-kicker {
+    margin-top: 1rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #f87171;
+}
+.doping-overlay-name {
+    margin: 0.35rem 0 0;
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+.doping-overlay-text {
+    margin: 0.85rem auto 0;
+    max-width: 26rem;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.82);
+}
+.doping-overlay-note {
+    margin: 1.1rem auto 0;
+    max-width: 26rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.62);
+}
+.doping-overlay-note a {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    text-decoration: underline;
+}
+.doping-overlay-note a:hover { color: #fff; }
+.doping-overlay-actions {
+    margin-top: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+}
+.doping-overlay-btn {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    background: #dc2626;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    padding: 0.75rem 2rem;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+.doping-overlay-btn:hover { background: #ef4444; }
+.doping-overlay-btn:active { transform: translateY(1px); }
+.doping-overlay-link {
+    display: inline-block;
+    margin-top: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.doping-overlay-link:hover { color: #fff; }
+
+/* Rotating header marquee. Two identical tracks scroll left in lockstep; when
+   one slides fully off it sits exactly where the other began, so the loop is
+   seamless. */
+.doping-marquee {
+    position: sticky;
+    top: 53px;  /* sit just below the sticky 52px site header (+1px border) */
+    z-index: 500;
+    display: flex;
+    overflow: hidden;
+    background: #dc2626;
+    color: #fff;
+    user-select: none;
+}
+.doping-marquee-track {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
+    animation: doping-scroll 60s linear infinite;
+}
+.doping-marquee:hover .doping-marquee-track { animation-play-state: paused; }
+.doping-marquee-item {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.doping-marquee-item::before {
+    content: "\2022";  /* separator dot */
+    margin-right: 1.5rem;
+    opacity: 0.6;
+}
+@keyframes doping-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .doping-marquee-track { animation: none; }
+    .doping-overlay-icon { animation: none; }
+}

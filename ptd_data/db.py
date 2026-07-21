@@ -63,6 +63,23 @@ def create_schema(conn):
         )
     """)
 
+    # Doping sanctions, populated exclusively from data/doping_bans.csv (see
+    # load_doping_bans). athlete_id is intentionally NOT FK-constrained to match
+    # the results/ratings convention and to avoid build-order coupling with the
+    # merges pass. Per-athlete `summary` carries the exact, human-written wording
+    # so the athlete-page banner never over-claims (e.g. whereabouts cases).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS doping_bans (
+            athlete_id      INTEGER PRIMARY KEY,
+            substance       VARCHAR NOT NULL DEFAULT '',
+            sanction_start  DATE,
+            sanction_end    DATE,
+            summary         VARCHAR NOT NULL DEFAULT '',
+            evidence_url    VARCHAR NOT NULL DEFAULT '',
+            source          VARCHAR NOT NULL DEFAULT ''
+        )
+    """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS series (
             series_id       INTEGER PRIMARY KEY,
@@ -866,6 +883,56 @@ def load_corrections(conn):
         long_rows,
     )
     print(f"Loaded {n_csv} manual corrections ({len(long_rows)} long rows)")
+
+
+def load_doping_bans(conn):
+    """Load doping sanctions from data/doping_bans.csv into the doping_bans table.
+
+    The CSV is the ONLY source: the table is fully cleared and rebuilt each run,
+    so removing a row from the CSV removes the athlete's banner. Each row keys on
+    athlete_id (resolved once, by hand, against the athletes table); `name` is
+    documentation only. Rows whose athlete_id isn't in the DB are skipped with a
+    warning - the banner needs an athlete page to attach to.
+
+    Columns: athlete_id, name, substance, sanction_start, sanction_end,
+             summary, evidence_url, source.
+    Dates are ISO (YYYY-MM-DD) or blank.
+    """
+    conn.execute("DELETE FROM doping_bans")
+
+    path = _DATA_DIR / 'doping_bans.csv'
+    if not path.exists():
+        print("No doping_bans.csv - skipping")
+        return
+
+    rows, skipped = [], 0
+    with open(path, newline='', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            try:
+                athlete_id = int(row['athlete_id'])
+            except (KeyError, ValueError, TypeError):
+                continue
+            if not conn.execute("SELECT 1 FROM athletes WHERE athlete_id = ?", [athlete_id]).fetchone():
+                print(f"  [doping] athlete_id={athlete_id} ({row.get('name','?')}) not in DB - skipping")
+                skipped += 1
+                continue
+            rows.append((
+                athlete_id,
+                row.get('substance', '').strip(),
+                row.get('sanction_start', '').strip() or None,
+                row.get('sanction_end', '').strip() or None,
+                row.get('summary', '').strip(),
+                row.get('evidence_url', '').strip(),
+                row.get('source', '').strip(),
+            ))
+
+    conn.executemany(
+        """INSERT INTO doping_bans
+               (athlete_id, substance, sanction_start, sanction_end, summary, evidence_url, source)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        rows,
+    )
+    print(f"Loaded {len(rows)} doping ban(s) ({skipped} skipped - athlete not in DB)")
 
 
 def social_already_posted(conn, race_id, post_type):

@@ -25,6 +25,36 @@
 {% endblock %}
 
 {% block hero %}
+{% if doping_ban %}
+<div class="doping-overlay" id="dopingOverlay" data-athlete="{{ athlete.athlete_id }}">
+    <div class="doping-overlay-card">
+        <svg class="doping-overlay-icon" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <div class="doping-overlay-kicker">Anti-Doping Record</div>
+        <h2 class="doping-overlay-name">{{ athlete.name }}</h2>
+        <p class="doping-overlay-text">{{ doping_ban.summary }}</p>
+        {% if doping_ban.evidence_url %}
+        <a href="{{ doping_ban.evidence_url }}" class="doping-overlay-link" target="_blank" rel="noopener noreferrer nofollow">Read more</a>
+        {% endif %}
+        <p class="doping-overlay-note">Doping undermines fair competition and puts athletes' health at risk. Results achieved in connection with an anti-doping rule violation cannot be regarded as valid. If you are an athlete or support person, check the <a href="https://www.wada-ama.org/en/prohibited-list" target="_blank" rel="noopener noreferrer nofollow">WADA Prohibited List</a> to see which substances and methods are banned.</p>
+        <div class="doping-overlay-actions">
+            <button type="button" class="doping-overlay-btn" id="dopingContinue">Continue to profile</button>
+        </div>
+    </div>
+</div>
+{% set _marquee_msg %}Anti-Doping Sanction{% if doping_ban.period %} &middot; {{ doping_ban.period }}{% endif %}{% if doping_ban.substance %} &middot; {{ doping_ban.substance }}{% endif %} &middot; {{ doping_ban.summary }}{% endset %}
+<div class="doping-marquee" role="alert" aria-label="Anti-doping sanction notice">
+    <div class="doping-marquee-track" aria-hidden="true">
+        {% for _ in range(6) %}<span class="doping-marquee-item">{{ _marquee_msg }}</span>{% endfor %}
+    </div>
+    <div class="doping-marquee-track" aria-hidden="true">
+        {% for _ in range(6) %}<span class="doping-marquee-item">{{ _marquee_msg }}</span>{% endfor %}
+    </div>
+</div>
+{% endif %}
 <div class="athlete-hero" id="athlete-ajax-hero">
     <div class="athlete-hero-inner">
 

@@ -114,6 +114,16 @@ if $DO_MERGES; then
     elapsed $T
 fi
 
+# ── 4b. Doping bans ───────────────────────────────────────────────────────────
+# Rebuild the doping_bans table from data/doping_bans.csv. Runs after merges so
+# athlete_ids resolve to their final (post-merge) rows.
+if $DO_MERGES; then
+    step "Doping bans - load data/doping_bans.csv"
+    T=$SECONDS
+    python3 -c "from ptd_data import db; conn = db.get_conn(read_only=False); db.load_doping_bans(conn); conn.close()"
+    elapsed $T
+fi
+
 # ── 5. Ignored races ──────────────────────────────────────────────────────────
 if $DO_IGNORED; then
     step "Ignored races - auto-detect subsets/oversized + manual ignored.csv"

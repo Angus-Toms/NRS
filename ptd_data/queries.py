@@ -1367,6 +1367,38 @@ def get_athlete_programs(athlete_id):
     return programs
 
 
+def get_athlete_doping_ban(athlete_id):
+    """The athlete's doping sanction record, or None.
+
+    Source is data/doping_bans.csv (loaded into doping_bans). Returns the raw
+    summary/evidence fields plus a display-ready `period` string (year range,
+    or single year, or empty) for the banner.
+    """
+    row = _get_conn().execute("""
+        SELECT substance, sanction_start, sanction_end, summary, evidence_url, source
+        FROM doping_bans
+        WHERE athlete_id = ?
+    """, [athlete_id]).fetchone()
+    if not row:
+        return None
+    substance, start, end, summary, evidence_url, source = row
+    start_yr = start.year if start else None
+    end_yr = end.year if end else None
+    if start_yr and end_yr and start_yr != end_yr:
+        period = f"{start_yr}–{end_yr}"
+    elif start_yr:
+        period = str(start_yr)
+    else:
+        period = ""
+    return {
+        "substance":    substance,
+        "period":       period,
+        "summary":      summary,
+        "evidence_url": evidence_url,
+        "source":       source,
+    }
+
+
 def get_athlete_nationality_history(athlete_id):
     """Ordered list of countries the athlete has represented, with date ranges.
 
