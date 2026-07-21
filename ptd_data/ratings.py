@@ -79,9 +79,19 @@ N_DISCIPLINES = 5
 # constant itself (46,175.8) stays unchanged — we just move ratings faster
 # toward their asymptote.
 COURSES = {
-    'short': {'distances': ('sprint', 'standard'),        'k_factor': 50},
-    'long':  {'distances': ('middle', 't100',   'long'),  'k_factor': 76},
+    'short': {'distances': ('sprint', 'standard', 'relay'), 'k_factor': 50},
+    'long':  {'distances': ('middle', 't100',   'long'),    'k_factor': 76},
 }
+
+# Mixed team relay legs feed the short-course athlete ELO. Athletes are paired
+# only within (leg_num, gender): the pure positional offset between same-gender
+# legs is large (leg 3 runs ~2.6% slower than leg 1, ~508 rating pts; leg 4
+# ~1.7% slower than leg 2), so cross-leg pooling would bias every leg-1 athlete
+# upward. Within-leg keeps the comparison pool small, so K is left at 1.0 (no
+# damping) to offset the few comparisons per race; revisit once real results
+# are in (leg-offset-corrected pooling is the alternative if convergence is
+# too slow).
+RELAY_K_MULT = 1.0
 
 # Era-scaled K. In the early years of the sport a season had only a handful of
 # elite races, so athletes had far fewer opportunities per year to accumulate
@@ -185,7 +195,22 @@ def _compute_ratings(conn, category, course, clear=True):
     distances = COURSES[course]['distances']
     in_sql    = _in_sql(distances)
     k_factor  = COURSES[course]['k_factor']
-    era_k_mult = _era_k_multiplier_table(conn, distances)
+    # Era K is calibrated on individual race volume; relay races are a side
+    # channel and shouldn't shift the historical multipliers.
+    era_k_mult = _era_k_multiplier_table(
+        conn, tuple(d for d in distances if d != 'relay'))
+
+    # Relay races live in relay_legs, not results, and pair only within a
+    # (leg_num, gender) group. Genders come from the athletes table since a
+    # relay race row is 'mixed'.
+    relay_ids = set()
+    athlete_gender = {}
+    if 'relay' in distances:
+        relay_ids = set(r[0] for r in conn.execute(
+            "SELECT race_id FROM races WHERE distance = 'relay' AND category = ?",
+            [category]).fetchall())
+        athlete_gender = dict(conn.execute(
+            "SELECT athlete_id, gender FROM athletes").fetchall())
 
     current_ratings = {}   # athlete_id -> [overall, swim, bike, run, transition]
     race_counts = {}       # athlete_id -> number of races completed so far
@@ -195,7 +220,9 @@ def _compute_ratings(conn, category, course, clear=True):
         cutoff_date = conn.execute(f"""
             SELECT MIN(r.race_date)
             FROM races r
-            JOIN (SELECT race_id FROM results GROUP BY race_id HAVING COUNT(*) >= 2) res
+            JOIN (SELECT race_id FROM results GROUP BY race_id HAVING COUNT(*) >= 2
+                  UNION
+                  SELECT race_id FROM relay_legs GROUP BY race_id HAVING COUNT(*) >= 2) res
               ON res.race_id = r.race_id
             WHERE r.category = ? AND r.distance IN {in_sql}
               AND r.race_id NOT IN (SELECT race_id FROM ratings WHERE category = ?)
@@ -248,6 +275,56 @@ def _compute_ratings(conn, category, course, clear=True):
 
     for race_id, race_year, _ in tqdm(races, desc=f"Computing {category} {course} ratings", unit="race"):
         if race_id in ignored or race_id in processed_race_ids:
+            continue
+
+        if race_id in relay_ids:
+            # Mixed relay: pair athletes only within the same (leg_num, gender)
+            # group - legs differ in length by position, and cross-gender
+            # comparisons are meaningless. Damped K (see RELAY_K_MULT).
+            legs = conn.execute("""
+                SELECT athlete_id, leg_num, leg_s, swim_s, bike_s, run_s, t1_s, t2_s
+                FROM relay_legs WHERE race_id = ?
+            """, [race_id]).fetchall()
+
+            athlete_data = {}
+            leg_groups = {}
+            for athlete_id, leg_num, leg_s, swim_s, bike_s, run_s, t1_s, t2_s in legs:
+                gender = athlete_gender.get(athlete_id)
+                if gender is None:
+                    continue
+                if athlete_id not in current_ratings:
+                    current_ratings[athlete_id] = [float(START_RATING)] * N_DISCIPLINES
+                    race_counts[athlete_id] = 0
+                transition_s = (t1_s + t2_s) if t1_s > 0 and t2_s > 0 else 0.0
+                times = [leg_s, swim_s, bike_s, run_s, transition_s]
+                entry = (current_ratings[athlete_id][:], times, race_counts[athlete_id])
+                athlete_data[athlete_id] = entry
+                leg_groups.setdefault((leg_num, gender), {})[athlete_id] = entry
+
+            k_eff = k_factor * era_k_mult.get(race_year, 1.0) * RELAY_K_MULT
+            elo_changes = {}
+            for group in leg_groups.values():
+                if len(group) >= 2:
+                    elo_changes.update(_pairwise_elo(group, k_eff))
+
+            rating_rows = []
+            for athlete_id, deltas in elo_changes.items():
+                old = athlete_data[athlete_id][0]
+                new_ratings = [old[k] + deltas[k] for k in range(N_DISCIPLINES)]
+                current_ratings[athlete_id] = new_ratings
+                race_counts[athlete_id] += 1
+                rating_rows.append((race_id, athlete_id, category, *new_ratings, *deltas))
+
+            if rating_rows:
+                conn.executemany(
+                    """
+                    INSERT OR IGNORE INTO ratings
+                        (race_id, athlete_id, category, overall, swim, bike, run, transition,
+                         overall_change, swim_change, bike_change, run_change, transition_change)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    rating_rows,
+                )
             continue
 
         # Corrections are per-discipline, long-format. Manual rows win over auto;
@@ -575,6 +652,128 @@ def _flush_rankings(race_id, race_date, participants, gender_state, ranking_rows
             active_world = [1] * N_DISCIPLINES
 
         ranking_rows.append((race_id, athlete_id, category, *world, *national, *active_world))
+
+
+# ---------------------------------------------------------------------------
+# Phase 2b: Country mixed relay ratings + rankings
+# ---------------------------------------------------------------------------
+
+def _compute_country_ratings(conn):
+    """Country-level mixed relay ELO and rankings, recomputed in full.
+
+    Rating entity = country. Elite relays only (junior/u23 relays feed the
+    athletes' individual ratings but say little about the senior squad), and
+    only each country's best-finishing team per race - second teams are
+    development lineups and would drag the rating below A-team strength.
+
+    Disciplines mirror the athlete model: overall = team total, swim/bike/run/
+    transition = the team's four leg splits summed (zero, i.e. skipped in the
+    pairwise pass, unless all four legs have the split). Volume is tiny
+    (~10-25 races/yr) so this is always a full clear + recompute.
+    """
+    conn.execute("DELETE FROM country_ratings")
+    conn.execute("DELETE FROM country_rankings")
+
+    k_factor = COURSES['short']['k_factor']
+    era_k_mult = _era_k_multiplier_table(conn, ('relay',))
+
+    races = conn.execute("""
+        SELECT race_id, EXTRACT(YEAR FROM race_date)::INTEGER, race_date
+        FROM races
+        WHERE distance = 'relay' AND sub_category = 'elite'
+          AND race_id NOT IN (SELECT race_id FROM ignored_races)
+        ORDER BY race_date, race_id
+    """).fetchall()
+
+    current = {}      # country_full -> [overall, swim, bike, run, transition]
+    counts = {}       # country_full -> races so far
+    last_seen = {}    # country_full -> last race_date
+    rating_rows, ranking_rows = [], []
+
+    for race_id, race_year, race_date in tqdm(races, desc="Computing country relay ratings", unit="race"):
+        teams = conn.execute("""
+            SELECT DISTINCT ON (rt.country_full)
+                   rt.country_full, rt.team_id, rt.total_s,
+                   SUM(l.swim_s) FILTER (WHERE l.swim_s > 0),
+                   COUNT(*) FILTER (WHERE l.swim_s > 0),
+                   SUM(l.bike_s) FILTER (WHERE l.bike_s > 0),
+                   COUNT(*) FILTER (WHERE l.bike_s > 0),
+                   SUM(l.run_s)  FILTER (WHERE l.run_s > 0),
+                   COUNT(*) FILTER (WHERE l.run_s > 0),
+                   SUM(l.t1_s + l.t2_s) FILTER (WHERE l.t1_s > 0 AND l.t2_s > 0),
+                   COUNT(*) FILTER (WHERE l.t1_s > 0 AND l.t2_s > 0)
+            FROM relay_teams rt
+            LEFT JOIN relay_legs l ON l.race_id = rt.race_id AND l.team_id = rt.team_id
+            WHERE rt.race_id = ? AND rt.status = 'Finished'
+              AND rt.position IS NOT NULL AND rt.total_s > 0
+            GROUP BY rt.country_full, rt.team_id, rt.position, rt.total_s
+            ORDER BY rt.country_full, rt.position
+        """, [race_id]).fetchall()
+
+        country_data = {}
+        for (country, _team_id, total_s,
+             swim_sum, swim_n, bike_sum, bike_n, run_sum, run_n, trans_sum, trans_n) in teams:
+            if country not in current:
+                current[country] = [float(START_RATING)] * N_DISCIPLINES
+                counts[country] = 0
+            times = [
+                total_s,
+                swim_sum if swim_n == 4 else 0.0,
+                bike_sum if bike_n == 4 else 0.0,
+                run_sum if run_n == 4 else 0.0,
+                trans_sum if trans_n == 4 else 0.0,
+            ]
+            times = [float(t or 0.0) for t in times]
+            country_data[country] = (current[country][:], times, counts[country])
+
+        if len(country_data) < 2:
+            continue
+
+        k_eff = k_factor * era_k_mult.get(race_year, 1.0)
+        elo_changes = _pairwise_elo(country_data, k_eff)
+
+        for country, deltas in elo_changes.items():
+            old = country_data[country][0]
+            new_ratings = [old[k] + deltas[k] for k in range(N_DISCIPLINES)]
+            current[country] = new_ratings
+            counts[country] += 1
+            last_seen[country] = race_date
+            rating_rows.append((race_id, country, *new_ratings, *deltas))
+
+        # Rankings snapshot for this race's participants
+        cutoff = race_date - timedelta(days=ACTIVE_WINDOW_DAYS)
+        active = {c for c, d in last_seen.items() if d >= cutoff}
+        for country in elo_changes:
+            mine = current[country]
+            world = [sum(1 for c in current if current[c][k] > mine[k]) + 1
+                     for k in range(N_DISCIPLINES)]
+            active_world = [sum(1 for c in active if current[c][k] > mine[k]) + 1
+                            for k in range(N_DISCIPLINES)]
+            ranking_rows.append((race_id, country, *world, *active_world))
+
+    if rating_rows:
+        conn.executemany(
+            """
+            INSERT OR IGNORE INTO country_ratings
+                (race_id, country_full, overall, swim, bike, run, transition,
+                 overall_change, swim_change, bike_change, run_change, transition_change)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            rating_rows,
+        )
+    if ranking_rows:
+        conn.executemany(
+            """
+            INSERT OR IGNORE INTO country_rankings
+                (race_id, country_full,
+                 world_overall, world_swim, world_bike, world_run, world_transition,
+                 active_world_overall, active_world_swim, active_world_bike,
+                 active_world_run, active_world_transition)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ranking_rows,
+        )
+    print(f"Country relay ratings: {len(rating_rows)} rating rows over {len(races)} races")
 
 
 # ---------------------------------------------------------------------------
@@ -982,6 +1181,10 @@ if __name__ == "__main__":
         # every race anyway. Cheap relative to the ELO pass.
         print("Recomputing race rankings...")
         _compute_race_rankings(conn)
+
+        # Country mixed relay ELO + rankings: tiny volume, always full recompute.
+        print("Recomputing country relay ratings...")
+        _compute_country_ratings(conn)
 
     if args.phase in ("models", "all"):
         print("Refitting prediction models...")

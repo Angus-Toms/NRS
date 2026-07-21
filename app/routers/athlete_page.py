@@ -284,6 +284,15 @@ async def get_athlete(request: Request, athlete_id: int,
     ag_notable_raw     = queries.get_athlete_ag_notable_results(athlete_id)
     long_notable_raw   = queries.get_athlete_long_course_notable_results(athlete_id)
     race_hist    = queries.get_athlete_race_history(athlete_id, category, course=course)
+    # Mixed relay legs appear in the short-course elite history alongside
+    # individual races (they update the same ratings, damped).
+    if category == 'elite' and course == 'short':
+        relay_hist = queries.get_athlete_relay_history(athlete_id)
+        for r in relay_hist:
+            r["is_relay"] = True
+        if relay_hist:
+            race_hist = sorted(race_hist + relay_hist,
+                               key=lambda r: (r["race_date"], r["race_id"]), reverse=True)
     rating_hist  = queries.get_athlete_rating_history(athlete_id, category, course=course) if has_ratings else []
     times_data    = queries.get_athlete_times_data(athlete_id)                              if has_ratings else []
     ratings_data  = queries.get_athlete_ratings_data(athlete_id, category, course=course)  if has_ratings else []
@@ -475,7 +484,7 @@ async def get_athlete(request: Request, athlete_id: int,
     # Fetch percentile thresholds once for this athlete's gender (cached per process).
     # Build a race_id→overall_std map here so the rating history table reuses the same
     # values rather than re-querying with a different formula.
-    _gender = next((r["gender"] for r in race_hist if r.get("gender")), "male")
+    _gender = next((r["gender"] for r in race_hist if r.get("gender") in ("male", "female")), "male")
     _thresholds = queries.get_race_standard_thresholds(_gender, course=course)
     _std_map = {r["race_id"]: r.get("overall_std") for r in race_hist}
 
@@ -494,12 +503,16 @@ async def get_athlete(request: Request, athlete_id: int,
             "race_id":        r["race_id"],
             "event_id":       r["event_id"],
             "is_multi_stage": bool(r.get("is_multi_stage")),
+            "is_relay":       bool(r.get("is_relay")),
+            "leg_num":        r.get("leg_num"),
             "race_title":     r["race_title"],
             "race_date":      r["race_date"],
             "program":        r["program"],
             "position":       r["position"],
             "status":         r["status"],
-            "standard_class": _std_class(r.get("overall_std")),
+            # Relays have no race_rankings standard; suppress the pill rather
+            # than defaulting to "beginner".
+            "standard_class": None if r.get("is_relay") else _std_class(r.get("overall_std")),
             "overall":        format_time(r["overall_s"]),
             "overall_behind": format_time_behind(r["overall_behind_s"]),
             "swim":           format_time(r["swim_s"]),

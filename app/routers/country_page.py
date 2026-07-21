@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 from ptd_data import queries
-from app.routers.router_utils import format_rating
+from app.routers.router_utils import format_rating, format_time
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
@@ -137,6 +137,25 @@ async def country_detail(
         for loc in hosted_locations
     ]
 
+    # Mixed team relay: country rating snapshot, recent team results, and a
+    # suggested lineup from the top-rated active athletes (current cycle
+    # order: female, male, female, male).
+    relay_summary = queries.get_country_relay_summary(country["country_full"])
+    relay_results = []
+    suggested_team = []
+    if relay_summary:
+        relay_summary["overall_rating_fmt"] = format_rating(relay_summary["overall_rating"])
+        for r in queries.get_country_relay_results(country["country_full"]):
+            r["total"] = format_time(r["total_s"]) if r["total_s"] else ""
+            relay_results.append(r)
+        top_m = queries.get_country_leaderboard(country["alpha3"], "male",   "overall", limit=2, active_only=True)
+        top_f = queries.get_country_leaderboard(country["alpha3"], "female", "overall", limit=2, active_only=True)
+        if len(top_m) >= 2 and len(top_f) >= 2:
+            suggested_team = [
+                {"leg": i + 1, **a}
+                for i, a in enumerate([top_f[0], top_m[0], top_f[1], top_m[1]])
+            ]
+
     # Hero stats: athletes, events, championship medal total
     medals_total = sum(m["total"] for m in medals)
     hero_stats = [
@@ -174,6 +193,9 @@ async def country_detail(
         "meta_description": meta_description,
         "course":           course,
         "active_only":      active_only,
+        "relay_summary":    relay_summary,
+        "relay_results":    relay_results,
+        "suggested_team":   suggested_team,
     })
 
 

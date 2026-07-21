@@ -45,6 +45,8 @@ def _compute_event_course_conditions(races, models):
     pred_overall_refs = []  # (avg_pred_overall, total_w)
 
     for race in races:
+        if race.get('distance') == 'relay':
+            continue
         if queries.get_race_category(race['race_id']) != 'elite':
             continue
         out = _course_signal_for_race(race['race_id'], race['gender'], models)
@@ -184,7 +186,7 @@ async def get_event(request: Request, event_id: int):
             [r["race_id"] for r in upcoming_races])
         thresholds_by_gender = {
             g: queries.get_race_standard_thresholds(g)
-            for g in {r["gender"] for r in upcoming_races if r.get("gender")}
+            for g in {r["gender"] for r in upcoming_races if r.get("gender") in ("male", "female")}
         }
         for race in upcoming_races:
             raw = race.pop("standards_raw", None)
@@ -212,9 +214,11 @@ async def get_event(request: Request, event_id: int):
     races = queries.get_event_races_detail(event_id)
 
     # Fetch thresholds once per gender present (cached after first call).
+    # No thresholds for 'mixed': relay races have no race_rankings rows and
+    # the quantile query would return NULLs.
     thresholds_by_gender = {
         g: queries.get_race_standard_thresholds(g)
-        for g in {r["gender"] for r in races if r.get("gender")}
+        for g in {r["gender"] for r in races if r.get("gender") in ("male", "female")}
     }
 
     for race in races:

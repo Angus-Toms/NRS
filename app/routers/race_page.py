@@ -81,6 +81,7 @@ def _build_breadcrumb(race, race_id, recurring_meta):
             recurring_meta['recurring_event_id'],
             race['gender'],
             race.get('sub_category'),
+            relay=race.get('distance') == 'relay',
         )
         for r in rows:
             year_options.append({
@@ -614,6 +615,9 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
             raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
         return await _get_upcoming_race(request, upcoming, partial)
 
+    if race["distance"] == "relay":
+        return await _get_relay_race(request, race, race_id)
+
     ignored_info = queries.get_race_ignored_info(race_id)
     results      = queries.get_race_results(race_id)
     ratings      = queries.get_race_ratings(race_id)
@@ -836,6 +840,112 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
         "other_editions":          other_editions,
         "recurring_slug":           recurring_slug,
         "is_upcoming":             False,
+    })
+
+
+async def _get_relay_race(request: Request, race, race_id: int):
+    """Mixed team relay race page: team results with leg breakdowns, fastest
+    legs, and country rating changes. Rendered as a full page always - the
+    partial-swap flow is individual-race-only (relay pills are plain links)."""
+    teams = queries.get_relay_teams(race_id)
+
+    finish_count = sum(1 for t in teams if t["status"] == "Finished")
+    status_counts = {s: sum(1 for t in teams if t["status"] == s) for s in DNF_STATUSES}
+    dnf_count = len(teams) - finish_count
+
+    winner_total = next((t["total_s"] for t in teams
+                         if t["position"] == 1 and t["total_s"] > 0), None)
+
+    # Within-leg ranks: same leg number, same gender (anomaly lineups aside,
+    # a leg is single-gender anyway). Rank 1 = fastest leg split. Legs are
+    # annotated in place (team backref + formatted times below) so the flat
+    # fastest-legs list and the nested team view share the same dicts.
+    legs_flat = []
+    for t in teams:
+        for l in t["legs"]:
+            l["team"] = t
+            if (l["leg_s"] or 0) > 0:
+                legs_flat.append(l)
+    leg_rank = {}
+    leg_fastest_s = {}   # leg_num -> fastest leg split, for the main-row gap annotation
+    for leg_num in (1, 2, 3, 4):
+        group = sorted((l for l in legs_flat if l["leg_num"] == leg_num),
+                       key=lambda l: l["leg_s"])
+        if group:
+            leg_fastest_s[leg_num] = group[0]["leg_s"]
+        for i, l in enumerate(group):
+            leg_rank[(l["team"]["team_id"], leg_num)] = i + 1
+
+    for t in teams:
+        t["total"] = format_time(t["total_s"]) if t["total_s"] else ""
+        t["behind"] = (format_time_behind(t["total_s"] - winner_total)
+                       if winner_total and t["total_s"] and t["position"] != 1 else "")
+        for l in t["legs"]:
+            l["leg"] = format_time(l["leg_s"]) if l["leg_s"] else ""
+            for d in ("swim", "t1", "bike", "t2", "run"):
+                l[d] = format_time(l[f"{d}_s"]) if l[f"{d}_s"] else ""
+            l["rank"] = leg_rank.get((t["team_id"], l["leg_num"]))
+            best = leg_fastest_s.get(l["leg_num"])
+            l["leg_behind"] = (format_time_behind(l["leg_s"] - best)
+                               if best and (l["leg_s"] or 0) > 0 and l["leg_s"] != best else "")
+
+    # Fastest legs, one flat sorted list; the template filters client-side by
+    # leg number / gender via data attributes.
+    fastest_legs = sorted(legs_flat, key=lambda l: l["leg_s"])
+
+    # Country rating rows, ordered by this race's finish position (best team
+    # per country) so the table opens sorted the way the results read; the
+    # template's sort headers let the reader re-sort by any rating column.
+    team_pos = {}
+    for t in teams:
+        p = t["position"] if t["position"] is not None else 10_000
+        if t["country_full"] not in team_pos or p < team_pos[t["country_full"]]:
+            team_pos[t["country_full"]] = p
+    country_ratings = [{
+        **r,
+        "overall_rating":    format_rating(r["overall_rating"]),
+        "swim_rating":       format_rating(r["swim_rating"]),
+        "bike_rating":       format_rating(r["bike_rating"]),
+        "run_rating":        format_rating(r["run_rating"]),
+        "transition_rating": format_rating(r["transition_rating"]),
+        "overall_change":    format_rating_change(r["overall_change"]),
+        "swim_change":       format_rating_change(r["swim_change"]),
+        "bike_change":       format_rating_change(r["bike_change"]),
+        "run_change":        format_rating_change(r["run_change"]),
+        "transition_change": format_rating_change(r["transition_change"]),
+    } for r in queries.get_relay_country_ratings(race_id)]
+    country_ratings.sort(key=lambda r: team_pos.get(r["country_full"], 10_000))
+
+    event_id = race.get("event_id")
+    event_races = queries.get_races_by_event(event_id) if event_id else []
+    recurring_meta = queries.get_recurring_event_for_event(event_id) if event_id else None
+    breadcrumb = _build_breadcrumb(race, race_id, recurring_meta)
+    series = queries.get_series_for_race(race_id)
+
+    _venue = race["location"]
+    race_location = str(_venue).replace('"', '').replace("'", "").strip() if _venue else ""
+    race_country = str(race["country"]).replace('"', '').replace("'", "")
+
+    race["date"] = race["race_date"]
+    race["team_count"] = len(teams)
+    race["status_counts"] = status_counts
+
+    return templates.TemplateResponse("relay_race.html", {
+        "request":        request,
+        "active_page":    "races",
+        "race":           race,
+        "race_location":  race_location,
+        "race_country":   race_country,
+        "event_id":       event_id,
+        "event_races":    event_races,
+        "finish_count":   finish_count,
+        "dnf_count":      dnf_count,
+        "teams":          teams,
+        "fastest_legs":   fastest_legs,
+        "country_ratings": country_ratings,
+        "series":         series,
+        "breadcrumb":     breadcrumb,
+        "is_upcoming":    False,
     })
 
 

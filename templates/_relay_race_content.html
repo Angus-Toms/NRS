@@ -1,0 +1,253 @@
+{# Split cell for the expanded leg-splits table: an inline discipline label
+   above the time (the table has no header row). #}
+{% macro leg_split(label, time, show_label) %}
+<td class="time-col split-col" data-value="{{ time }}">
+    {% if show_label %}<span class="time-disc-label">{{ label }}</span>{% endif %}
+    <span class="time-cell-main">{{ time if time else '-' }}</span>
+</td>
+{% endmacro %}
+
+<div id="race-content-swap">
+
+<!-- ═══════════════ Team Results ═══════════════ -->
+<div class="results-section-head">
+    <div class="page-section-head" id="results-section-title">Team Results</div>
+</div>
+<div class="race-table-section">
+    <table class="results-table relay-teams-table sortable-table relay-sortable">
+        <thead>
+            <tr>
+                <th class="position-col sortable" data-sort="position">Pos</th>
+                <th class="athlete-col sortable" data-sort="string">Team</th>
+                {% for i in [1, 2, 3, 4] %}
+                <th class="time-col sortable" data-sort="time">Leg {{ i }}</th>
+                {% endfor %}
+                <th class="time-col overall-col sortable" data-sort="time">Total</th>
+                <th class="splits-toggle-col" aria-hidden="true"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for team in teams %}
+            <tr class="relay-team-row{{ ' has-legs' if team.legs }}" data-team-id="{{ team.team_id }}">
+                <td class="position-col" data-value="{{ team.position if team.position is not none else team.status }}">
+                    {% if team.position == 1 %}<span class="pos-circle gold">1</span>
+                    {% elif team.position == 2 %}<span class="pos-circle silver">2</span>
+                    {% elif team.position == 3 %}<span class="pos-circle bronze">3</span>
+                    {% elif team.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ team.status }}</span>
+                    {% else %}<span class="pos-other">{{ team.position }}</span>{% endif %}
+                </td>
+                <td class="athlete-col" data-value="{{ team.team_name }}">
+                    <a href="/country/{{ team.country_alpha3 }}" class="link">{{ team.team_name }} {{ flag(team.country_alpha3) }}</a>
+                </td>
+                {% for i in [1, 2, 3, 4] %}
+                {% set leg = (team.legs | selectattr('leg_num', 'equalto', i) | list | first) %}
+                <td class="time-col split-col" data-value="{{ leg.leg if leg else '' }}">
+                    <span class="time-disc-label">Leg {{ i }}</span>
+                    {% if leg %}
+                    <span class="relay-leg-name">{{ leg.name }}</span>
+                    <span class="time-cell-main">{{ leg.leg }}</span>
+                    {% if leg.rank == 1 and leg.leg %}
+                    <span class="time-cell-gap time-cell-gap--fastest">fastest</span>
+                    {% else %}
+                    <span class="time-cell-gap">{{ leg.leg_behind }}</span>
+                    {% endif %}
+                    {% endif %}
+                </td>
+                {% endfor %}
+                <td class="time-col overall-col" data-value="{{ team.total }}">
+                    <span class="overall-time">{{ team.total }}</span>
+                    {% if team.behind %}<span class="time-cell-gap">{{ team.behind }}</span>{% endif %}
+                </td>
+                <td class="splits-toggle-col" aria-hidden="true">
+                    {% if team.legs %}
+                    <button type="button" class="splits-toggle" aria-label="Show leg splits" aria-expanded="false">
+                        <svg class="splits-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if team.legs %}
+            <tr class="relay-legs-detail hidden" data-detail-for="{{ team.team_id }}">
+                <td colspan="8">
+                    <div class="relay-legs-panel">
+                        <table class="relay-legs-table">
+                            <tbody>
+                                {% for leg in team.legs %}
+                                <tr>
+                                    <td class="relay-legs-leg relay-small-col">
+                                        {% if loop.first %}<span class="time-disc-label">Leg</span>{% endif %}{{ leg.leg_num }}
+                                    </td>
+                                    <td class="relay-legs-ath">
+                                        {% if loop.first %}<span class="time-disc-label">Athlete</span>{% endif %}
+                                        <a href="/athlete/{{ leg.athlete_id }}" class="link">{{ leg.name }} {{ flag(leg.team.country_alpha3) }}</a>
+                                    </td>
+                                    {{ leg_split('Swim', leg.swim, loop.first) }}
+                                    {{ leg_split('T1',   leg.t1,   loop.first) }}
+                                    {{ leg_split('Bike', leg.bike, loop.first) }}
+                                    {{ leg_split('T2',   leg.t2,   loop.first) }}
+                                    {{ leg_split('Run',  leg.run,  loop.first) }}
+                                    <td class="time-col overall-col" data-value="{{ leg.leg }}">
+                                        {% if loop.first %}<span class="time-disc-label">Leg Time</span>{% endif %}
+                                        <span class="overall-time">{{ leg.leg if leg.leg else '-' }}</span>
+                                    </td>
+                                    <td class="relay-legs-pos">
+                                        {% if loop.first %}<span class="time-disc-label">Leg Pos</span>{% endif %}
+                                        {% if leg.rank == 1 %}<span class="pos-circle gold">1</span>
+                                        {% elif leg.rank == 2 %}<span class="pos-circle silver">2</span>
+                                        {% elif leg.rank == 3 %}<span class="pos-circle bronze">3</span>
+                                        {% elif leg.rank %}<span class="pos-other">{{ leg.rank }}</span>{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+            {% else %}
+            <tr><td colspan="8" class="no-data">No team results available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ═══════════════ Fastest Legs ═══════════════ -->
+{% if fastest_legs %}
+<div class="page-section-head">Fastest Legs</div>
+<div class="relay-leg-filters">
+    <div class="filter-chip-group">
+        <span class="filter-chip-label">Leg</span>
+        <div class="radio-chips" id="relay-leg-chips">
+            <input type="radio" name="relay-leg" value="all" id="rl-all" checked>
+            <label for="rl-all">All</label>
+            {% for i in [1, 2, 3, 4] %}
+            <input type="radio" name="relay-leg" value="{{ i }}" id="rl-{{ i }}">
+            <label for="rl-{{ i }}">Leg {{ i }}</label>
+            {% endfor %}
+        </div>
+    </div>
+    {# A single leg is single-gender, so the gender switcher only makes sense
+       when viewing all legs together; JS hides it once a leg is picked. #}
+    <div class="filter-chip-group" id="relay-gender-group">
+        <span class="filter-chip-label">Gender</span>
+        <div class="radio-chips">
+            <input type="radio" name="relay-gender" value="all" id="rg-all" checked>
+            <label for="rg-all">All</label>
+            <input type="radio" name="relay-gender" value="male" id="rg-male">
+            <label for="rg-male">Male</label>
+            <input type="radio" name="relay-gender" value="female" id="rg-female">
+            <label for="rg-female">Female</label>
+        </div>
+    </div>
+</div>
+<div class="race-table-section">
+    <table class="results-table relay-fastest-table sortable-table relay-sortable">
+        <thead>
+            <tr>
+                <th class="position-col">#</th>
+                <th class="athlete-col sortable" data-sort="string">Athlete</th>
+                <th class="relay-small-col sortable" data-sort="string">Team</th>
+                <th class="relay-small-col sortable" data-sort="number">Leg</th>
+                <th class="time-col sortable" data-sort="time">Swim</th>
+                <th class="time-col sortable" data-sort="time">Bike</th>
+                <th class="time-col sortable" data-sort="time">Run</th>
+                <th class="time-col overall-col sortable" data-sort="time">Leg Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for leg in fastest_legs %}
+            <tr data-leg="{{ leg.leg_num }}" data-gender="{{ leg.gender }}"
+                data-swim="{{ leg.swim_s or 0 }}" data-bike="{{ leg.bike_s or 0 }}"
+                data-run="{{ leg.run_s or 0 }}" data-legtime="{{ leg.leg_s or 0 }}">
+                <td class="position-col"><span class="pos-other relay-leg-pos"></span></td>
+                <td class="athlete-col" data-value="{{ leg.name }}">
+                    <a href="/athlete/{{ leg.athlete_id }}" class="link">{{ leg.name }} {{ flag(leg.team.country_alpha3) }}</a>
+                </td>
+                <td class="relay-small-col" data-value="{{ leg.team.team_name }}">{{ leg.team.team_name }}</td>
+                <td class="relay-small-col" data-value="{{ leg.leg_num }}">Leg {{ leg.leg_num }}</td>
+                <td class="time-col split-col" data-col="swim" data-value="{{ leg.swim }}">
+                    <span class="time-disc-label">Swim</span>
+                    <span class="time-cell-main">{{ leg.swim }}</span>
+                    <span class="time-cell-gap"></span>
+                </td>
+                <td class="time-col split-col" data-col="bike" data-value="{{ leg.bike }}">
+                    <span class="time-disc-label">Bike</span>
+                    <span class="time-cell-main">{{ leg.bike }}</span>
+                    <span class="time-cell-gap"></span>
+                </td>
+                <td class="time-col split-col" data-col="run" data-value="{{ leg.run }}">
+                    <span class="time-disc-label">Run</span>
+                    <span class="time-cell-main">{{ leg.run }}</span>
+                    <span class="time-cell-gap"></span>
+                </td>
+                <td class="time-col overall-col" data-col="legtime" data-value="{{ leg.leg }}">
+                    <span class="time-cell-main overall-time">{{ leg.leg }}</span>
+                    <span class="time-cell-gap"></span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ═══════════════ Country Ratings ═══════════════ -->
+<div class="page-section-head">Country Ratings &amp; Changes</div>
+{% if country_ratings %}
+<div class="race-table-section">
+    <div>
+        <table class="rating-table sortable-table relay-sortable">
+            <thead>
+                <tr>
+                    <th class="position-col sortable" data-sort="position">Pos</th>
+                    <th class="athlete-col sortable" data-sort="string">Country</th>
+                    <th class="rating-col overall-col sortable" data-sort="rating">Overall</th>
+                    <th class="rating-col sortable" data-sort="rating">Swim</th>
+                    <th class="rating-col sortable" data-sort="rating">Bike</th>
+                    <th class="rating-col sortable" data-sort="rating">Run</th>
+                    <th class="rating-col sortable" data-sort="rating">Transition</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set team_by_country = {} %}
+                {% for team in teams %}{% if team.country_full not in team_by_country %}{% set _ = team_by_country.update({team.country_full: team}) %}{% endif %}{% endfor %}
+                {% for row in country_ratings %}
+                {% set team = team_by_country.get(row.country_full) %}
+                {% set pos = team.position if team else None %}
+                <tr>
+                    <td class="position-col" data-value="{{ pos if pos is not none else 9999 }}">
+                        {% if pos == 1 %}<span class="pos-circle gold">1</span>
+                        {% elif pos == 2 %}<span class="pos-circle silver">2</span>
+                        {% elif pos == 3 %}<span class="pos-circle bronze">3</span>
+                        {% elif pos %}<span class="pos-other">{{ pos }}</span>{% endif %}
+                    </td>
+                    <td class="athlete-col" data-value="{{ row.country_full }}">
+                        <a href="/country/{{ row.country_alpha3 }}" class="link">{{ row.country_full }} {{ flag(row.country_alpha3) }}</a>
+                    </td>
+                    <td class="overall-col" data-value="{{ row.overall_rating }}">
+                        <div class="rating-cell">
+                            <span class="overall-time">{{ row.overall_rating }}</span>
+                            <span class="rating-change {{ row.overall_change.css_class }}">{{ row.overall_change.formatted_str | safe }}</span>
+                        </div>
+                    </td>
+                    {% for disc in ['swim', 'bike', 'run', 'transition'] %}
+                    <td class="split-col" data-value="{{ row[disc ~ '_rating'] }}">
+                        <span class="time-disc-label">{{ disc | title }}</span>
+                        <div class="rating-cell">
+                            {{ row[disc ~ '_rating'] }}
+                            <span class="rating-change {{ row[disc ~ '_change'].css_class }}">{{ row[disc ~ '_change'].formatted_str | safe }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<p class="no-data" style="padding:1rem 0">No country rating changes for this race{% if race.sub_category != 'elite' %} - {{ race.sub_category }} relays feed athlete ratings only{% endif %}.</p>
+{% endif %}
+
+</div>

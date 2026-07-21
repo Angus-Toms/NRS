@@ -406,6 +406,10 @@
     color: var(--text-light);
 }
 
+.event-podium-pos--1 { background: var(--gold);   color: var(--gold-text); }
+.event-podium-pos--2 { background: var(--silver); color: var(--silver-text); }
+.event-podium-pos--3 { background: var(--bronze); color: var(--bronze-text); }
+
 .event-race-pending {
     font-size: 0.78rem;
     color: var(--text-lighter);

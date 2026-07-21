@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - Mixed Relay | Pro Tri Data{% endblock %}
+
+{% block meta %}
+{% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
+{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. Mixed team relay results - {{ finish_count }} teams finished. View leg splits, fastest legs, and country rating changes.{% endset %}
+<meta name="description" content="{{ desc }}">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - Mixed Relay | Pro Tri Data">
+<meta property="og:description" content="{{ desc }}">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}"{% if race_location %},"location":{"@type":"Place","name":{{ race_location | tojson }}}{% endif %}}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/race.css?v={{ ASSET_VERSION }}">
+{% endblock %}
+
+{% block hero %}{% include "_relay_race_hero.html" %}{% endblock %}
+
+{% block content %}{% include "_relay_race_content.html" %}{% endblock %}
+
+{% block extra_js %}
+<script src="{{ STATIC_BASE_URL }}js/utils.js?v={{ ASSET_VERSION }}"></script>
+<script>
+// Year-picker dropdown in the hero breadcrumb (same behaviour as race.js,
+// replicated here since the relay page doesn't load the full race bundle).
+document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.race-year-trigger');
+    if (trigger) {
+        const picker = trigger.closest('.race-year-picker');
+        document.querySelectorAll('.race-year-picker.open').forEach(p => {
+            if (p !== picker) p.classList.remove('open');
+        });
+        picker.classList.toggle('open');
+        return;
+    }
+    document.querySelectorAll('.race-year-picker.open').forEach(p => {
+        if (!p.contains(e.target)) p.classList.remove('open');
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Team row leg-split expansion
+    document.querySelectorAll('.relay-team-row.has-legs').forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return;
+            const detail = row.nextElementSibling;
+            if (!detail || !detail.classList.contains('relay-legs-detail')) return;
+            const open = !detail.classList.contains('hidden');
+            detail.classList.toggle('hidden', open);
+            const btn = row.querySelector('.splits-toggle');
+            if (btn) {
+                btn.setAttribute('aria-expanded', String(!open));
+                btn.classList.toggle('open', !open);
+            }
+        });
+    });
+
+    // ── Fastest legs: leg × gender filter, with per-column diffs + zebra
+    // recomputed over the *visible* rows (so diffs are relative to the
+    // selected leg(s) and striping stays correct after filtering). Picking a
+    // specific leg hides the gender switcher (a leg is single-gender).
+    const fastBody = document.querySelector('.relay-fastest-table tbody');
+    const genderGroup = document.getElementById('relay-gender-group');
+    const COLS = ['swim', 'bike', 'run', 'legtime'];
+
+    function fmtDiff(sec) {
+        sec = Math.round(sec);
+        const m = Math.floor(sec / 60), s = sec % 60;
+        return '+' + m + ':' + String(s).padStart(2, '0');
+    }
+
+    function applyFastest() {
+        if (!fastBody) return;
+        const leg = document.querySelector('input[name="relay-leg"]:checked').value;
+        const gender = document.querySelector('input[name="relay-gender"]:checked').value;
+        const visible = [];
+        fastBody.querySelectorAll('tr').forEach(tr => {
+            const show = (leg === 'all' || tr.dataset.leg === leg)
+                      && (gender === 'all' || tr.dataset.gender === gender);
+            tr.classList.toggle('hidden', !show);
+            if (show) visible.push(tr);
+        });
+        // Per-column fastest among the currently visible rows.
+        const mins = {};
+        COLS.forEach(c => {
+            let m = Infinity;
+            visible.forEach(tr => { const v = +tr.dataset[c] || 0; if (v > 0 && v < m) m = v; });
+            mins[c] = m;
+        });
+        visible.forEach((tr, i) => {
+            tr.querySelector('.relay-leg-pos').textContent = i + 1;
+            tr.classList.toggle('zebra', i % 2 === 1);
+            COLS.forEach(c => {
+                const cell = tr.querySelector(`[data-col="${c}"]`);
+                const main = cell.querySelector('.time-cell-main');
+                const gap = cell.querySelector('.time-cell-gap');
+                const v = +tr.dataset[c] || 0;
+                main.classList.remove('fastest');
+                gap.classList.remove('fastest');
+                if (!v) { gap.textContent = ''; return; }
+                if (v === mins[c]) { gap.textContent = 'fastest'; gap.classList.add('fastest'); main.classList.add('fastest'); }
+                else { gap.textContent = fmtDiff(v - mins[c]); }
+            });
+        });
+    }
+
+    document.querySelectorAll('input[name="relay-leg"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value !== 'all') {
+                genderGroup.classList.add('hidden');
+                document.getElementById('rg-all').checked = true;
+            } else {
+                genderGroup.classList.remove('hidden');
+            }
+            applyFastest();
+        });
+    });
+    document.querySelectorAll('input[name="relay-gender"]').forEach(radio =>
+        radio.addEventListener('change', applyFastest));
+    applyFastest();
+
+    // ── Sortable tables (all three). Self-contained so the relay page needn't
+    // pull in the full race.js bundle. Handles the team table's expandable
+    // detail rows by reattaching each after its team row post-sort.
+    function parseT(s) {
+        if (!s) return Infinity;
+        const p = s.split(':').map(Number);
+        return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+    }
+    const POS_SPECIAL = { NC: 9995, LAP: 9996, DNF: 9997, DQ: 9998, DNS: 9999 };
+    function cellVal(row, idx, type) {
+        const cell = row.cells[idx];
+        const raw = cell.getAttribute('data-value') ?? cell.textContent.trim();
+        if (type === 'time') return parseT(raw);
+        if (type === 'rating' || type === 'number') return parseFloat(raw) || 0;
+        if (type === 'position') return POS_SPECIAL[raw] ?? (parseInt(raw) || Infinity);
+        return raw.toString().toLowerCase();
+    }
+    document.querySelectorAll('table.relay-sortable').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('th'));
+        const isFast = table.classList.contains('relay-fastest-table');
+        table.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const idx = headers.indexOf(th);
+                const type = th.dataset.sort;
+                const asc = !th.classList.contains('asc');
+                headers.forEach(h => h.classList.remove('asc', 'desc'));
+                th.classList.add(asc ? 'asc' : 'desc');
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll(':scope > tr'))
+                    .filter(r => !r.classList.contains('relay-legs-detail') && !r.querySelector('.no-data'));
+                rows.sort((a, b) => {
+                    const av = cellVal(a, idx, type), bv = cellVal(b, idx, type);
+                    if (av < bv) return asc ? -1 : 1;
+                    if (av > bv) return asc ? 1 : -1;
+                    return 0;
+                });
+                rows.forEach(r => {
+                    tbody.appendChild(r);
+                    const id = r.dataset.teamId;
+                    if (id) {
+                        const detail = tbody.querySelector(`tr.relay-legs-detail[data-detail-for="${id}"]`);
+                        if (detail) tbody.appendChild(detail);
+                    }
+                });
+                if (isFast) applyFastest();  // re-number + restripe + rediff
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

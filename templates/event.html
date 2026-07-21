@@ -83,17 +83,24 @@
         {% endif %}
     </div>
     {% if race.podium %}
+    {% set is_relay = race.distance == 'relay' %}
     <table class="w1-table">
         <thead>
             <tr>
                 {% set pred = 'Pred. ' if is_upcoming else '' %}
                 <th>#</th>
-                <th>Athlete</th>
+                <th>{{ 'Team' if is_relay else 'Athlete' }}</th>
+                {% if is_relay %}
+                {% for i in [1, 2, 3, 4] %}
+                <th class="num">Leg {{ i }}</th>
+                {% endfor %}
+                {% else %}
                 <th class="num">{{ pred }}Swim</th>
                 <th class="num w1-num--t">T1</th>
                 <th class="num">{{ pred }}Bike</th>
                 <th class="num w1-num--t">T2</th>
                 <th class="num">{{ pred }}Run</th>
+                {% endif %}
                 <th class="num w1-num--total">{{ 'Predicted' if is_upcoming else 'Total' }}</th>
             </tr>
         </thead>
@@ -103,16 +110,28 @@
             <tr class="{{ tier }}-row">
                 <td class="w1-pos"><span class="pos-circle {{ tier }}">{{ p.position }}</span></td>
                 <td class="w1-ath-cell">
+                    {% if p.is_relay %}
+                    <a href="/country/{{ p.country_alpha3 }}" class="w1-ath {{ tier }}-img">
+                        <span class="w1-ath-name"><b>{{ p.name }}</b> {{ flag(p.country_alpha3) }}</span>
+                    </a>
+                    {% else %}
                     <a href="/athlete/{{ p.athlete_id }}" class="w1-ath {{ tier }}-img">
                         <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ p.athlete_id ~ '.webp' if p.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ p.name }}">
                         <span class="w1-ath-name"><b>{{ p.name }}</b> {{ flag(p.country_alpha3) }}</span>
                     </a>
+                    {% endif %}
                 </td>
+                {% if is_relay %}
+                {% for leg in p.legs %}
+                {{ cell(leg, 'Leg ' ~ leg.leg_num) }}
+                {% endfor %}
+                {% else %}
                 {{ cell(p.swim, 'Swim') }}
                 {{ cell(p.t1,   'T1', transition=True) }}
                 {{ cell(p.bike, 'Bike') }}
                 {{ cell(p.t2,   'T2', transition=True) }}
                 {{ cell(p.run,  'Run') }}
+                {% endif %}
                 {# Total cell: format depends on past vs upcoming. Past races
                    show the actual time + gap-to-winner; upcoming races show
                    the predicted time (no gap, no field-fastest concept). #}

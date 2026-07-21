@@ -33,8 +33,12 @@ def _dicts(cols, cur):
 # Course → distance-enum values. Used to scope rating/ranking queries so
 # that short-course and long-course ratings (which live in the same table
 # but are computed independently) don't leak into each other.
+# 'relay' sits in the short bucket: mixed relay legs update the short-course
+# athlete ELO (damped, see ratings.RELAY_K_MULT), so rating/ranking queries
+# must see those rows. Results-joined queries drop relay races naturally
+# (relay results live in relay_teams/relay_legs, not results).
 COURSE_DISTANCES = {
-    'short': ('sprint', 'standard'),
+    'short': ('sprint', 'standard', 'relay'),
     'long':  ('middle', 't100', 'long'),
 }
 
@@ -379,6 +383,22 @@ def get_recent_events(offset, limit, country=None):
             podium_by_race.setdefault(race_id, []).append(
                 {"position": position, "athlete_id": athlete_id, "name": name,
                  "country_alpha3": alpha3, "overall_s": overall_s, "profile_img": profile_img}
+            )
+
+        # Relay podiums (results has no rows for relay races)
+        relay_podium_rows = conn.execute(f"""
+            SELECT rt.race_id, rt.position, rt.country_full, rt.team_num, n.alpha3, rt.total_s
+            FROM relay_teams rt
+            JOIN nationalities n ON n.country_full = rt.country_full
+            WHERE rt.race_id IN ({ph})
+              AND rt.position IN (1, 2, 3) AND rt.status = 'Finished'
+            ORDER BY rt.race_id, rt.position
+        """, podium_race_ids).fetchall()
+        for race_id, position, country_full, team_num, alpha3, total_s in relay_podium_rows:
+            podium_by_race.setdefault(race_id, []).append(
+                {"position": position, "athlete_id": None, "is_relay": True,
+                 "name": relay_team_name(country_full, team_num), "country_alpha3": alpha3,
+                 "overall_s": total_s, "profile_img": ""}
             )
         # Compute gap (time diff from winner) for 2nd and 3rd
         for entries in podium_by_race.values():
@@ -1119,6 +1139,62 @@ def get_country_leaderboard(alpha3, gender, discipline="overall",
         country=None, country_alpha3=alpha3, yob_start=None, yob_end=None,
         active_only=active_only, offset=offset, limit=limit, category=category, course=course,
     )
+
+
+def get_country_relay_summary(country_full):
+    """Current mixed relay rating/ranking snapshot for a country, plus career
+    stats (races, wins, podiums). None if the country has no relay history."""
+    conn = _get_conn()
+    row = conn.execute("""
+        SELECT cr.overall, cr.swim, cr.bike, cr.run, cr.transition,
+               ck.world_overall, ck.active_world_overall, r.race_date
+        FROM country_ratings cr
+        JOIN races r ON cr.race_id = r.race_id
+        LEFT JOIN country_rankings ck
+          ON ck.race_id = cr.race_id AND ck.country_full = cr.country_full
+        WHERE cr.country_full = ?
+        ORDER BY r.race_date DESC, cr.race_id DESC
+        LIMIT 1
+    """, [country_full]).fetchone()
+    if not row:
+        return None
+
+    stats = conn.execute("""
+        SELECT COUNT(*),
+               COUNT(*) FILTER (WHERE position = 1),
+               COUNT(*) FILTER (WHERE position IN (1, 2, 3))
+        FROM relay_teams rt
+        JOIN races r ON rt.race_id = r.race_id
+        WHERE rt.country_full = ? AND r.sub_category = 'elite'
+          AND rt.status = 'Finished'
+    """, [country_full]).fetchone()
+
+    return {
+        "overall_rating": row[0], "swim_rating": row[1], "bike_rating": row[2],
+        "run_rating": row[3], "transition_rating": row[4],
+        "world_overall": row[5], "active_world_overall": row[6],
+        "last_race_date": row[7],
+        "race_count": stats[0], "wins": stats[1], "podiums": stats[2],
+    }
+
+
+def get_country_relay_results(country_full, limit=8):
+    """The country's most recent elite mixed relay team results."""
+    conn = _get_conn()
+    cols = ["race_id", "race_title", "race_handle", "race_date", "team_title",
+            "team_num", "position", "status", "total_s"]
+    rows = _dicts(cols, conn.execute("""
+        SELECT rt.race_id, r.race_title, r.race_handle, r.race_date,
+               rt.team_title, rt.team_num, rt.position, rt.status, rt.total_s
+        FROM relay_teams rt
+        JOIN races r ON rt.race_id = r.race_id
+        WHERE rt.country_full = ? AND r.sub_category = 'elite'
+        ORDER BY r.race_date DESC, rt.team_num
+        LIMIT ?
+    """, [country_full, limit]))
+    for r in rows:
+        r["team_name"] = relay_team_name(country_full, r["team_num"])
+    return rows
 
 
 def get_country_hosted_race_locations(country_full):
@@ -1883,6 +1959,60 @@ def get_athlete_race_history(athlete_id, category='elite', course='short'):
     """, [athlete_id, category]))
 
 
+def get_athlete_relay_history(athlete_id):
+    """The athlete's mixed relay legs, shaped like get_athlete_race_history rows.
+
+    overall_* is the leg total; behind-times are vs the fastest same-numbered
+    leg in that race (legs differ in length by position, so cross-leg gaps
+    would mislead). Extra keys: leg_num and the team's finish position.
+    """
+    conn = _get_conn()
+    cols = [
+        "race_id", "race_title", "race_date", "program", "gender", "position", "status",
+        "overall_s", "swim_s", "bike_s", "run_s", "t1_s", "t2_s",
+        "overall_behind_s", "swim_behind_s", "bike_behind_s", "run_behind_s",
+        "t1_behind_s", "t2_behind_s", "overall_std", "is_ignored", "parent_race_id",
+        "is_multi_stage", "event_id", "leg_num", "team_title",
+    ]
+    return _dicts(cols, conn.execute("""
+        WITH leg_leader AS (
+            SELECT race_id, leg_num,
+                   MIN(CASE WHEN leg_s  > 0 THEN leg_s  END) AS min_leg,
+                   MIN(CASE WHEN swim_s > 0 THEN swim_s END) AS min_swim,
+                   MIN(CASE WHEN bike_s > 0 THEN bike_s END) AS min_bike,
+                   MIN(CASE WHEN run_s  > 0 THEN run_s  END) AS min_run,
+                   MIN(CASE WHEN t1_s   > 0 THEN t1_s   END) AS min_t1,
+                   MIN(CASE WHEN t2_s   > 0 THEN t2_s   END) AS min_t2
+            FROM relay_legs
+            GROUP BY race_id, leg_num
+        )
+        SELECT
+            l.race_id, r.race_title, r.race_date, r.prog_name, r.gender,
+            rt.position, rt.status,
+            l.leg_s, l.swim_s, l.bike_s, l.run_s, l.t1_s, l.t2_s,
+            CASE WHEN l.leg_s  > 0 THEN l.leg_s  - w.min_leg  END,
+            CASE WHEN l.swim_s > 0 THEN l.swim_s - w.min_swim END,
+            CASE WHEN l.bike_s > 0 THEN l.bike_s - w.min_bike END,
+            CASE WHEN l.run_s  > 0 THEN l.run_s  - w.min_run  END,
+            CASE WHEN l.t1_s   > 0 THEN l.t1_s   - w.min_t1   END,
+            CASE WHEN l.t2_s   > 0 THEN l.t2_s   - w.min_t2   END,
+            NULL AS overall_std,
+            ig.race_id IS NOT NULL AS is_ignored,
+            NULL AS parent_race_id,
+            FALSE AS is_multi_stage,
+            r.event_id,
+            l.leg_num,
+            rt.team_title
+        FROM relay_legs l
+        JOIN relay_teams rt ON rt.race_id = l.race_id AND rt.team_id = l.team_id
+        JOIN races r ON r.race_id = l.race_id
+        JOIN leg_leader w ON w.race_id = l.race_id AND w.leg_num = l.leg_num
+        LEFT JOIN ignored_races ig ON ig.race_id = l.race_id
+        WHERE l.athlete_id = ?
+        ORDER BY r.race_date DESC, l.race_id DESC
+    """, [athlete_id]))
+
+
 def get_athlete_rating_history(athlete_id, category='elite', course='short'):
     """
     All rating entries for an athlete with race info and finish position.
@@ -1904,8 +2034,8 @@ def get_athlete_rating_history(athlete_id, category='elite', course='short'):
             r.race_date,
             r.race_title,
             r.prog_name,
-            res.position,
-            res.status,
+            COALESCE(res.position, rl.position) AS position,
+            COALESCE(res.status,   rl.status)   AS status,
             ra.overall,    ra.overall_change,
             ra.swim,       ra.swim_change,
             ra.bike,       ra.bike_change,
@@ -1913,8 +2043,16 @@ def get_athlete_rating_history(athlete_id, category='elite', course='short'):
             ra.transition, ra.transition_change
         FROM ratings ra
         JOIN races r   ON ra.race_id   = r.race_id
-        JOIN results res ON ra.race_id = res.race_id AND ra.athlete_id = res.athlete_id
+        LEFT JOIN results res ON ra.race_id = res.race_id AND ra.athlete_id = res.athlete_id
+        -- Relay rating rows have no results row; position/status come from the
+        -- athlete's team result instead.
+        LEFT JOIN (
+            SELECT l.race_id, l.athlete_id, rt.position, rt.status
+            FROM relay_legs l
+            JOIN relay_teams rt ON rt.race_id = l.race_id AND rt.team_id = l.team_id
+        ) rl ON rl.race_id = ra.race_id AND rl.athlete_id = ra.athlete_id
         WHERE ra.athlete_id = ? AND ra.category = ? AND r.distance IN {course_in}
+          AND (res.athlete_id IS NOT NULL OR r.distance = 'relay')
         ORDER BY r.race_date DESC, ra.race_id DESC
     """, [athlete_id, category]))
 
@@ -2060,9 +2198,9 @@ def get_event_info(event_id):
 def get_races_by_event(event_id):
     """All races for an event, ordered by race date then female-first within date."""
     conn = _get_conn()
-    cols = ["race_id", "race_title", "prog_name", "race_date", "gender", "is_multi_stage"]
+    cols = ["race_id", "race_title", "prog_name", "race_date", "gender", "is_multi_stage", "distance"]
     return _dicts(cols, conn.execute("""
-        SELECT race_id, race_title, prog_name, race_date, gender, is_multi_stage
+        SELECT race_id, race_title, prog_name, race_date, gender, is_multi_stage, distance
         FROM races
         WHERE event_id = ?
         ORDER BY race_date ASC,
@@ -2075,7 +2213,7 @@ def get_event_races_detail(event_id):
     """All races for an event with podium (top 3 + time gaps) and overall race standard."""
     conn = _get_conn()
     race_rows = conn.execute("""
-        SELECT race_id, race_title, prog_name, race_date, gender
+        SELECT race_id, race_title, prog_name, race_date, gender, distance
         FROM races
         WHERE event_id = ?
         ORDER BY race_date ASC,
@@ -2086,7 +2224,8 @@ def get_event_races_detail(event_id):
         return []
 
     races = [{"race_id": r[0], "race_title": r[1], "prog_name": r[2],
-              "race_date": r[3], "gender": r[4], "podium": [], "standard": None}
+              "race_date": r[3], "gender": r[4], "distance": r[5],
+              "podium": [], "standard": None}
              for r in race_rows]
     race_ids = [r["race_id"] for r in races]
     ph = ",".join("?" * len(race_ids))
@@ -2124,6 +2263,51 @@ def get_event_races_detail(event_id):
             "run_s":      run_s,
             "profile_img": profile_img,
         })
+
+    # Relay podiums come from relay_teams (results has no rows for relay
+    # races). Splits shown are the team's four leg splits summed; zero when
+    # any leg is missing the split. athlete_id stays None - the template
+    # links relay podium entries to the country page instead.
+    relay_ids = [r["race_id"] for r in races if r["distance"] == "relay"]
+    # Per-leg leg totals for relay podium teams, plus the field-fastest leg
+    # total per (race, leg_num), so the event page can render Leg 1-4 columns
+    # with gap-to-fastest annotations (mirroring the individual splits table).
+    relay_legs_by_team = {}      # (race_id, team_id) -> {leg_num: leg_s}
+    relay_ff_leg = {}            # race_id -> {leg_num: fastest_leg_s}
+    if relay_ids:
+        rph = ",".join("?" * len(relay_ids))
+        relay_rows = conn.execute(f"""
+            SELECT rt.race_id, rt.team_id, rt.position, rt.country_full, rt.team_num,
+                   n.alpha3, rt.total_s
+            FROM relay_teams rt
+            JOIN nationalities n ON n.country_full = rt.country_full
+            WHERE rt.race_id IN ({rph})
+              AND rt.position IN (1, 2, 3) AND rt.status = 'Finished'
+            ORDER BY rt.race_id, rt.position
+        """, relay_ids).fetchall()
+        for (race_id, team_id, pos, country_full, team_num, alpha3, total_s) in relay_rows:
+            podium_by_race.setdefault(race_id, []).append({
+                "position":   pos,
+                "athlete_id": None,
+                "is_relay":   True,
+                "team_id":    team_id,
+                "name":       relay_team_name(country_full, team_num),
+                "country_alpha3": alpha3,
+                "overall_s":  total_s,
+                "profile_img": "",
+            })
+
+        leg_rows = conn.execute(f"""
+            SELECT race_id, team_id, leg_num, leg_s
+            FROM relay_legs
+            WHERE race_id IN ({rph})
+        """, relay_ids).fetchall()
+        for race_id, team_id, leg_num, leg_s in leg_rows:
+            relay_legs_by_team.setdefault((race_id, team_id), {})[leg_num] = leg_s
+            if leg_s and leg_s > 0:
+                ff = relay_ff_leg.setdefault(race_id, {})
+                if leg_num not in ff or leg_s < ff[leg_num]:
+                    ff[leg_num] = leg_s
 
     # Field-fastest per leg (whoever in the field had the quickest split,
     # not just the podium). Drives the "fastest" tag + gap-to-fastest
@@ -2175,20 +2359,48 @@ def get_event_races_detail(event_id):
                 "gap":     f"+{_fmt_time(gap)}" if gap else None,
             }
 
-        race["podium"] = [
-            {
+        def _relay_legs(p):
+            """Leg 1-4 cells for a relay team: {fmt, fastest, gap} each, using
+            the field-fastest leg total per leg number as the reference."""
+            team_legs = relay_legs_by_team.get((rid, p["team_id"]), {})
+            ff = relay_ff_leg.get(rid, {})
+            cells = []
+            for leg_num in (1, 2, 3, 4):
+                v = team_legs.get(leg_num)
+                if not v or v <= 0:
+                    cells.append({"leg_num": leg_num, "fmt": None, "fastest": False, "gap": None})
+                    continue
+                best = ff.get(leg_num)
+                if best and v == best:
+                    cells.append({"leg_num": leg_num, "fmt": _fmt_time(v), "fastest": True, "gap": None})
+                else:
+                    gap = (v - best) if best else None
+                    cells.append({
+                        "leg_num": leg_num,
+                        "fmt":     _fmt_time(v),
+                        "fastest": False,
+                        "gap":     f"+{_fmt_time(gap)}" if gap else None,
+                    })
+            return cells
+
+        podium = []
+        for p in raw:
+            entry = {
                 **p,
                 "time": _fmt_time(p["overall_s"]),
                 "gap":  (f"+{_fmt_time(p['overall_s'] - winner_s)}"
                          if p["position"] != 1 and p["overall_s"] and winner_s else None),
-                "swim": _leg(p, "swim_s", "swim"),
-                "t1":   _leg(p, "t1_s",   "t1"),
-                "bike": _leg(p, "bike_s", "bike"),
-                "t2":   _leg(p, "t2_s",   "t2"),
-                "run":  _leg(p, "run_s",  "run"),
             }
-            for p in raw
-        ]
+            if p.get("is_relay"):
+                entry["legs"] = _relay_legs(p)
+            else:
+                entry["swim"] = _leg(p, "swim_s", "swim")
+                entry["t1"]   = _leg(p, "t1_s",   "t1")
+                entry["bike"] = _leg(p, "bike_s", "bike")
+                entry["t2"]   = _leg(p, "t2_s",   "t2")
+                entry["run"]  = _leg(p, "run_s",  "run")
+            podium.append(entry)
+        race["podium"] = podium
         race["standards_raw"] = std_by_race.get(rid)
 
     return races
@@ -2212,7 +2424,7 @@ def get_race_info(race_id):
     row = conn.execute("""
         SELECT r.race_id, r.race_title, r.prog_name, r.race_date,
                e.venue AS location, e.country, r.gender, r.sub_category,
-               r.race_handle, r.event_id, r.is_multi_stage
+               r.race_handle, r.event_id, r.is_multi_stage, r.distance
         FROM races r
         JOIN events e ON r.event_id = e.event_id
         WHERE r.race_id = ?
@@ -2221,8 +2433,85 @@ def get_race_info(race_id):
         return None
     cols = ["race_id", "race_title", "prog_name", "race_date",
             "location", "country", "gender", "sub_category",
-            "race_handle", "event_id", "is_multi_stage"]
+            "race_handle", "event_id", "is_multi_stage", "distance"]
     return dict(zip(cols, row))
+
+
+_ROMAN_SUFFIX = {2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII'}
+
+
+def relay_team_name(country_full, team_num):
+    """Display name for a relay team: just the country, with a roman-numeral
+    suffix only for second/third teams (e.g. "Australia", "Australia II")."""
+    if team_num and team_num > 1:
+        return f"{country_full} {_ROMAN_SUFFIX.get(team_num, team_num)}"
+    return country_full
+
+
+def get_relay_teams(race_id):
+    """All teams of a mixed relay race with their legs nested.
+
+    Returns a list of team dicts ordered by position (non-finishers last),
+    each with a 'legs' list of 4 member dicts in leg order (possibly empty
+    for teams with no member-level data).
+    """
+    conn = _get_conn()
+    rows = conn.execute("""
+        SELECT rt.team_id, rt.team_title, rt.team_num, rt.country_full, n.alpha3,
+               rt.position, rt.status, rt.start_num, rt.total_s,
+               l.leg_num, l.athlete_id, a.name, a.gender, a.profile_img,
+               l.leg_s, l.swim_s, l.t1_s, l.bike_s, l.t2_s, l.run_s
+        FROM relay_teams rt
+        JOIN nationalities n ON rt.country_full = n.country_full
+        LEFT JOIN relay_legs l ON l.race_id = rt.race_id AND l.team_id = rt.team_id
+        LEFT JOIN athletes a ON a.athlete_id = l.athlete_id
+        WHERE rt.race_id = ?
+        ORDER BY CASE rt.status
+                     WHEN 'Finished' THEN 0 WHEN 'NC' THEN 1 WHEN 'LAP' THEN 2
+                     WHEN 'DNF' THEN 3 WHEN 'DQ' THEN 4 WHEN 'DNS' THEN 5 ELSE 6
+                 END,
+                 rt.position NULLS LAST, rt.total_s, rt.team_id, l.leg_num
+    """, [race_id]).fetchall()
+
+    teams = {}
+    order = []
+    for (team_id, team_title, team_num, country_full, alpha3, position, status,
+         start_num, total_s, leg_num, athlete_id, name, gender, profile_img,
+         leg_s, swim_s, t1_s, bike_s, t2_s, run_s) in rows:
+        if team_id not in teams:
+            teams[team_id] = {
+                "team_id": team_id, "team_title": team_title, "team_num": team_num,
+                "team_name": relay_team_name(country_full, team_num),
+                "country_full": country_full, "country_alpha3": alpha3,
+                "position": position, "status": status, "start_num": start_num,
+                "total_s": total_s, "legs": [],
+            }
+            order.append(team_id)
+        if leg_num is not None:
+            teams[team_id]["legs"].append({
+                "leg_num": leg_num, "athlete_id": athlete_id, "name": name,
+                "gender": gender, "profile_img": profile_img,
+                "leg_s": leg_s, "swim_s": swim_s, "t1_s": t1_s,
+                "bike_s": bike_s, "t2_s": t2_s, "run_s": run_s,
+            })
+    return [teams[tid] for tid in order]
+
+
+def get_relay_country_ratings(race_id):
+    """Country rating rows (post-race values + changes) for a relay race."""
+    conn = _get_conn()
+    cols = ["country_full", "country_alpha3",
+            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
+            "overall_change", "swim_change", "bike_change", "run_change", "transition_change"]
+    return _dicts(cols, conn.execute("""
+        SELECT cr.country_full, n.alpha3,
+               cr.overall, cr.swim, cr.bike, cr.run, cr.transition,
+               cr.overall_change, cr.swim_change, cr.bike_change, cr.run_change, cr.transition_change
+        FROM country_ratings cr
+        JOIN nationalities n ON cr.country_full = n.country_full
+        WHERE cr.race_id = ?
+        ORDER BY cr.overall DESC
+    """, [race_id]))
 
 
 def get_race_results(race_id):
@@ -2903,6 +3192,8 @@ def search_races_for_compare(query, course=None, gender=None, category='elite', 
     filters = [
         "(e.name ILIKE ? OR e.venue ILIKE ? OR e.country ILIKE ? OR r.race_title ILIKE ?)",
         "r.category = ?",
+        # The compare tooling is built around individual results; relays out.
+        "r.distance != 'relay'",
     ]
     params = [q, q, q, q, category]
     if course in ('short', 'long'):
@@ -4740,9 +5031,14 @@ def get_recurring_event_for_event(event_id):
     return dict(zip(cols, row))
 
 
-def get_other_editions_for_event(event_id, program=None):
-    """Races in the same recurring group as event_id (excluding event_id's own race(s))."""
+def get_other_editions_for_event(event_id, program=None, relay=False):
+    """Races in the same recurring group as event_id (excluding event_id's own race(s)).
+
+    `relay` keeps the two race types apart within a shared recurring group:
+    individual race pages exclude relay editions, relay pages show only relay.
+    """
     prog_sql, prog_params = _program_filter(program)
+    dist_sql = "AND r.distance = 'relay'" if relay else "AND r.distance <> 'relay'"
     conn = _get_conn()
     cols = ["race_id", "race_date", "race_handle", "prog_name", "gender",
             "event_id", "event_name", "venue", "country"]
@@ -4756,20 +5052,28 @@ def get_other_editions_for_event(event_id, program=None):
         JOIN races r                ON r.event_id = e.event_id
         WHERE ref.event_id = ?
           AND e.event_id <> ref.event_id
+          {dist_sql}
           {prog_sql}
         ORDER BY r.race_date DESC
     """, [event_id] + prog_params))
 
 
-def get_year_options_for_recurring(recurring_event_id, gender, sub_category):
+def get_year_options_for_recurring(recurring_event_id, gender, sub_category, relay=False):
     """One row per year of the recurring event for the breadcrumb dropdown.
 
     Picks the race in each year matching (sub_category, gender). Falls back
     to the same sub_category in the other gender when an exact match doesn't
     exist (mirrors get_other_editions_for_event behaviour for venues like
     Ironman Worlds that alternate gender).
+
+    `relay` scopes to the right race type: a mixed-relay breadcrumb lists only
+    relay editions (and shows the winning country), an individual-race
+    breadcrumb excludes relay editions of the same venue/sub_category.
     """
-    rows = _get_conn().execute("""
+    # Relay and individual races share sub_category='elite' within a recurring
+    # group, so distance is what separates the two year-picker tracks.
+    dist_sql = "r.distance = 'relay'" if relay else "r.distance <> 'relay'"
+    rows = _get_conn().execute(f"""
         WITH year_race AS (
             SELECT
                 EXTRACT(YEAR FROM r.race_date)::int AS year,
@@ -4783,15 +5087,21 @@ def get_year_options_for_recurring(recurring_event_id, gender, sub_category):
             JOIN races r ON r.event_id = er.event_id
             WHERE er.recurring_event_id = ?
               AND r.sub_category = ?
+              AND {dist_sql}
               AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
         )
         SELECT yr.year, yr.race_id, yr.race_handle, yr.race_date, yr.gender,
-               a.name AS winner_name, n.alpha3 AS winner_country_alpha3, res.overall_s
+               COALESCE(a.name, rt.country_full)   AS winner_name,
+               COALESCE(n.alpha3, rn.alpha3)        AS winner_country_alpha3,
+               COALESCE(res.overall_s, rt.total_s)  AS overall_s
         FROM year_race yr
         LEFT JOIN results res
                ON res.race_id = yr.race_id AND res.position = 1 AND res.status = 'Finished'
         LEFT JOIN athletes a       ON a.athlete_id = res.athlete_id
         LEFT JOIN nationalities n  ON n.country_full = a.country_full
+        LEFT JOIN relay_teams rt
+               ON rt.race_id = yr.race_id AND rt.position = 1 AND rt.status = 'Finished'
+        LEFT JOIN nationalities rn ON rn.country_full = rt.country_full
         WHERE yr.rn = 1
         ORDER BY yr.year DESC
     """, [gender, recurring_event_id, sub_category]).fetchall()

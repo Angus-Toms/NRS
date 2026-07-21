@@ -142,6 +142,83 @@
     </section>
     {% endif %}
 
+    <!-- ── Mixed team relay ────────────────────────────────────────────── -->
+    {% if relay_summary %}
+    <section class="country-section">
+        <div class="page-section-head">Mixed Team Relay</div>
+        <div class="country-medals-grid relay-stat-grid">
+            <div class="country-medal-tile">
+                <div class="country-medal-label">World Rank</div>
+                <div class="relay-stat-value">{{ relay_summary.active_world_overall or relay_summary.world_overall or '-' }}</div>
+            </div>
+            <div class="country-medal-tile">
+                <div class="country-medal-label">Rating</div>
+                <div class="relay-stat-value">{{ relay_summary.overall_rating_fmt }}</div>
+            </div>
+            <div class="country-medal-tile">
+                <div class="country-medal-label">Relays</div>
+                <div class="relay-stat-value">{{ relay_summary.race_count }}</div>
+            </div>
+            <div class="country-medal-tile">
+                <div class="country-medal-label">Wins</div>
+                <div class="relay-stat-value">{{ relay_summary.wins }}</div>
+            </div>
+            <div class="country-medal-tile">
+                <div class="country-medal-label">Podiums</div>
+                <div class="relay-stat-value">{{ relay_summary.podiums }}</div>
+            </div>
+        </div>
+
+        {% if suggested_team %}
+        <div class="relay-subhead">Suggested lineup <span class="relay-subhead-note">top-rated active athletes, current cycle order (F-M-F-M)</span></div>
+        <div class="relay-lineup-grid">
+            {% for a in suggested_team %}
+            <a href="/athlete/{{ a.athlete_id }}" class="relay-lineup-card">
+                <span class="relay-lineup-leg">Leg {{ a.leg }}</span>
+                <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}" alt="{{ a.name }}" class="relay-lineup-img">
+                <span class="relay-lineup-name">{{ a.name }}</span>
+                <span class="relay-lineup-rating">{{ a.overall_rating | round | int }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if relay_results %}
+        <div class="relay-subhead">Recent relays</div>
+        <div class="table-section">
+            <table class="relay-results-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Race</th>
+                        <th>Team</th>
+                        <th>Pos</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in relay_results %}
+                    <tr>
+                        <td class="muted-col">{{ r.race_date.strftime('%d %b %Y') }}</td>
+                        <td><a href="/race/{{ r.race_id }}" class="link">{{ r.race_handle or r.race_title }}</a></td>
+                        <td class="muted-col">{{ r.team_name }}</td>
+                        <td>
+                            {% if r.position == 1 %}<span class="pos-circle gold">1</span>
+                            {% elif r.position == 2 %}<span class="pos-circle silver">2</span>
+                            {% elif r.position == 3 %}<span class="pos-circle bronze">3</span>
+                            {% elif r.status in ['DNF', 'DNS', 'DQ', 'LAP', 'NC'] %}<span class="pos-dnf">{{ r.status }}</span>
+                            {% else %}<span class="pos-other">{{ r.position }}</span>{% endif %}
+                        </td>
+                        <td>{{ r.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <!-- ── Upcoming events ─────────────────────────────────────────────── -->
     {% if upcoming_events %}
     <section class="country-section">

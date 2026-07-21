@@ -19,7 +19,7 @@ def get_conn(read_only=False):
 
 
 def create_schema(conn):
-    conn.execute("CREATE TYPE IF NOT EXISTS gender_enum AS ENUM ('male', 'female')")
+    conn.execute("CREATE TYPE IF NOT EXISTS gender_enum AS ENUM ('male', 'female', 'mixed')")
     conn.execute("CREATE TYPE IF NOT EXISTS category_enum AS ENUM ('elite', 'ag')")
     conn.execute(
         "CREATE TYPE IF NOT EXISTS category_sub_enum AS ENUM "
@@ -35,7 +35,7 @@ def create_schema(conn):
     )
     conn.execute(
         "CREATE TYPE IF NOT EXISTS distance_enum AS ENUM "
-        "('sprint', 'standard', 'middle', 't100', 'long')"
+        "('sprint', 'standard', 'middle', 't100', 'long', 'relay')"
     )
 
     conn.execute("""
@@ -144,6 +144,81 @@ def create_schema(conn):
             t2_s            DOUBLE NOT NULL DEFAULT 0,
             pto_points      DOUBLE NOT NULL DEFAULT 0,
             PRIMARY KEY (race_id, athlete_id)
+        )
+    """)
+
+    # Mixed team relay results. Relay races get a normal `races` row
+    # (gender='mixed', distance='relay') so event pages, handles, and recurring
+    # grouping work unchanged, but their results live here instead of `results`:
+    # a team row plus one leg row per member. Team totals and positions come
+    # straight from the API team-level result; leg splits from team_members.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS relay_teams (
+            race_id         INTEGER NOT NULL REFERENCES races(race_id),
+            team_id         INTEGER NOT NULL,   -- WT team id (athlete-id namespace)
+            team_title      VARCHAR NOT NULL,   -- e.g. "Team I Australia"
+            team_num        INTEGER NOT NULL DEFAULT 1,  -- 1 = first team, 2 = "Team II", ...
+            country_full    VARCHAR NOT NULL REFERENCES nationalities(country_full),
+            position        INTEGER,
+            status          result_status_enum NOT NULL,
+            start_num       INTEGER NOT NULL DEFAULT 0,
+            total_s         DOUBLE NOT NULL DEFAULT 0,
+            PRIMARY KEY (race_id, team_id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS relay_legs (
+            race_id         INTEGER NOT NULL REFERENCES races(race_id),
+            team_id         INTEGER NOT NULL,
+            leg_num         INTEGER NOT NULL,   -- 1..4 in handover order
+            athlete_id      INTEGER NOT NULL,   -- see results.athlete_id note
+            leg_s           DOUBLE NOT NULL DEFAULT 0,
+            swim_s          DOUBLE NOT NULL DEFAULT 0,
+            bike_s          DOUBLE NOT NULL DEFAULT 0,
+            run_s           DOUBLE NOT NULL DEFAULT 0,
+            t1_s            DOUBLE NOT NULL DEFAULT 0,
+            t2_s            DOUBLE NOT NULL DEFAULT 0,
+            PRIMARY KEY (race_id, team_id, leg_num)
+        )
+    """)
+
+    # Country-level mixed relay ELO, mirroring the athlete ratings/rankings
+    # shape. One rating entity per country (elite MTR only, best team per
+    # country per race). Discipline ratings come from summed leg splits.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS country_ratings (
+            race_id             INTEGER NOT NULL REFERENCES races(race_id),
+            country_full        VARCHAR NOT NULL REFERENCES nationalities(country_full),
+            overall             DOUBLE NOT NULL DEFAULT 0,
+            swim                DOUBLE NOT NULL DEFAULT 0,
+            bike                DOUBLE NOT NULL DEFAULT 0,
+            run                 DOUBLE NOT NULL DEFAULT 0,
+            transition          DOUBLE NOT NULL DEFAULT 0,
+            overall_change      DOUBLE NOT NULL DEFAULT 0,
+            swim_change         DOUBLE NOT NULL DEFAULT 0,
+            bike_change         DOUBLE NOT NULL DEFAULT 0,
+            run_change          DOUBLE NOT NULL DEFAULT 0,
+            transition_change   DOUBLE NOT NULL DEFAULT 0,
+            PRIMARY KEY (race_id, country_full)
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS country_rankings (
+            race_id                 INTEGER NOT NULL REFERENCES races(race_id),
+            country_full            VARCHAR NOT NULL REFERENCES nationalities(country_full),
+            world_overall           INTEGER NOT NULL,
+            world_swim              INTEGER NOT NULL,
+            world_bike              INTEGER NOT NULL,
+            world_run               INTEGER NOT NULL,
+            world_transition        INTEGER NOT NULL,
+            active_world_overall    INTEGER,
+            active_world_swim       INTEGER,
+            active_world_bike       INTEGER,
+            active_world_run        INTEGER,
+            active_world_transition INTEGER,
+            PRIMARY KEY (race_id, country_full)
         )
     """)
 
@@ -734,6 +809,10 @@ def backfill_sub_category(conn):
             WHEN LOWER(SPLIT_PART(prog_name, ' ', 1)) = 'pro'    THEN 'elite'
             ELSE 'ag'
         END
+        -- Relay sub_category is set at ingest from the full prog name
+        -- ("Junior Mixed Relay" etc.); the first-word rule above would
+        -- misfile every relay as 'ag'.
+        WHERE distance != 'relay'
     """)
 
 

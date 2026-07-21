@@ -32,6 +32,13 @@ _session.mount("https://", HTTPAdapter(max_retries=_retry))
 
 # Short course triathlon specification category IDs
 VALID_SPEC_IDS = {376, 377}
+# Triathlon relay specification (parent cat = Triathlon). Dedicated mixed
+# relay events (e.g. the Hamburg MR World Championships) carry only this spec,
+# so they'd be dropped by the sprint/standard filter.
+RELAY_SPEC_ID = 379
+# Mixed relay took its modern 4x super-sprint form in 2009 (first MR World
+# Champs). Earlier "team relay" events are single-gender 3-person oddities.
+RELAY_MIN_DATE = '2009-01-01'
 
 _MALE_KEYWORDS = {'men', 'male'}
 _FEMALE_KEYWORDS = {'women', 'female'}
@@ -70,6 +77,34 @@ def race_sub_category(prog_name):
     if first == 'pro':
         return 'elite'
     return 'ag'
+
+
+def mixed_relay_sub_category(prog_name, event_title=''):
+    """Sub-category ('elite'|'u23'|'junior'|'youth') for a 4x mixed team relay
+    program, or None if the program is not an ingestable mixed relay
+    (single-gender relays, 2x2 format, para, clubs).
+
+    Age qualifiers usually live in the prog name, but dedicated junior relay
+    events often name the program just "Mixed Relay" - so the event title is
+    consulted as a fallback."""
+    p = prog_name.lower()
+    if 'mixed' not in p or 'relay' not in p:
+        return None
+    if any(tok in p for tok in ('2x2', 'para', 'age', 'club', 'aquathlon', 'duathlon')):
+        return None
+    # Age-group / club relays ("Mixed 15-19 AG Relay", "Mixed 80+ AG Relay",
+    # combined-age "Mixed 120-159 AG Relay"). All carry a standalone "ag"
+    # token; the age-band / "N+" patterns are belt-and-braces.
+    if re.search(r'\bag\b', p) or re.search(r'\b\d{1,3}\s*-\s*\d{1,3}\b', p) or re.search(r'\d+\s*\+', p):
+        return None
+    combined = f"{p} {event_title.lower()}"
+    if 'u23' in combined:
+        return 'u23'
+    if 'junior' in combined:
+        return 'junior'
+    if 'youth' in combined or re.search(r'\bu1\d\b', combined):
+        return 'youth'
+    return 'elite'
 
 
 def is_valid_program(prog_name):
@@ -348,6 +383,11 @@ def is_short_course(event):
     return any(sid in VALID_SPEC_IDS for sid in get_spec_ids(event))
 
 
+def is_relay_event(event):
+    """Check if an event carries the triathlon Relay specification."""
+    return RELAY_SPEC_ID in get_spec_ids(event)
+
+
 def infer_distance(spec_ids, winner_time_s=None):
     """Map WT spec IDs to distance enum value.
 
@@ -376,8 +416,8 @@ class Ingester:
         events = self._fetch_all_events()
         print(f"Fetched {len(events)} total events")
 
-        short_events = [e for e in events if is_short_course(e)]
-        print(f"Found {len(short_events)} short course events")
+        short_events = [e for e in events if is_short_course(e) or is_relay_event(e)]
+        print(f"Found {len(short_events)} short course / relay events")
 
         # Ingest oldest → newest so incremental nationality tracking builds a
         # correct timeline (athletes.country_full and athlete_nationality_history
@@ -405,7 +445,7 @@ class Ingester:
         rows = self.conn.execute("""
             SELECT race_id, race_title, cat_ids, race_date
             FROM races
-            WHERE distance IN ('sprint', 'standard')
+            WHERE distance IN ('sprint', 'standard', 'relay')
         """).fetchall()
 
         updates = []
@@ -487,6 +527,15 @@ class Ingester:
 
             for prog in programs:
                 prog_name = prog.get('prog_name', '')
+
+                relay_sub = mixed_relay_sub_category(prog_name, str(event.get('event_title', '')))
+                if relay_sub is not None:
+                    if prog.get('results') and prog.get('is_race'):
+                        if self._insert_relay_program(event, prog, relay_sub):
+                            new_count += 1
+                            print(f"  Ingested relay: {prog_name} - {event.get('event_title', '')}")
+                    continue
+
                 category = race_category(prog_name)
                 if category is None:
                     continue
@@ -623,6 +672,132 @@ class Ingester:
             event_spec_ids=str(get_spec_ids(event)),
         )
         db.insert_results_bulk(self.conn, result_rows)
+        return True
+
+    _ROMAN = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8}
+
+    def _insert_relay_program(self, event, prog, sub_category):
+        """Insert a mixed team relay race: races row + relay_teams + relay_legs.
+
+        Returns False if the program is out of scope (pre-2009, clubs event)
+        or has no usable team results.
+        """
+        event_id = int(event['event_id'])
+        prog_id = int(prog['prog_id'])
+        race_date = str(prog.get('prog_date', ''))
+        race_title = str(event.get('event_title', ''))
+
+        if not race_date or race_date < RELAY_MIN_DATE:
+            return False
+        if 'club' in race_title.lower():
+            return False
+
+        teams = self._fetch_results(event_id, prog_id)
+        team_rows, leg_rows = [], []
+        for t in teams:
+            if 'team_id' not in t:
+                continue
+            team_id = int(t['team_id'])
+            team_title = str(t.get('team_title', '')).strip()
+            country_name = str(t.get('team_country_name', '')).strip()
+            if not country_name:
+                continue
+
+            m = re.search(r'\bTeam\s+([IVX]+)\b', team_title)
+            team_num = self._ROMAN.get(m.group(1), 1) if m else 1
+
+            position, status = parse_position(t.get('position', ''))
+            if status == 'NC':
+                tt = str(t.get('total_time', '')).strip().upper()
+                if tt in NON_FINISH_STATUSES:
+                    status = tt
+            total_s = time_to_seconds(t.get('total_time', ''))
+            if total_s == float('inf'):
+                total_s = 0.0
+            start_num = 0
+            try:
+                start_num = int(t.get('start_num', 0) or 0)
+            except (ValueError, TypeError):
+                pass
+
+            db.upsert_nationality(self.conn, country_name)
+            team_rows.append((prog_id, team_id, team_title, team_num,
+                              country_name, position, status, start_num, total_s))
+
+            # Leg rows only for the clean 4-leg case: exactly four members with
+            # distinct team_order 1..4. Odd member counts (mid-race substitutions,
+            # data glitches) keep their team row but contribute no legs.
+            members = t.get('team_members') or []
+            by_order = {m_.get('team_order'): m_ for m_ in members
+                        if 'athlete_id' in m_ and m_.get('athlete_gender') in ('male', 'female')}
+            if set(by_order) != {1, 2, 3, 4}:
+                continue
+            for leg_num in (1, 2, 3, 4):
+                member = by_order[leg_num]
+                athlete_id = int(member['athlete_id'])
+                name = str(member.get('athlete_title', '')).replace('"', '').strip()
+                a_country = str(member.get('athlete_country_name', '')) or country_name
+                yob = 0
+                try:
+                    yob = int(float(member.get('athlete_yob', 0) or 0))
+                except (ValueError, TypeError):
+                    pass
+                profile_img = str(member.get('athlete_profile_image', '') or '')
+
+                db.upsert_nationality(self.conn, a_country)
+                db.upsert_athlete(self.conn, athlete_id, name, a_country, yob,
+                                  profile_img, member['athlete_gender'])
+                db.record_athlete_nationality(self.conn, athlete_id, a_country, race_date)
+
+                splits = member.get('splits') or []
+                if len(splits) == 5:
+                    swim_s, t1_s, bike_s, t2_s, run_s = (time_to_seconds(s) for s in splits)
+                else:
+                    swim_s = t1_s = bike_s = t2_s = run_s = 0.0
+                leg_s = time_to_seconds(member.get('total_time', ''))
+                times = [leg_s, swim_s, t1_s, bike_s, t2_s, run_s]
+                if float('inf') in times:
+                    times = [0.0 if v == float('inf') else v for v in times]
+                leg_rows.append((prog_id, team_id, leg_num, athlete_id, *times))
+
+        if not team_rows:
+            return False
+
+        cat_ids = get_category_ids(event)
+        db.insert_race(
+            self.conn,
+            race_id=prog_id,
+            event_id=event_id,
+            race_title=race_title,
+            prog_name=str(prog.get('prog_name', '')),
+            race_date=race_date,
+            gender='mixed',
+            category='elite',
+            sub_category=sub_category,
+            cat_ids=str(cat_ids),
+            distance='relay',
+            race_handle=short_course_race_handle(race_title, cat_ids, race_date),
+            event_spec_ids=str(get_spec_ids(event)),
+        )
+        self.conn.executemany(
+            """
+            INSERT OR IGNORE INTO relay_teams
+                (race_id, team_id, team_title, team_num, country_full,
+                 position, status, start_num, total_s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            team_rows,
+        )
+        if leg_rows:
+            self.conn.executemany(
+                """
+                INSERT OR IGNORE INTO relay_legs
+                    (race_id, team_id, leg_num, athlete_id,
+                     leg_s, swim_s, t1_s, bike_s, t2_s, run_s)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                leg_rows,
+            )
         return True
 
     def _insert_event(self, event):
