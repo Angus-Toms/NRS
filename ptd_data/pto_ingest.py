@@ -127,6 +127,56 @@ def _name_similarity(a, b):
     return SequenceMatcher(None, _normalize_name(a), _normalize_name(b)).ratio()
 
 
+def _name_tokens(name):
+    """Accent-folded, lowercased word tokens of a name (hyphens split too)."""
+    return frozenset(t for t in re.split(r"[^a-z0-9]+", _normalize_name(name)) if t)
+
+
+# Letters that NFKD can't decompose to ASCII, plus the spelled-out umlaut/eszett
+# forms PTO/WT use interchangeably. Pre-mapped before NFKD so nothing is dropped.
+_TRANSLIT_PRE = str.maketrans({
+    "ø": "o", "Ø": "o", "æ": "ae", "Æ": "ae", "œ": "oe", "Œ": "oe",
+    "ł": "l", "Ł": "l", "đ": "d", "Đ": "d", "ð": "d", "þ": "th", "ı": "i", "ß": "ss",
+})
+
+
+def _fold_key(name):
+    """Transliteration-insensitive key; equal keys ⇒ accent/spelling variant.
+
+    Folds diacritics, the spelled-out umlaut digraphs (ue/oe/ae → u/o/a), and
+    strips spacing/punctuation — so 'Müller-Hörner' and 'Mueller-Horner' share
+    a key, while a genuine letter change ('Paul' vs 'Paula', 'Owen' vs 'Cowen',
+    'Simon' vs 'Simone') does not. This is what makes the missing-yob auto-link
+    safe where a raw similarity score cannot be: a one-character edit in a short
+    name scores ~0.95 whether it's an accent or a different person.
+    """
+    s = name.translate(_TRANSLIT_PRE)
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+    for dig, rep in (("ue", "u"), ("oe", "o"), ("ae", "a")):
+        s = s.replace(dig, rep)
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def _unique_subset_match(name, candidates):
+    """Return the single candidate whose name is an added/removed-name variant.
+
+    'name' matches candidate c when one's token set is a subset of the other's
+    ('Lars Thomsen' ⊆ 'Lars Ole Thomsen'; equal sets differing only in
+    punctuation also qualify). This is the safe discriminator for the
+    added/removed-name case: it accepts a dropped/added forename or middle
+    name but rejects a swapped surname ('Daniel Luna' vs 'Daniel Pla', whose
+    token sets are disjoint), which pure similarity cannot separate. Requires
+    a unique qualifying candidate and at least two tokens a side so a lone
+    shared surname can't trigger a match. `candidates` are (id, name, yob).
+    """
+    a = _name_tokens(name)
+    if len(a) < 2:
+        return None
+    hits = [c for c in candidates
+            if len(b := _name_tokens(c[1])) >= 2 and (a <= b or b <= a)]
+    return hits[0] if len(hits) == 1 else None
+
+
 # Thresholds for fuzzy name matching during ingest. Mirrors pto_matcher.py's
 # values so behaviour is consistent whether an athlete is linked at ingest
 # time or later via overlap-race matching.
@@ -857,30 +907,41 @@ class PTOIngester:
             return top[0], f"exact_name_country (wt_yob={top[2] or '?'}, pto_yob={yob or '?'})"
 
         if not yob:
-            # Still scan for namesake to suggest as a merge candidate. We
-            # don't auto-merge (the safety rationale is unchanged), but flag
-            # the pair so a human can confirm and put it in athlete_merges.csv.
+            # No PTO yob to disambiguate, so name + country carries the match.
+            # Two rules are safe to auto-link (a missing yob can't contradict);
+            # everything else becomes a merge candidate.
+
+            # Rule A: transliteration/accent variant — same fold-key, unique.
+            fk = _fold_key(name)
+            fold_hits = [c for c in candidates if _fold_key(c[1]) == fk]
+            if len(fold_hits) == 1:
+                return fold_hits[0][0], f"noyob_translit (wt_yob={fold_hits[0][2] or '?'})"
+            # Rule B: added/removed name (token subset) — safe at any score.
+            subset = _unique_subset_match(name, candidates)
+            if subset:
+                return subset[0], f"noyob_subset (wt_yob={subset[2] or '?'})"
+
+            # Otherwise flag the strongest same-country namesake for review.
             scored = sorted(
                 ((c, _name_similarity(c[1], name)) for c in candidates),
                 key=lambda x: -x[1],
             )
-            if scored and scored[0][1] >= 0.85:
-                top, top_sim = scored[0]
-                runner_up_sim = scored[1][1] if len(scored) > 1 else 0.0
-                if top_sim - runner_up_sim >= _NAME_SIM_GAP:
-                    self._merge_candidates.append({
-                        "wt_athlete_id": top[0],
-                        "wt_name":       top[1],
-                        "wt_yob":        top[2] or 0,
-                        "pto_name":      name,
-                        "pto_yob":       0,
-                        "country_full":  country_full,
-                        "similarity":    round(top_sim, 3),
-                        "reason":        "pto_yob_missing",
-                    })
-                    print(f"    MERGE CANDIDATE: '{name}' (PTO yob=?) ~ "
-                          f"WT '{top[1]}' (id={top[0]}, yob={top[2] or '?'}) "
-                          f"sim={top_sim:.2f}")
+            top, top_sim = scored[0]
+            runner_up_sim = scored[1][1] if len(scored) > 1 else 0.0
+            if top_sim >= 0.85 and top_sim - runner_up_sim >= _NAME_SIM_GAP:
+                self._merge_candidates.append({
+                    "wt_athlete_id": top[0],
+                    "wt_name":       top[1],
+                    "wt_yob":        top[2] or 0,
+                    "pto_name":      name,
+                    "pto_yob":       0,
+                    "country_full":  country_full,
+                    "similarity":    round(top_sim, 3),
+                    "reason":        "pto_yob_missing",
+                })
+                print(f"    MERGE CANDIDATE: '{name}' (PTO yob=?) ~ "
+                      f"WT '{top[1]}' (id={top[0]}, yob={top[2] or '?'}) "
+                      f"sim={top_sim:.2f}")
             return None, None
 
         yob_close = [c for c in candidates if c[2] and abs(c[2] - yob) <= 1]

@@ -446,6 +446,11 @@ class Ingester:
             SELECT race_id, race_title, cat_ids, race_date
             FROM races
             WHERE distance IN ('sprint', 'standard', 'relay')
+              -- French Grand Prix races carry their own hand-built handles
+              -- ("FGP {Venue} {Year} {D1/D2} {Men/Women}") set by fgp_ingest;
+              -- they have no WT cat_ids, so the generic classifier would
+              -- flatten them and drop the division/gender. Leave them alone.
+              AND race_title NOT LIKE '%French Grand Prix%'
         """).fetchall()
 
         updates = []

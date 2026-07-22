@@ -59,9 +59,13 @@ def create_schema(conn):
             pto_slug        VARCHAR,
             height_cm       INTEGER,
             weight_kg       INTEGER,
-            nickname        VARCHAR NOT NULL DEFAULT ''
+            nickname        VARCHAR NOT NULL DEFAULT '',
+            -- FFTRI licence id (e.g. 'A16528'), set by the French Grand Prix
+            -- ingest. Same role as pto_slug: a sticky per-source identity link.
+            fftri_id        VARCHAR
         )
     """)
+    conn.execute("ALTER TABLE athletes ADD COLUMN IF NOT EXISTS fftri_id VARCHAR")
 
     # Doping sanctions, populated exclusively from data/doping_bans.csv (see
     # load_doping_bans). athlete_id is intentionally NOT FK-constrained to match
@@ -688,13 +692,13 @@ def apply_athlete_merges(conn):
     applied = 0
     for keep_id, merge_id in pairs:
         merge_row = conn.execute(
-            "SELECT pto_slug, height_cm, weight_kg, nickname FROM athletes WHERE athlete_id = ?",
+            "SELECT pto_slug, height_cm, weight_kg, nickname, fftri_id FROM athletes WHERE athlete_id = ?",
             [merge_id],
         ).fetchone()
         if merge_row is None:
             continue  # Already merged on a previous run.
         keep_row = conn.execute(
-            "SELECT pto_slug, height_cm, weight_kg, nickname FROM athletes WHERE athlete_id = ?",
+            "SELECT pto_slug, height_cm, weight_kg, nickname, fftri_id FROM athletes WHERE athlete_id = ?",
             [keep_id],
         ).fetchone()
         if keep_row is None:
@@ -705,10 +709,11 @@ def apply_athlete_merges(conn):
         new_height = keep_row[1] or merge_row[1]
         new_weight = keep_row[2] or merge_row[2]
         new_nick   = keep_row[3] or merge_row[3]
-        if (new_slug, new_height, new_weight, new_nick) != keep_row:
+        new_fftri  = keep_row[4] or merge_row[4]
+        if (new_slug, new_height, new_weight, new_nick, new_fftri) != keep_row:
             conn.execute(
-                "UPDATE athletes SET pto_slug=?, height_cm=?, weight_kg=?, nickname=? WHERE athlete_id=?",
-                [new_slug, new_height, new_weight, new_nick, keep_id],
+                "UPDATE athletes SET pto_slug=?, height_cm=?, weight_kg=?, nickname=?, fftri_id=? WHERE athlete_id=?",
+                [new_slug, new_height, new_weight, new_nick, new_fftri, keep_id],
             )
 
         # Re-point athlete_id in tables sharing a (race_id, athlete_id, …) PK.

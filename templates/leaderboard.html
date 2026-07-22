@@ -29,6 +29,9 @@
 <div class="filters-card">
     <form method="get" action="/athlete-leaderboard" class="filters-form" id="filtersForm">
 
+        {% if is_relay %}
+        {% set _summary_parts = ['Relay', disc | title, ('Trending' if order == 'hot' else 'All-time')] %}
+        {% else %}
         {% set _summary_parts = [
             ('Male' if gender == 'male' else 'Female'),
             ('Short' if course == 'short' else 'Long'),
@@ -36,13 +39,14 @@
             disc | title,
             ('Trending' if order == 'hot' else 'All-time'),
         ] %}
+        {% endif %}
         {% if active_only %}{% set _summary_parts = _summary_parts + ['Active'] %}{% endif %}
 
         <div class="filter-summary-bar">
             <div class="filter-summary">
                 {% for part in _summary_parts %}{% if not loop.first %}<span class="filter-summary-sep">·</span>{% endif %}{{ part }}{% endfor %}
             </div>
-            {% with download_url = "/download/leaderboard", download_id = "downloadBtn" %}{% include "partials/download_button.html" %}{% endwith %}
+            {% if not is_relay %}{% with download_url = "/download/leaderboard", download_id = "downloadBtn" %}{% include "partials/download_button.html" %}{% endwith %}{% endif %}
             <button type="button" class="btn-filter-toggle" id="filterToggle" aria-expanded="false" aria-controls="filterPanel">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -54,6 +58,7 @@
         <div class="filter-panel" id="filterPanel">
             <div class="filter-panel-grid">
 
+                {% if not is_relay %}
                 <div class="filter-chip-group">
                     <span class="filter-chip-label">Category</span>
                     <div class="radio-chips">
@@ -65,6 +70,7 @@
                         <label for="cat-ag">Age Group</label>
                     </div>
                 </div>
+                {% endif %}
 
                 <div class="filter-chip-group">
                     <span class="filter-chip-label">Course</span>
@@ -75,9 +81,13 @@
                         <input type="radio" name="course" value="long" id="course-long"
                             {% if course == 'long' %}checked{% endif %}>
                         <label for="course-long">Long</label>
+                        <input type="radio" name="course" value="relay" id="course-relay"
+                            {% if course == 'relay' %}checked{% endif %}>
+                        <label for="course-relay">Relay</label>
                     </div>
                 </div>
 
+                {% if not is_relay %}
                 <div class="filter-chip-group">
                     <span class="filter-chip-label">Gender</span>
                     <div class="radio-chips">
@@ -89,6 +99,7 @@
                         <label for="gender-female">Female</label>
                     </div>
                 </div>
+                {% endif %}
 
                 <div class="filter-chip-group">
                     <span class="filter-chip-label">Discipline</span>
@@ -135,6 +146,7 @@
                     </label>
                 </div>
 
+                {% if not is_relay %}
                 <div class="filter-group">
                     <label for="country">Country</label>
                     <select name="country" id="country">
@@ -157,6 +169,7 @@
                         <button type="button" class="btn-age-preset" data-age="23">U23</button>
                     </div>
                 </div>
+                {% endif %}
 
             </div>
 
@@ -170,14 +183,16 @@
 
 <div class="leaderboard-grid">
     {% for athlete in athletes %}
-    <a href="/athlete/{{ athlete.athlete_id }}" class="athlete-card {{ 'rank-' ~ athlete.rank if athlete.rank <= 3 else '' }}">
+    <a href="{{ ('/country/' ~ athlete.country_alpha3) if is_relay else ('/athlete/' ~ athlete.athlete_id) }}" class="athlete-card {{ 'rank-' ~ athlete.rank if athlete.rank <= 3 else '' }}">
         <div class="rank-badge {{ 'rank-' ~ athlete.rank ~ '-text' if athlete.rank <= 3 else '' }}">#{{athlete.rank}}</div>
         <div class="athlete-card-content">
             <div class="athlete-main-info">
+                {% if not is_relay %}
                 <img src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ athlete.athlete_id ~ '.webp' if athlete.profile_img_exists else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
                      alt="{{ athlete.name }}"
                      loading="lazy"
                      class="athlete-profile-img">
+                {% endif %}
 
                 <div class="athlete-details">
                     <div class="athlete-name">{{ athlete.name }} {{ flag(athlete.country_alpha3, athlete.country_full) }}</div>

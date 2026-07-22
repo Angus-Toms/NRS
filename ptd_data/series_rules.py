@@ -241,6 +241,14 @@ RULES = [
     SeriesRule("americas-cup",        all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\bamerica(n|s)?\b|\bpan[\s-]?american\b")), recurring=True),
     SeriesRule("asian-cup",           all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\basia(n)?\b")),                           recurring=True),
     SeriesRule("oceania-cup",         all_of(has_cat_id(CAT_CONTINENTAL_CUP), name_regex(r"\boceania\b")),                            recurring=True),
+    # French Grand Prix (Triathlon Séries) — events created by fgp_ingest with
+    # names like "2024 French Grand Prix Fréjus", so the venue key drives a
+    # per-venue recurring group within the series.
+    SeriesRule("french-grand-prix",   name_regex(r"french grand prix"),        recurring=True),
+    # German Triathlon-Bundesliga — events created by bundesliga_ingest with
+    # names like "2025 Triathlon Bundesliga Tübingen"; venue key drives the
+    # per-venue recurring group.
+    SeriesRule("german-triathlon-bundesliga", name_regex(r"triathlon bundesliga"), recurring=True),
 ]
 
 
@@ -264,6 +272,9 @@ _STRIP_TOKENS = re.compile(
     # the venue. "and" is stripped so that multi-tier names like
     # "U23 and Youth European Championships" reduce to the venue.
     r'aj|bell|dextro|energy|barfoot|thompson|bg|wasser|'
+    # French Grand Prix events ("2024 French Grand Prix Fréjus" -> "frejus")
+    # and German Bundesliga events ("2025 Triathlon Bundesliga Tübingen" -> "tuebingen").
+    r'french|prix|bundesliga|'
     r'patco|astc|otu|panamerican|iberoamerican|'
     r'pan|central|caribbean|yog|qualifier|and'
     r')\b',

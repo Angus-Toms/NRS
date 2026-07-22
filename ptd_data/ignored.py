@@ -77,11 +77,14 @@ def detect_all(conn):
     # --- Oversized race detection ---
     # AG races legitimately have huge fields (an AG world champ band can
     # easily exceed 100 finishers), so the cap only applies to non-AG.
+    # French Grand Prix D1 fields are genuinely elite but routinely top 100
+    # entries once DNFs are counted, so they're exempt too.
     oversized = conn.execute(f"""
         SELECT r.race_id, r.race_title, COUNT(*) as n
         FROM results res
         JOIN races r ON res.race_id = r.race_id
         WHERE r.sub_category != 'ag'
+          AND r.race_title NOT LIKE '%French Grand Prix%'
         GROUP BY r.race_id, r.race_title
         HAVING n > {MAX_RACE_SIZE}
     """).fetchall()

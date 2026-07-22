@@ -32,6 +32,7 @@ data/
 *.webp
 *.duckdb
 *.duckdb.wal
+*.duckdb.bak*
 *.csv
 *.log
 

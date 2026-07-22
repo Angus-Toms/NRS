@@ -675,6 +675,70 @@ RACE_LEVEL_OPTIONS = {
 }
 
 
+def get_relay_leaderboard(disc, order, active_only, offset, limit=100):
+    """Country mixed-relay leaderboard: countries ranked by their current
+    country-relay {disc} ELO (from country_ratings/country_rankings).
+
+    Relay ratings are a country-level entity, so gender / birth-year / country
+    filters don't apply — only discipline, order (top / hot) and active-only do.
+    Returns dicts shaped like get_leaderboard rows (name = country, athlete_id
+    None) so the leaderboard router/template can render them uniformly."""
+    assert disc in _VALID_DISCS and order in _VALID_ORDERS
+    conn = _get_conn()
+    rating_col = disc
+    change_col = f"{disc}_change"
+    rank_col   = f"world_{disc}"
+
+    filters = []
+    if active_only:
+        filters.append("l.last_race_date >= CURRENT_DATE - INTERVAL 18 MONTHS")
+    if order == "hot":
+        filters.append(f"l.{change_col} != 0")
+    where_sql = ("WHERE " + " AND ".join(filters)) if filters else ""
+    order_sql = (f"l.{rating_col} DESC, l.country_full ASC" if order == "top"
+                 else f"l.{change_col} DESC, l.country_full ASC")
+
+    cols = ["country_full", "country_alpha3", "name", "athlete_id", "year_of_birth",
+            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
+            "overall_change", "swim_change", "bike_change", "run_change", "transition_change",
+            "world_overall", "race_starts", "wins"]
+    return _dicts(cols, conn.execute(f"""
+        WITH latest AS (
+            SELECT DISTINCT ON (cr.country_full)
+                   cr.country_full,
+                   cr.overall, cr.swim, cr.bike, cr.run, cr.transition,
+                   cr.overall_change, cr.swim_change, cr.bike_change,
+                   cr.run_change, cr.transition_change,
+                   ck.world_overall, ck.{rank_col} AS disc_rank,
+                   r.race_date AS last_race_date
+            FROM country_ratings cr
+            JOIN races r ON cr.race_id = r.race_id
+            LEFT JOIN country_rankings ck
+              ON ck.race_id = cr.race_id AND ck.country_full = cr.country_full
+            ORDER BY cr.country_full, r.race_date DESC, cr.race_id DESC
+        ),
+        stats AS (
+            SELECT rt.country_full,
+                   COUNT(*)                             AS race_starts,
+                   COUNT(*) FILTER (WHERE rt.position = 1) AS wins
+            FROM relay_teams rt
+            JOIN races r ON rt.race_id = r.race_id
+            WHERE r.sub_category = 'elite' AND rt.status = 'Finished'
+            GROUP BY rt.country_full
+        )
+        SELECT l.country_full, n.alpha3, l.country_full AS name, NULL AS athlete_id, 0 AS year_of_birth,
+               l.overall, l.swim, l.bike, l.run, l.transition,
+               l.overall_change, l.swim_change, l.bike_change, l.run_change, l.transition_change,
+               l.world_overall, COALESCE(s.race_starts, 0), COALESCE(s.wins, 0)
+        FROM latest l
+        JOIN nationalities n ON n.country_full = l.country_full
+        LEFT JOIN stats s ON s.country_full = l.country_full
+        {where_sql}
+        ORDER BY {order_sql}
+        LIMIT ? OFFSET ?
+    """, [limit, offset]))
+
+
 def _race_level_filter(level):
     """Returns (extra_joins, where_clause, params) for a level filter, or (None, None, [])."""
     if not level or level == 'all':
@@ -1705,6 +1769,15 @@ def get_athlete_notable_results(athlete_id):
 
         # AG events are handled separately
         if _AG_CAT_ID in cat_ids:
+            continue
+
+        # French Grand Prix (FFTRI national club series) — no WT cat_ids, so
+        # identified by its event title. Displayed like a continental cup but
+        # capped at top-10 (see _TIER_POS_CAPS).
+        if "French Grand Prix" in race_title:
+            notable.append({"tier": "french_grand_prix", "position": position,
+                             "race_id": race_id, "race_handle": race_handle,
+                             "race_date": race_date})
             continue
 
         title_lower = race_title.lower()
@@ -5001,17 +5074,34 @@ def get_program_options_for_series(series_id):
     return _collapse_program_rows(rows)
 
 
+_DIVISION_RE = re.compile(r"\((D\d)\)\s*$")
+
+
+def program_division(prog_name):
+    """Division tag embedded in a prog_name ('Elite Men (D1)' -> 'D1'), else None.
+
+    Lets a series split its programs by division the way AG bands split by
+    prog_name — used for the French Grand Prix D1/D2, whose otherwise-identical
+    'elite'/gender programs would collapse into one tab (and one very jumpy
+    standards graph mixing the two divisions' field strengths)."""
+    if not prog_name:
+        return None
+    m = _DIVISION_RE.search(prog_name)
+    return m.group(1) if m else None
+
+
 def _collapse_program_rows(rows):
     """Take rows of (sub, gender, prog_name, n) and:
       - keep AG rows one-per-prog_name (used for age-band tab strip)
-      - collapse non-AG rows to one entry per (sub, gender), summing counts
+      - keep division-tagged rows ('… (D1)') one-per-prog_name (FGP D1/D2)
+      - collapse other non-AG rows to one entry per (sub, gender), summing counts
         (programs like "Elite Men" / "U23 Men" already split via sub_category
         so further per-prog_name splitting would just create duplicates).
     """
     out = []
     nonag_seen = {}
     for sub, gender, prog_name, n in rows:
-        if sub == 'ag':
+        if sub == 'ag' or program_division(prog_name):
             out.append({"sub_category": sub, "gender": gender, "prog_name": prog_name, "count": n})
         else:
             key = (sub, gender)

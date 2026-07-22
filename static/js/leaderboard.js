@@ -92,6 +92,7 @@ function initActiveOnlyToggle() {
 function initDownloadUrl() {
     const btn  = document.getElementById("downloadBtn");
     const form = document.getElementById("filtersForm");
+    if (!btn || !form) return;  // download button is hidden for the relay board
     const setUrl = () => {
         const params = new URLSearchParams(new FormData(form));
         btn.dataset.downloadUrl = `/download/leaderboard?${params.toString()}`;

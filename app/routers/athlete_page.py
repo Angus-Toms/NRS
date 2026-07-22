@@ -29,6 +29,7 @@ _TIER_LABELS = {
     "wtcs":                  "WTCS",
     "world_cup":             "World Cup",
     "continental_cup":       "Continental Cup",
+    "french_grand_prix":     "French Grand Prix",
     # Long-course tiers
     "im_world_champs":       "Ironman World Championships",
     "im_703_world_champs":   "Ironman 70.3 World Championships",
@@ -52,6 +53,7 @@ _TIER_POS_CAPS = {
     "wtcs":                  25,
     "world_cup":             20,
     "continental_cup":       15,
+    "french_grand_prix":     10,
     "im":                    20,
     "t100":                  20,
     "im_703":                20,
@@ -72,6 +74,24 @@ def format_ordinal(n):
         return "***"
     suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
+
+
+_GENDER_WORD = {"male": "Men", "female": "Women", "mixed": "Mixed"}
+
+
+def _display_program(prog_name, gender=None):
+    """Results-table program label. Division-tagged programs (French Grand Prix
+    'Elite Men (D1)') render as "{Division} {Gender}" ("D1 Men") — matching the
+    series-page tabs — while everything else shows its prog_name unchanged. The
+    stored prog_name keeps "Elite" so sub_category derivation is unaffected.
+    Gender falls back to the word already in the prog_name when not supplied."""
+    div = queries.program_division(prog_name)
+    if not div:
+        return prog_name
+    word = _GENDER_WORD.get(gender)
+    if not word:
+        word = next((w for w in ("Women", "Men", "Mixed") if w in (prog_name or "")), "")
+    return f"{div} {word}".strip()
 
 
 def _format_position(tier, pos, age_group=None):
@@ -122,7 +142,8 @@ def _build_notable_results(notable_raw, tier_order=None):
     WTCS top 25). Tiers without an entry are uncapped.
     """
     if tier_order is None:
-        tier_order = ["olympic", "world_champs", "wtcs", "world_cup", "continental_cup"]
+        tier_order = ["olympic", "world_champs", "wtcs", "world_cup", "continental_cup",
+                      "french_grand_prix"]
     formatted = []
 
     for tier in tier_order:
@@ -507,7 +528,7 @@ async def get_athlete(request: Request, athlete_id: int,
             "leg_num":        r.get("leg_num"),
             "race_title":     r["race_title"],
             "race_date":      r["race_date"],
-            "program":        r["program"],
+            "program":        _display_program(r["program"], r.get("gender")),
             "position":       r["position"],
             "status":         r["status"],
             # Relays have no race_rankings standard; suppress the pill rather
@@ -577,7 +598,7 @@ async def get_athlete(request: Request, athlete_id: int,
             "race_id":           r["race_id"],
             "race_date":         r["race_date"],
             "race_title":        r["race_title"],
-            "race_program":      r["race_program"],
+            "race_program":      _display_program(r["race_program"]),
             "position":          r["position"],
             "status":            r["status"],
             "standard_class":    _std_class(_std_map.get(r["race_id"])),

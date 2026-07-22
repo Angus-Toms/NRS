@@ -22,7 +22,8 @@ _GENDER_LABELS = {"male": "Men", "female": "Women", "mixed": "Mixed"}
 _TIER_ORDER = [
     "olympic-games", "championship", "im-worlds", "im-703-worlds", "t100",
     "wtcs", "world-cup", "commonwealth-games", "fisu-games",
-    "continental-championship", "continental-cup", "ag-championship", "custom",
+    "continental-championship", "continental-cup", "national-series",
+    "ag-championship", "custom",
 ]
 _TIER_LABELS = {
     "olympic-games":            "Olympic Games",
@@ -36,6 +37,7 @@ _TIER_LABELS = {
     "fisu-games":               "World University Championships",
     "continental-championship": "Continental Championships",
     "continental-cup":          "Continental Cups",
+    "national-series":          "National Series",
     "ag-championship":          "Age-Group World Championships",
     "custom":                   "Other",
 }
@@ -117,7 +119,9 @@ def _resolve_program(program_options, program_slug):
     for sub in ("elite", "u23", "junior", "youth"):
         for o in program_options:
             if o["sub_category"] == sub and o["gender"] == "male":
-                return (sub, "male", None)
+                # Carry prog_name so a division-split default (FGP D1 Men) filters
+                # to one division; it's None for ordinary collapsed programs.
+                return (sub, "male", o.get("prog_name"))
     # AG fallback: pick the densest male program in the popular 25-44 range,
     # standard distance preferred. Same ranking as `_build_program_tabs` so
     # the resolved default matches the male pinned tab.
@@ -273,6 +277,12 @@ def _program_label(sub, gender, prog_name=None):
     # (e.g. Ironman 70.3 Worlds prog_name='Pro Men'); render them as-is.
     if prog_name in ("Pro Men", "Pro Women"):
         return prog_name
+    # Division-split programs (French Grand Prix D1/D2): the division is the
+    # meaningful distinction, so surface it in place of the redundant "Elite"
+    # (e.g. "D1 Men", "D2 Women").
+    div = queries.program_division(prog_name)
+    if div:
+        return f"{div} {_GENDER_LABELS.get(gender, gender.title())}"
     base = f"{_SUB_LABELS.get(sub, sub.title())} {_GENDER_LABELS.get(gender, gender.title())}"
     if sub == "ag" and prog_name:
         parts = prog_name.split()
@@ -287,6 +297,9 @@ def _program_slug_for_option(o):
     individual age bands round-trip cleanly through the URL; non-AG keeps the
     legacy `{sub}-{gender_word}` form for stable bookmarks."""
     sub, gender, prog_name = o["sub_category"], o["gender"], o.get("prog_name")
+    div = queries.program_division(prog_name)
+    if div:
+        return f"{div.lower()}-{_GENDER_SLUG.get(gender, gender)}"
     if sub == "ag" and prog_name:
         return prog_name.lower().replace(" ", "-")
     return f"{sub}-{_GENDER_SLUG.get(gender, gender)}"
