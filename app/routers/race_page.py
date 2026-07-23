@@ -607,16 +607,16 @@ def _compute_upcoming_predictions(race, entries, models):
 
 
 @router.get("/race/{race_id}", response_class=HTMLResponse)
-async def get_race(request: Request, race_id: int, partial: bool = False):
+def get_race(request: Request, race_id: int, partial: bool = False):
     race = queries.get_race_info(race_id)
     if not race:
         upcoming = queries.get_upcoming_race_info(race_id)
         if not upcoming:
             raise HTTPException(status_code=404, detail=f"Race {race_id} not found")
-        return await _get_upcoming_race(request, upcoming, partial)
+        return _get_upcoming_race(request, upcoming, partial)
 
     if race["distance"] == "relay":
-        return await _get_relay_race(request, race, race_id)
+        return _get_relay_race(request, race, race_id)
 
     ignored_info = queries.get_race_ignored_info(race_id)
     results      = queries.get_race_results(race_id)
@@ -843,7 +843,7 @@ async def get_race(request: Request, race_id: int, partial: bool = False):
     })
 
 
-async def _get_relay_race(request: Request, race, race_id: int):
+def _get_relay_race(request: Request, race, race_id: int):
     """Mixed team relay race page: team results with leg breakdowns, fastest
     legs, and country rating changes. Rendered as a full page always - the
     partial-swap flow is individual-race-only (relay pills are plain links)."""
@@ -949,7 +949,7 @@ async def _get_relay_race(request: Request, race, race_id: int):
     })
 
 
-async def _get_upcoming_race(request: Request, race, partial: bool):
+def _get_upcoming_race(request: Request, race, partial: bool):
     from datetime import date
     race_id    = race['race_id']
     entries    = queries.get_upcoming_race_entries(race_id)

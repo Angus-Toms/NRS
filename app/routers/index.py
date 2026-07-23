@@ -19,7 +19,7 @@ WOMEN_IM_CHAMP_ID = 94515     # Solveig Løvseth - 2025 Ironman World Champion (
 
 
 @router.get("/")
-async def index(request: Request):
+def index(request: Request):
     counts = queries.get_counts()
 
     def champ_card(athlete_id, course='short'):

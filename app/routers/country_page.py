@@ -23,7 +23,7 @@ _CONTINENT_ORDER = ["Europe", "Americas", "Asia", "Oceania", "Africa", "Other"]
 
 
 @router.get("/countries", response_class=HTMLResponse)
-async def countries_index(request: Request):
+def countries_index(request: Request):
     countries = queries.get_countries_with_counts()
 
     # Group by continent, preserving athlete-count-desc order within each bucket.
@@ -104,7 +104,7 @@ def _resolve_defaults(alpha3, discipline, gender, course='short'):
 
 
 @router.get("/country/{alpha3}", response_class=HTMLResponse)
-async def country_detail(
+def country_detail(
     request: Request,
     alpha3: str,
     discipline: str = "overall",
@@ -200,7 +200,7 @@ async def country_detail(
 
 
 @router.get("/country/{alpha3}/leaderboard", response_class=HTMLResponse)
-async def country_leaderboard_partial(
+def country_leaderboard_partial(
     request: Request,
     alpha3: str,
     discipline: str = "overall",
@@ -227,7 +227,7 @@ async def country_leaderboard_partial(
 
 
 @router.get("/country/{alpha3}/leaderboard/more", response_class=HTMLResponse)
-async def country_leaderboard_more(
+def country_leaderboard_more(
     request: Request,
     alpha3: str,
     discipline: str = "overall",

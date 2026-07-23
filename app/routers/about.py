@@ -68,7 +68,7 @@ def load_blog_by_slug(slug: str) -> dict | None:
 
 
 @router.get("/about")
-async def about(request: Request):
+def about(request: Request):
     context = {
         "request": request,
         "active_page": "about",
@@ -79,7 +79,7 @@ async def about(request: Request):
 
 
 @router.get("/about/blog/{slug}")
-async def blog_detail(request: Request, slug: str):
+def blog_detail(request: Request, slug: str):
     post = load_blog_by_slug(slug)
 
     context = {

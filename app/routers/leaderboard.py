@@ -43,7 +43,7 @@ def _get_page(gender, disc, order, country, yob_start, yob_end, active_only, off
 
 
 @router.get("/athlete-leaderboard")
-async def leaderboard(
+def leaderboard(
     request: Request,
     gender:      str           = Query("female", regex="^(male|female)$"),
     disc:        str           = Query("overall", regex="^(overall|swim|bike|run|transition)$"),
@@ -77,7 +77,7 @@ async def leaderboard(
 
 
 @router.get("/athlete-leaderboard/more")
-async def leaderboard_more(
+def leaderboard_more(
     request: Request,
     gender:      str           = Query("female", regex="^(male|female)$"),
     disc:        str           = Query("overall", regex="^(overall|swim|bike|run|transition)$"),

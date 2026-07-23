@@ -66,14 +66,14 @@ def _parse_program(program: str):
 
 
 @router.get("/athlete-compare", response_class=HTMLResponse)
-async def compare_page(request: Request):
+def compare_page(request: Request):
     return templates.TemplateResponse("comparison.html", {
         "request": request, "active_page": "athletes",
     })
 
 
 @router.get("/athlete-compare/search")
-async def search_athletes_for_compare(q: str = "", gender: str = "", programs: str = ""):
+def search_athletes_for_compare(q: str = "", gender: str = "", programs: str = ""):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
     require_programs = [p for p in programs.split(",") if p in _PROGRAMS] or None
@@ -86,7 +86,7 @@ async def search_athletes_for_compare(q: str = "", gender: str = "", programs: s
 
 
 @router.get("/athlete-compare/athlete/{athlete_id}")
-async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
+def get_athlete_for_compare(athlete_id: int, program: str | None = None):
     info = queries.get_athlete_info(athlete_id)
     if not info:
         return JSONResponse({"error": "Not found"}, status_code=404)
@@ -140,7 +140,7 @@ async def get_athlete_for_compare(athlete_id: int, program: str | None = None):
 
 
 @router.get("/athlete-compare/{athlete1_id}/{athlete2_id}", response_class=HTMLResponse)
-async def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int,
+def get_comparison_html(request: Request, athlete1_id: int, athlete2_id: int,
                               program: str = "elite-short"):
     if program not in _PROGRAMS:
         program = "elite-short"

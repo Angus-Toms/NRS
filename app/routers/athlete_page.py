@@ -256,7 +256,7 @@ def _build_rankings_charts(rankings_data):
 
 
 @router.get("/athlete/{athlete_id}", response_class=HTMLResponse)
-async def get_athlete(request: Request, athlete_id: int,
+def get_athlete(request: Request, athlete_id: int,
                       category: str = Query('elite'),
                       course:   str | None = Query(None)):
     info = queries.get_athlete_info(athlete_id)

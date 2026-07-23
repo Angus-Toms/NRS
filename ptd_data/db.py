@@ -1,6 +1,7 @@
 import csv
 import datetime as _dt
 import pathlib
+import threading
 import zlib
 
 import duckdb
@@ -16,6 +17,33 @@ def get_conn(read_only=False):
     if not read_only:
         create_schema(conn)
     return conn
+
+
+# Shared read-only connection for the web app. Route handlers run in a
+# threadpool, and a single DuckDB connection serialises queries across
+# threads, so each thread gets its own cursor (a lightweight sibling
+# connection sharing the same database instance).
+_read_root = None
+_read_lock = threading.Lock()
+_read_local = threading.local()
+
+
+def get_read_cursor():
+    global _read_root
+    if _read_root is None:
+        with _read_lock:
+            if _read_root is None:
+                conn = duckdb.connect(str(DB_PATH), read_only=True)
+                # The prod instance is small and shared; without these DuckDB
+                # assumes it owns the whole machine.
+                conn.execute("SET threads = 2")
+                conn.execute("SET memory_limit = '256MB'")
+                _read_root = conn
+    cur = getattr(_read_local, "cursor", None)
+    if cur is None:
+        cur = _read_root.cursor()
+        _read_local.cursor = cur
+    return cur
 
 
 def create_schema(conn):

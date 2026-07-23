@@ -35,7 +35,7 @@ def _fmt_athlete(a):
 
 
 @router.get("/athletes", response_class=HTMLResponse)
-async def athletes_landing(request: Request):
+def athletes_landing(request: Request):
     counts       = queries.get_counts()
     country_list = queries.get_country_list()
 
@@ -76,7 +76,7 @@ async def athletes_landing(request: Request):
 
 
 @router.get("/athletes/search")
-async def search_athletes(
+def search_athletes(
     q: str = "",
     disc: str = "overall",
     order: str = "top",

@@ -11,17 +11,8 @@ router = APIRouter()
 # so each file stays well under both limits.
 ATHLETES_PER_SITEMAP = 25_000
 
-# Shared read-only connection reused across requests. DuckDB connections are
-# heavyweight to open and serialise queries internally, so a single shared
-# read-only handle is cheaper and safe.
-_conn = None
-
-
 def _get_conn():
-    global _conn
-    if _conn is None:
-        _conn = db.get_conn(read_only=True)
-    return _conn
+    return db.get_read_cursor()
 
 
 @lru_cache(maxsize=1)
@@ -44,14 +35,18 @@ def _athlete_count() -> int:
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
-async def robots_txt(request: Request) -> str:
+def robots_txt(request: Request) -> str:
     base_url = str(request.base_url).rstrip("/")
     return f"""User-agent: *
 
-# Comparison result pages generate too many URL combinations
+# Comparison result pages generate too many URL combinations. The deep
+# routes 302 to ?a1=/?r1= query URLs on the landing pages, so block those
+# query forms too (path-only Disallow doesn't match them).
 Disallow: /compare/
 Disallow: /athlete-compare/
 Disallow: /race-compare/
+Disallow: /*?*a1=
+Disallow: /*?*r1=
 
 # Course/category mode variants serve different content under a single
 # path-only canonical. Crawling them wastes budget and lands them in
@@ -110,7 +105,7 @@ def _xml_response(content: str) -> Response:
 
 
 @router.get("/sitemap.xml")
-async def sitemap_index(request: Request) -> Response:
+def sitemap_index(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
     athlete_count = _athlete_count()
@@ -138,7 +133,7 @@ async def sitemap_index(request: Request) -> Response:
 
 
 @router.get("/sitemap-static.xml")
-async def sitemap_static(request: Request) -> Response:
+def sitemap_static(request: Request) -> Response:
     from app.routers.about import load_blogs
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
@@ -162,7 +157,7 @@ async def sitemap_static(request: Request) -> Response:
 
 
 @router.get("/sitemap-athletes-{shard}.xml")
-async def sitemap_athletes(request: Request, shard: int) -> Response:
+def sitemap_athletes(request: Request, shard: int) -> Response:
     base = str(request.base_url).rstrip("/")
     rows = _athlete_rows()
     total = len(rows)
@@ -204,7 +199,7 @@ def _country_rows():
 
 
 @router.get("/sitemap-countries.xml")
-async def sitemap_countries(request: Request) -> Response:
+def sitemap_countries(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
     rows = _country_rows()
@@ -231,7 +226,7 @@ def _race_rows():
 
 
 @router.get("/sitemap-races.xml")
-async def sitemap_races(request: Request) -> Response:
+def sitemap_races(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today()
     # Every race (elite, AG, short and long course) for all time, keyed by race_id.
@@ -269,7 +264,7 @@ def _series_slugs():
 
 
 @router.get("/sitemap-series.xml")
-async def sitemap_series(request: Request) -> Response:
+def sitemap_series(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
     urls = [_url(f"{base}/series/{quote(s, safe='')}", lastmod=today, changefreq="weekly", priority=0.7)
@@ -290,7 +285,7 @@ def _recurring_slugs():
 
 
 @router.get("/sitemap-recurring.xml")
-async def sitemap_recurring(request: Request) -> Response:
+def sitemap_recurring(request: Request) -> Response:
     base = str(request.base_url).rstrip("/")
     today = date.today().isoformat()
     urls = [_url(f"{base}/recurring/{quote(slug, safe='')}", lastmod=today, changefreq="yearly", priority=0.6)

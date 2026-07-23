@@ -54,14 +54,14 @@ def _race_summary_payload(race_id: int):
 
 
 @router.get("/race-compare", response_class=HTMLResponse)
-async def race_compare_page(request: Request):
+def race_compare_page(request: Request):
     return templates.TemplateResponse("race_comparison.html", {
         "request": request, "active_page": "races",
     })
 
 
 @router.get("/race-compare/search")
-async def search_races_for_compare(q: str = "", course: str = "", gender: str = ""):
+def search_races_for_compare(q: str = "", course: str = "", gender: str = ""):
     if not q or len(q.strip()) < 2:
         return JSONResponse([])
     results = queries.search_races_for_compare(
@@ -75,7 +75,7 @@ async def search_races_for_compare(q: str = "", course: str = "", gender: str = 
 
 
 @router.get("/race-compare/race/{race_id}")
-async def get_race_for_compare(race_id: int):
+def get_race_for_compare(race_id: int):
     payload = _race_summary_payload(race_id)
     if not payload:
         return JSONResponse({"error": "Not found"}, status_code=404)
@@ -207,7 +207,7 @@ def _race_card_data(race_id: int):
 
 
 @router.get("/race-compare/{race1_id}/{race2_id}", response_class=HTMLResponse)
-async def get_race_comparison_html(request: Request, race1_id: int, race2_id: int):
+def get_race_comparison_html(request: Request, race1_id: int, race2_id: int):
     if not request.headers.get("X-Partial"):
         return RedirectResponse(
             url=f"/race-compare?r1={race1_id}&r2={race2_id}",

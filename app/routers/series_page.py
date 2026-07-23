@@ -316,7 +316,7 @@ def _program_slug(sub, gender, prog_name=None):
 
 
 @router.get("/series/list")
-async def series_list():
+def series_list():
     """Lightweight list of all series for the global search modal."""
     return JSONResponse([
         {"name": s["name"], "slug": s["slug"], "race_count": s["race_count"]}
@@ -325,13 +325,13 @@ async def series_list():
 
 
 @router.get("/recurring/list")
-async def recurring_list():
+def recurring_list():
     """Lightweight list of recurring events for the global search modal."""
     return JSONResponse(queries.get_all_recurring_events())
 
 
 @router.get("/series", response_class=HTMLResponse)
-async def series_index(request: Request):
+def series_index(request: Request):
     series_list = queries.get_all_series()
     sids = [s["series_id"] for s in series_list]
     highlights = queries.get_series_index_highlights(sids)
@@ -387,7 +387,7 @@ async def series_index(request: Request):
 
 
 @router.get("/series/{slug}", response_class=HTMLResponse)
-async def series_detail(request: Request, slug: str, program: str | None = None):
+def series_detail(request: Request, slug: str, program: str | None = None):
     series = queries.get_series_by_slug(slug)
     if not series:
         raise HTTPException(status_code=404)
@@ -428,7 +428,7 @@ async def series_detail(request: Request, slug: str, program: str | None = None)
 
 
 @router.get("/series/{slug}/data")
-async def series_data(slug: str, program: str | None = None):
+def series_data(slug: str, program: str | None = None):
     """JSON sibling of /series/{slug} - returns the program-scoped payload
     so the page can switch programs without a full reload."""
     series = queries.get_series_by_slug(slug)
@@ -448,7 +448,7 @@ async def series_data(slug: str, program: str | None = None):
 
 
 @router.get("/recurring/{slug}", response_class=HTMLResponse)
-async def recurring_detail(request: Request, slug: str, program: str | None = None):
+def recurring_detail(request: Request, slug: str, program: str | None = None):
     """Page for one recurring event group (e.g. all editions of Kona).
 
     Reuses the series template — same data shape (races, leaders, medals,
@@ -493,7 +493,7 @@ async def recurring_detail(request: Request, slug: str, program: str | None = No
 
 
 @router.get("/recurring/{slug}/data")
-async def recurring_data(slug: str, program: str | None = None):
+def recurring_data(slug: str, program: str | None = None):
     """JSON sibling of /recurring/{slug}."""
     rec = queries.get_recurring_event_by_slug(slug)
     if not rec:

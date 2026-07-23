@@ -21,6 +21,25 @@ async def flag_cache_headers(request: Request, call_next):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
+# Edge-cache everything the DB serves: content only changes on rebuild, which
+# redeploys the app (purge the Cloudflare cache on deploy). max-age=0 keeps
+# browsers revalidating against the edge so a purge takes effect immediately.
+# X-Partial requests are skipped: the compare partials share their URL with a
+# 302 for direct navigation, and Cloudflare keys its cache on URL alone, so
+# caching either variant would serve the wrong response to the other caller.
+# NOTE: if user accounts ever land, per-user pages must opt out of this.
+@app.middleware("http")
+async def edge_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if (
+        request.method == "GET"
+        and response.status_code == 200
+        and "cache-control" not in response.headers
+        and not request.headers.get("X-Partial")
+    ):
+        response.headers["Cache-Control"] = "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
+    return response
+
 # /static/athlete_imgs must be mounted before /static so it takes precedence in dev.
 # In prod the CDN serves athlete images; this mount is a no-op there.
 athlete_imgs_dir = RUNTIME_DATA_DIR / "athlete_imgs"

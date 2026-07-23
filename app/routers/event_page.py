@@ -174,7 +174,7 @@ def _predicted_podium(entries, race, models):
 
 
 @router.get("/event/{event_id}", response_class=HTMLResponse)
-async def get_event(request: Request, event_id: int):
+def get_event(request: Request, event_id: int):
     event = queries.get_event_info(event_id)
     if not event:
         raise HTTPException(status_code=404, detail=f"Event {event_id} not found")

@@ -13,7 +13,7 @@ templates.env.globals["flag"]          = flag
 
 
 @router.get("/races", response_class=HTMLResponse)
-async def races_landing(request: Request):
+def races_landing(request: Request):
     recent_events = queries.get_recent_events(offset=0, limit=5)
     total_events  = queries.get_total_events()
     country_list  = queries.get_event_countries()
@@ -30,7 +30,7 @@ _RECENT_PAGE = 10
 
 
 @router.get("/recent", response_class=HTMLResponse)
-async def recent_results(request: Request):
+def recent_results(request: Request):
     events = queries.get_recent_events(offset=0, limit=_RECENT_PAGE)
     return templates.TemplateResponse("recent.html", {
         "request":     request,
@@ -41,7 +41,7 @@ async def recent_results(request: Request):
 
 
 @router.get("/recent/more", response_class=HTMLResponse)
-async def recent_results_more(request: Request, offset: int = Query(0, ge=0)):
+def recent_results_more(request: Request, offset: int = Query(0, ge=0)):
     events = queries.get_recent_events(offset=offset, limit=_RECENT_PAGE)
     return templates.TemplateResponse("partials/recent_events.html", {
         "request": request,
@@ -50,7 +50,7 @@ async def recent_results_more(request: Request, offset: int = Query(0, ge=0)):
 
 
 @router.get("/races/search")
-async def search_races(
+def search_races(
     q:          str = Query(""),
     country:    str = Query(""),
     year_start: str = Query(""),

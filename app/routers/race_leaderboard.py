@@ -37,7 +37,7 @@ def _level_options_for(course: str):
 
 
 @router.get("/race-leaderboard")
-async def race_leaderboard(
+def race_leaderboard(
     request: Request,
     gender:  str = Query("female", regex="^(male|female)$"),
     course:  str = Query("short", regex="^(short|long|ag)$"),
@@ -98,7 +98,7 @@ async def race_leaderboard(
 
 
 @router.get("/race-leaderboard/more")
-async def race_leaderboard_more(
+def race_leaderboard_more(
     request: Request,
     gender:  str = Query("female", regex="^(male|female)$"),
     course:  str = Query("short", regex="^(short|long|ag)$"),

@@ -15,14 +15,10 @@ from ptd_data import db
 from ptd_data.form import _tier_for
 from ptd_data.ratings import STANDARD_K, STANDARD_POS_CAP, standard_denom
 
-# Module-level read-only connection, opened on first use
-_conn = None
-
+# Handlers run in FastAPI's threadpool; db.get_read_cursor gives each
+# thread its own cursor over one shared read-only connection.
 def _get_conn():
-    global _conn
-    if _conn is None:
-        _conn = db.get_conn(read_only=True)
-    return _conn
+    return db.get_read_cursor()
 
 
 def _dicts(cols, cur):

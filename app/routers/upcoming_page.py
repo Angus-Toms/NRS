@@ -14,7 +14,7 @@ templates.env.globals["flag"]          = flag
 
 
 @router.get("/upcoming", response_class=HTMLResponse)
-async def upcoming(request: Request):
+def upcoming(request: Request):
     events = queries.get_upcoming_events()
     models = queries.get_prediction_models()
     # Same shared prediction core as the race/event pages, so every upcoming
