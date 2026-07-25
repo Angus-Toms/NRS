@@ -38,7 +38,10 @@ def get_read_cursor():
                 # The prod instance is small and shared; without these DuckDB
                 # assumes it owns ~80% of the machine. memory_limit is the
                 # biggest lever on a 512MB box, so keep it env-tunable.
-                mem_limit = os.getenv("DUCKDB_MEMORY_LIMIT", "128MB")
+                # 128MB OOMed in prod: the limit is shared across all threadpool
+                # cursors, and a few concurrent athlete-history queries exhaust
+                # it (hard error - the allocation isn't spillable).
+                mem_limit = os.getenv("DUCKDB_MEMORY_LIMIT", "192MB")
                 conn.execute("SET threads = 2")
                 conn.execute(f"SET memory_limit = '{mem_limit}'")
                 _read_root = conn
@@ -700,6 +703,16 @@ def record_athlete_nationality(conn, athlete_id, country_full, race_date):
     latest_country, latest_start = row
     if country_full == latest_country:
         if race_date < latest_start:
+            # Roll the range start back, but never across the previous range:
+            # WT backfills decade-old events, and an old same-country race
+            # observed inside/before an earlier foreign range would otherwise
+            # overlap it and corrupt the timeline (and can violate the PK).
+            prev_end = conn.execute("""
+                SELECT MAX(end_date) FROM athlete_nationality_history
+                WHERE athlete_id = ? AND end_date IS NOT NULL AND end_date <= ?
+            """, [athlete_id, latest_start]).fetchone()[0]
+            if prev_end is not None and race_date < prev_end:
+                return
             conn.execute("""
                 UPDATE athlete_nationality_history
                 SET start_date = ?
