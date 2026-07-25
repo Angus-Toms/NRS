@@ -1,5 +1,8 @@
+import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import anyio
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,7 +14,20 @@ from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION, flag
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
 ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
 
-app = FastAPI()
+# Sync handlers run in the threadpool, so this is the ceiling on concurrent
+# DuckDB queries + Jinja renders. Starlette defaults to 40, which OOMs a small
+# instance under crawler load (84k athlete pages, mostly edge-cache misses).
+# Env-tunable so it can be raised on the Render dashboard without a redeploy.
+THREADPOOL_LIMIT = int(os.getenv("THREADPOOL_LIMIT", "8"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    anyio.to_thread.current_default_thread_limiter().total_tokens = THREADPOOL_LIMIT
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Long-cache flag SVGs: filenames are alpha3-stable, content effectively immutable.
 @app.middleware("http")
