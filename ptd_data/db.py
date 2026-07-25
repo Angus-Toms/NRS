@@ -1,5 +1,6 @@
 import csv
 import datetime as _dt
+import os
 import pathlib
 import threading
 import zlib
@@ -35,9 +36,11 @@ def get_read_cursor():
             if _read_root is None:
                 conn = duckdb.connect(str(DB_PATH), read_only=True)
                 # The prod instance is small and shared; without these DuckDB
-                # assumes it owns the whole machine.
+                # assumes it owns ~80% of the machine. memory_limit is the
+                # biggest lever on a 512MB box, so keep it env-tunable.
+                mem_limit = os.getenv("DUCKDB_MEMORY_LIMIT", "128MB")
                 conn.execute("SET threads = 2")
-                conn.execute("SET memory_limit = '256MB'")
+                conn.execute(f"SET memory_limit = '{mem_limit}'")
                 _read_root = conn
     cur = getattr(_read_local, "cursor", None)
     if cur is None:

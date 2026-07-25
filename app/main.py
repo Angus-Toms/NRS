@@ -17,8 +17,8 @@ ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
 # Sync handlers run in the threadpool, so this is the ceiling on concurrent
 # DuckDB queries + Jinja renders. Starlette defaults to 40, which OOMs a small
 # instance under crawler load (84k athlete pages, mostly edge-cache misses).
-# Env-tunable so it can be raised on the Render dashboard without a redeploy.
-THREADPOOL_LIMIT = int(os.getenv("THREADPOOL_LIMIT", "8"))
+# Env-tunable so it can be adjusted on the Render dashboard without a redeploy.
+THREADPOOL_LIMIT = int(os.getenv("THREADPOOL_LIMIT", "4"))
 
 
 @asynccontextmanager
