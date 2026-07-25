@@ -80,3 +80,14 @@ def format_1yr_rating_change(change: float) -> dict:
         "formatted_str": f"{_SVG_DOWN}{int(round(-change))}",
         "css_class": "negative"
     }
+
+def format_course_conditions(raw):
+    """Format stored course conditions (queries.get_race_course_conditions)
+    for display: disc -> {formatted: ±mm:ss, category}. diff_s is positive
+    when the course ran faster than predicted, so it renders with a minus."""
+    out = {}
+    for disc, v in raw.items():
+        sign = '-' if v["diff_s"] >= 0 else '+'
+        mins, secs = divmod(abs(round(v["diff_s"])), 60)
+        out[disc] = {"formatted": f"{sign}{mins:02d}:{secs:02d}", "category": v["category"]}
+    return out

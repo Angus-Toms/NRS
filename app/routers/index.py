@@ -32,17 +32,13 @@ def index(request: Request):
         return {**info, **(ratings or {}), **stats, **(active_ranks or {})}
 
     upcoming_events = queries.get_upcoming_events()[:3]
-    models = queries.get_prediction_models()
     entries_by_race = queries.get_upcoming_race_entries_bulk(
         [r["race_id"] for e in upcoming_events for r in e["races"]])
     for event in upcoming_events:
         for race in event["races"]:
             race["podium"] = _predicted_podium(
                 entries_by_race.get(race["race_id"], []),
-                {"race_id": race["race_id"], "gender": race["gender"],
-                 "event_id": race["event_id"], "race_date": race["start_date"],
-                 "category": race["category"]},
-                models,
+                {"race_id": race["race_id"], "category": race["category"]},
             )
 
     blogs = load_blogs()

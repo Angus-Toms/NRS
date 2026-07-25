@@ -379,6 +379,38 @@ def create_schema(conn):
     # COALESCE to 0 so pre-migration rows act as "no year term".
     conn.execute("ALTER TABLE prediction_models ADD COLUMN IF NOT EXISTS year_coef DOUBLE")
 
+    # Precomputed race predictions (see ptd_data/predictions.py). Rebuilt on
+    # every weekly build; predictions are a pure function of the read-only DB
+    # so serving from this table replaces the expensive request-time compute.
+    # Covers completed elite races and upcoming races with start lists.
+    # Raw seconds, 0 = unavailable (format_time(0) renders empty). Names /
+    # countries join against athletes at serve time.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS race_predictions (
+            race_id            INTEGER NOT NULL,
+            athlete_id         INTEGER NOT NULL,
+            predicted_position INTEGER NOT NULL,
+            overall_s          INTEGER NOT NULL DEFAULT 0,
+            swim_s             INTEGER NOT NULL DEFAULT 0,
+            bike_s             INTEGER NOT NULL DEFAULT 0,
+            run_s              INTEGER NOT NULL DEFAULT 0,
+            is_low_confidence  BOOLEAN NOT NULL DEFAULT FALSE,
+            PRIMARY KEY (race_id, athlete_id)
+        )
+    """)
+    # Course conditions displayed on race/event pages. Pooled per event at
+    # build time, then written per race so lookups stay by race_id (all races
+    # in an event carry identical rows by construction).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS race_course_conditions (
+            race_id     INTEGER NOT NULL,
+            discipline  VARCHAR NOT NULL,   -- 'overall' | 'swim' | 'bike' | 'run'
+            diff_s      DOUBLE NOT NULL,    -- avg predicted-actual seconds (positive = course fast)
+            category    VARCHAR NOT NULL,   -- 'very_fast' | 'fast' | 'normal' | 'slow' | 'very_slow'
+            PRIMARY KEY (race_id, discipline)
+        )
+    """)
+
     # Form model state (see ptd_data/form.py). athlete_form mirrors the
     # ratings table's temporal semantics: one row per observation holding the
     # athlete's blended form *after* that race, so "latest row strictly

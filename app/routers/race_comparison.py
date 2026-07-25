@@ -7,7 +7,7 @@ from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
 from app.routers import race_page
-from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
+from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change, format_course_conditions
 
 # Consistent race colours across all charts and tables. Same blue/pink as the
 # athlete-compare page so users see one visual language for "thing 1 vs thing 2".
@@ -144,13 +144,12 @@ def _race_card_data(race_id: int):
     finishers = sum(1 for r in results if r["status"] not in DNF_STATUSES)
     dnfs      = len(results) - finishers
 
-    # Predictions / course conditions (elite races only)
+    # Course conditions (elite races only), precomputed at build time
     is_elite = queries.get_race_category(race_id) == 'elite'
     course_conditions = None
     if is_elite:
-        _, _, course_conditions = race_page._compute_race_predictions(
-            race_id, race, results, queries.get_prediction_models()
-        )
+        course_conditions = format_course_conditions(
+            queries.get_race_course_conditions(race_id))
 
     thresholds = queries.get_race_standard_thresholds(
         race["gender"],

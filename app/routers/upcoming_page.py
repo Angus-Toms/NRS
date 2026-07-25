@@ -16,8 +16,7 @@ templates.env.globals["flag"]          = flag
 @router.get("/upcoming", response_class=HTMLResponse)
 def upcoming(request: Request):
     events = queries.get_upcoming_events()
-    models = queries.get_prediction_models()
-    # Same shared prediction core as the race/event pages, so every upcoming
+    # Same stored predictions as the race/event pages, so every upcoming
     # podium across the site agrees.
     entries_by_race = queries.get_upcoming_race_entries_bulk(
         [r["race_id"] for e in events for r in e["races"]])
@@ -25,10 +24,7 @@ def upcoming(request: Request):
         for race in event["races"]:
             race["podium"] = _predicted_podium(
                 entries_by_race.get(race["race_id"], []),
-                {"race_id": race["race_id"], "gender": race["gender"],
-                 "event_id": race["event_id"], "race_date": race["start_date"],
-                 "category": race["category"]},
-                models,
+                {"race_id": race["race_id"], "category": race["category"]},
             )
 
     return templates.TemplateResponse("upcoming.html", {

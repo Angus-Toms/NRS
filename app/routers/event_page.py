@@ -4,8 +4,7 @@ from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
-from app.routers.router_utils import format_time, format_time_behind
-from app.routers.race_page import _course_signal_for_race, _upcoming_pred_seconds
+from app.routers.router_utils import format_time, format_time_behind, format_course_conditions
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
@@ -36,50 +35,15 @@ def _sort_races(races):
     ))
 
 
-def _compute_event_course_conditions(races, models):
-    """Pool course condition signals from all elite races in this event.
-
-    Returns a dict of disc -> {formatted, category}, or {} if insufficient data.
-    """
-    pooled = {}           # disc -> [(pct_signal, total_w)]
-    pred_overall_refs = []  # (avg_pred_overall, total_w)
-
+def _event_course_conditions(races):
+    """Course conditions for the event, precomputed at build time. Every race
+    in an event carries identical stored rows (they're pooled per event), so
+    the first race with rows wins. {} if no elite race has conditions."""
     for race in races:
-        if race.get('distance') == 'relay':
-            continue
-        if queries.get_race_category(race['race_id']) != 'elite':
-            continue
-        out = _course_signal_for_race(race['race_id'], race['gender'], models)
-        if not out:
-            continue
-        signal, s_total_w, s_avg_pred_overall = out
-        pred_overall_refs.append((s_avg_pred_overall, s_total_w))
-        for disc, pct in signal.items():
-            pooled.setdefault(disc, []).append((pct, s_total_w))
-
-    combined_ref_w = sum(w for _, w in pred_overall_refs)
-    if not combined_ref_w:
-        return {}
-    combined_avg_pred_overall = sum(p * w for p, w in pred_overall_refs) / combined_ref_w
-
-    conditions = {}
-    for disc in ['overall', 'swim', 'bike', 'run']:
-        race_signals = pooled.get(disc, [])
-        if not race_signals:
-            continue
-        combined_w = sum(w for _, w in race_signals)
-        avg_pct    = sum(p * w for p, w in race_signals) / combined_w
-        if   avg_pct >  0.03: category = 'very_fast'
-        elif avg_pct >  0.01: category = 'fast'
-        elif avg_pct > -0.01: category = 'normal'
-        elif avg_pct > -0.03: category = 'slow'
-        else:                  category = 'very_slow'
-        avg_diff_s = avg_pct * combined_avg_pred_overall
-        sign  = '-' if avg_diff_s >= 0 else '+'
-        abs_s = abs(round(avg_diff_s))
-        mins, secs = divmod(abs_s, 60)
-        conditions[disc] = {'formatted': f"{sign}{mins:02d}:{secs:02d}", 'category': category}
-    return conditions
+        raw = queries.get_race_course_conditions(race['race_id'])
+        if raw:
+            return format_course_conditions(raw)
+    return {}
 
 
 def _classify(val, thresholds):
@@ -93,15 +57,13 @@ def _classify(val, thresholds):
     return "beginner"
 
 
-def _predicted_podium(entries, race, models):
+def _predicted_podium(entries, race):
     """Predicted podium (top-3 by predicted overall) with per-leg splits.
 
-    Uses the SAME prediction core as the race page (race_page._upcoming_pred_
-    seconds) on the full start list, then takes the top three, so the event
-    podium and the race page agree exactly. Transitions don't have their own
-    model, so we estimate them as the slack between predicted overall and the
-    predicted leg sum, split evenly between T1 and T2. `race` needs race_id,
-    gender, race_date, event_id and category.
+    Reads the stored predictions (same rows the race page serves, so the two
+    always agree). Transitions don't have their own model, so we estimate
+    them as the slack between predicted overall and the predicted leg sum,
+    split evenly between T1 and T2.
 
     Only elite races get a predicted podium: AG start lists are athletes without
     a meaningful rating history, so the prediction machinery has nothing to work
@@ -109,11 +71,11 @@ def _predicted_podium(entries, race, models):
     """
     if race.get('category') != 'elite':
         return []
-    preds, _distance = _upcoming_pred_seconds(race, entries, models)
-    if not preds:
-        return []
-    ranked = sorted((aid for aid in preds if preds[aid].get('overall')),
-                    key=lambda a: preds[a]['overall'])[:3]
+    stored = queries.get_race_predictions(race['race_id'])
+    preds = {r['athlete_id']: {d: r[f'{d}_s'] or None
+                               for d in ('overall', 'swim', 'bike', 'run')}
+             for r in stored}
+    ranked = [r['athlete_id'] for r in stored if r['overall_s']][:3]
     if not ranked:
         return []
     emap = {e['athlete_id']: e for e in entries}
@@ -181,7 +143,6 @@ def get_event(request: Request, event_id: int):
 
     upcoming_races = queries.get_upcoming_event_races_detail(event_id)
     if upcoming_races:
-        models = queries.get_prediction_models()
         entries_by_race = queries.get_upcoming_race_entries_bulk(
             [r["race_id"] for r in upcoming_races])
         thresholds_by_gender = {
@@ -199,9 +160,9 @@ def get_event(request: Request, event_id: int):
             else:
                 race["standards"]        = None
                 race["standard_classes"] = None
-            race["event_id"] = event_id  # the prediction core reads this for course constants
+            race["event_id"] = event_id
             race["podium"] = _predicted_podium(
-                entries_by_race.get(race["race_id"], []), race, models)
+                entries_by_race.get(race["race_id"], []), race)
         return templates.TemplateResponse("event.html", {
             "request":          request,
             "active_page":      "upcoming",
@@ -235,8 +196,7 @@ def get_event(request: Request, event_id: int):
             race["standard_classes"] = None
 
     sorted_races = _sort_races(races)
-    models = queries.get_prediction_models()
-    course_conditions = _compute_event_course_conditions(sorted_races, models)
+    course_conditions = _event_course_conditions(sorted_races)
 
     return templates.TemplateResponse("event.html", {
         "request":          request,

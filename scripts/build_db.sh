@@ -20,7 +20,10 @@
 #                     uncaught by series rules
 #   9. autocorr     - detect mechanical anomalies, write auto-correction rows
 #  10. ratings      - load corrections.csv, recompute ELO ratings + rankings
-#  11. compact      - rewrite the DB file to reclaim space from wiped/recomputed tables
+#  11. predictions  - precompute race predictions + course conditions into
+#                     race_predictions / race_course_conditions (served directly
+#                     by race/athlete/event pages; must run after ratings)
+#  12. compact      - rewrite the DB file to reclaim space from wiped/recomputed tables
 #
 # Usage:
 #   ./build_db.sh                     # run all steps
@@ -36,8 +39,9 @@
 #   ./build_db.sh --skip-recurring    # skip fuzzy-name recurring fallback
 #   ./build_db.sh --skip-autocorr     # skip auto-correction pass
 #   ./build_db.sh --skip-ratings      # skip ratings/rankings recompute
+#   ./build_db.sh --skip-predictions  # skip prediction precompute
 #   ./build_db.sh --skip-compact      # skip post-build DB compaction
-#   ./build_db.sh --ratings-only      # shortcut: auto-corr + recompute ratings + rankings
+#   ./build_db.sh --ratings-only      # shortcut: auto-corr + recompute ratings + rankings + predictions
 #   ./build_db.sh --extend            # ratings/rankings: wipe from earliest new race date
 #                                       forward and rebuild from there, instead of full
 #                                       clear+recompute. Combine with --ratings-only for
@@ -54,7 +58,7 @@ step()    { echo -e "\n${GREEN}${BOLD}==> $*${RESET}"; }
 note()    { echo -e "${YELLOW}    $*${RESET}"; }
 elapsed() { echo -e "    done in ${BOLD}$(( SECONDS - $1 ))s${RESET}"; }
 
-DO_INGEST=true; DO_STARTLIST=true; DO_FGP=true; DO_BUNDESLIGA=true; DO_PTO=true; DO_MERGES=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_RECURRING=true; DO_AUTOCORR=true; DO_RATINGS=true; DO_COMPACT=true
+DO_INGEST=true; DO_STARTLIST=true; DO_FGP=true; DO_BUNDESLIGA=true; DO_PTO=true; DO_MERGES=true; DO_STAGES=true; DO_IGNORED=true; DO_SERIES=true; DO_RECURRING=true; DO_AUTOCORR=true; DO_RATINGS=true; DO_PREDICTIONS=true; DO_COMPACT=true
 EXTEND=false
 
 for arg in "$@"; do
@@ -71,6 +75,7 @@ for arg in "$@"; do
         --skip-recurring) DO_RECURRING=false ;;
         --skip-autocorr)  DO_AUTOCORR=false ;;
         --skip-ratings)   DO_RATINGS=false ;;
+        --skip-predictions) DO_PREDICTIONS=false ;;
         --skip-compact)   DO_COMPACT=false ;;
         --ratings-only)   DO_INGEST=false; DO_STARTLIST=false; DO_FGP=false; DO_BUNDESLIGA=false; DO_PTO=false; DO_MERGES=false; DO_STAGES=false; DO_IGNORED=false; DO_SERIES=false; DO_RECURRING=false ;;
         --extend)         EXTEND=true ;;
@@ -210,7 +215,17 @@ if $DO_RATINGS; then
     elapsed $T
 fi
 
-# ── 11. Compact ────────────────────────────────────────────────────────────────
+# ── 11. Predictions ───────────────────────────────────────────────────────────
+# Precompute race predictions + course conditions. Must run after ratings
+# (reads ratings, form, prediction_models) and after start lists.
+if $DO_PREDICTIONS; then
+    step "Predictions - precompute race predictions + course conditions"
+    T=$SECONDS
+    python3 -m ptd_data.predictions
+    elapsed $T
+fi
+
+# ── 12. Compact ────────────────────────────────────────────────────────────────
 # Ratings/rankings/form are wiped and recomputed every run above; DuckDB never
 # shrinks the file in place, so the stranded blocks from the old versions just
 # accumulate. Rewrite into a fresh file so the copy to Render stays small.

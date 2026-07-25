@@ -11,14 +11,27 @@ import statistics
 from ast import literal_eval
 from functools import lru_cache
 
+import duckdb
+
 from ptd_data import db
 from ptd_data.form import _tier_for
 from ptd_data.ratings import STANDARD_K, STANDARD_POS_CAP, standard_denom
 
 # Handlers run in FastAPI's threadpool; db.get_read_cursor gives each
-# thread its own cursor over one shared read-only connection.
+# thread its own cursor over one shared read-only connection. The build
+# pipeline (ptd_data/predictions.py) injects its writable connection here
+# instead, because DuckDB can't mix read-only and writable connections to
+# the same file within one process.
+_conn_override = None
+
+
+def use_connection(conn):
+    global _conn_override
+    _conn_override = conn
+
+
 def _get_conn():
-    return db.get_read_cursor()
+    return _conn_override if _conn_override is not None else db.get_read_cursor()
 
 
 def _dicts(cols, cur):
@@ -3454,6 +3467,38 @@ def get_prediction_models():
     except Exception:
         return {}  # table not yet created in this DB (schema migration pending)
     return {(r[0], r[1], r[2]): {"slope": r[3], "intercept": r[4], "year_coef": r[5]} for r in rows}
+
+
+def get_race_predictions(race_id):
+    """Stored predicted results for a race (completed or upcoming), ordered by
+    predicted position. Precomputed at build time by ptd_data/predictions.py;
+    raw seconds with 0 = unavailable. Empty list if the race has no
+    predictions (non-elite, unclassifiable distance, or pre-migration DB)."""
+    cols = ["athlete_id", "predicted_position", "overall_s", "swim_s", "bike_s",
+            "run_s", "is_low_confidence"]
+    try:
+        cur = _get_conn().execute("""
+            SELECT athlete_id, predicted_position, overall_s, swim_s, bike_s,
+                   run_s, is_low_confidence
+            FROM race_predictions
+            WHERE race_id = ?
+            ORDER BY predicted_position
+        """, [race_id])
+    except duckdb.CatalogException:
+        return []  # table not yet created in this DB (schema migration pending)
+    return _dicts(cols, cur)
+
+
+def get_race_course_conditions(race_id):
+    """Stored course conditions: disc -> {diff_s, category}. Pooled per event
+    at build time; every race in an event carries identical rows."""
+    try:
+        rows = _get_conn().execute(
+            "SELECT discipline, diff_s, category FROM race_course_conditions WHERE race_id = ?",
+            [race_id]).fetchall()
+    except duckdb.CatalogException:
+        return {}  # table not yet created in this DB (schema migration pending)
+    return {d: {"diff_s": s, "category": c} for d, s, c in rows}
 
 
 # Sensible discipline-time windows used to filter an athlete's own history

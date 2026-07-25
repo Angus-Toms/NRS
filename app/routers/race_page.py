@@ -1,4 +1,3 @@
-import math
 
 import numpy as np
 
@@ -8,8 +7,7 @@ from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
-from ptd_data.ratings import SCALE, YEAR_REF
-from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change
+from app.routers.router_utils import format_time, format_time_behind, format_rating, format_rating_change, format_course_conditions
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
@@ -18,39 +16,6 @@ templates.env.globals["flag"]          = flag
 router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
-START_RATING  = 1500
-
-# History-window size by course. Tuned from a 300-race MAE sweep: short-course
-# pros race often enough that N=10 smooths course-to-course variance; long-
-# course pros race rarely, so a smaller N keeps the anchor on recent form.
-ANCHOR_HISTORY_N   = {'short': 10, 'long': 5}
-ANCHOR_MIN_SAMPLES = 2
-
-# Top-K highest-rated athletes whose history is pooled to form the anchor.
-# K=3 won the MAE sweep — pooling across multiple top athletes dilutes any
-# one athlete's inconsistency without sacrificing rating-relevance. ELO still
-# picks who the top-K are and the leader's rating still drives the ELO-
-# scaling reference, so the rating system remains the backbone.
-ANCHOR_TOP_K = 3
-
-# Quantile of the pooled history used as the anchor. Short course:
-# p50 (median) is already optimal — winner bias ~0. Long course: p50 is too
-# slow for winners (long overall winners run +16m faster than the median,
-# long run +9m faster) because the pool captures a top-3 athlete's *typical*
-# performance, but on race day the actual winner usually pushes harder than
-# their own personal median. p33 cuts ~3m (run) / ~7m (overall) of winner
-# bias for only ~1–2m of full-field MAE cost. Trade-off validated on a 400-
-# race sweep.
-ANCHOR_POOL_QUANTILE = {'short': 0.50, 'long': 0.33}
-
-_SHORT_DISTANCES = {'sprint', 'standard'}
-
-# Predictions for athletes with fewer than this many prior elite starts (in the
-# race's course bucket) are flagged low-confidence in the UI: their ELO rating
-# hasn't converged, so the prediction is less reliable. Backtest: within-race
-# ordering rho climbs from ~0.04 (0-2 starts) to ~0.42 by 5-7 and ~0.46 by 8-10
-# (analysis/k_replay.py).
-LOW_CONF_STARTS = 8
 
 
 def _build_breadcrumb(race, race_id, recurring_meta):
@@ -102,238 +67,33 @@ def _build_breadcrumb(race, race_id, recurring_meta):
     }
 
 
-def _anchor_time(field_ratings, leader_rating, distance, disc, model,
-                 target_year=None, target_date=None):
-    """Return the anchor time for this discipline across the whole field.
-
-    Strategy: pool the last-N finishes of the top-K highest-rated athletes
-    at this distance/discipline (strictly before `target_date` if given),
-    take a course-specific quantile. The field is still ELO-scaled from the
-    leader's rating. Falls back to the population quantile model if the
-    pool is too sparse.
-
-    `target_date` avoids post-target history leaking into the pool on
-    historical-race displays — old-era races otherwise draw from modern tech
-    times and over-predict speed.
-
-    `target_year` is used by the long-course population model's year term to
-    adjust fallback predictions for era drift (tech, training). Only fires
-    for long-course races; short-course models store year_coef=0.
-    """
-    if disc in ('overall', 'swim', 'bike', 'run'):
-        course        = 'short' if distance in _SHORT_DISTANCES else 'long'
-        n_per_athlete = ANCHOR_HISTORY_N[course]
-        quantile      = ANCHOR_POOL_QUANTILE[course]
-        topK = sorted(field_ratings, key=field_ratings.get, reverse=True)[:ANCHOR_TOP_K]
-        pool = []
-        for aid in topK:
-            pool.extend(queries.get_athlete_discipline_history(
-                aid, distance, disc, limit=n_per_athlete, before_date=target_date,
-            ))
-        if len(pool) >= ANCHOR_MIN_SAMPLES:
-            return float(np.quantile(pool, quantile))
-    # Population-model fallback. Year term is stored 0 for short-course models,
-    # so this formula is a no-op on short course. For long course with a known
-    # target year, it adjusts old predictions slower to account for era drift.
-    # Clamped to offset ≤ 0: the long-course year_coef fits a multi-decade
-    # trend that extrapolates too aggressively into the recent plateau. So we
-    # only apply the year term when the target year is earlier than YEAR_REF.
-    year_offset = min(target_year - YEAR_REF, 0) if target_year is not None else 0.0
-    return (model['slope'] * leader_rating
-            + model.get('year_coef', 0.0) * year_offset
-            + model['intercept'])
-
-
-def _course_signal_for_race(race_id, gender, models):
-    """Compute per-discipline normalised course-condition signal for a single race.
-
-    Returns (signal, total_w, avg_pred_overall) where:
-      signal: disc -> avg(predicted - actual) / avg_predicted_overall  (dimensionless %)
-      total_w: sum of confidence weights (used to weight this race when pooling)
-      avg_pred_overall: weighted-avg predicted overall time in seconds (for display conversion)
-    Returns None if insufficient data.
-    """
-    distance = queries.get_race_distance_type(race_id)
-    if not distance:
-        return None
-
-    results     = queries.get_race_results(race_id)
-    pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
-    race_info   = queries.get_race_info(race_id)
-    target_date = race_info.get('race_date') if race_info else None
-    target_year = target_date.year if target_date else None
+def _prediction_rows(stored, people, extra=()):
+    """Format stored prediction rows (queries.get_race_predictions) for the
+    template. people maps athlete_id -> results/start-list dict supplying
+    name/country/year_of_birth (+ any `extra` keys). Returns (rows, raw_times)
+    with raw_times keyed by discipline for the upcoming-page histograms."""
     DISCS = ['overall', 'swim', 'bike', 'run']
-    CONF_THRESHOLD = 10
-
-    def _w(aid):
-        pr = pre_ratings.get(aid)
-        if pr is None:
-            return 0.0
-        return min(1.0, (pr.get('prior_starts', 0) or 0) / CONF_THRESHOLD)
-
-    # Use the same anchor as the race-page predictions (top-K pooled history
-    # quantile) so the "expected" baseline judging course speed matches the
-    # times shown on the race page. The raw population model overestimates
-    # leader speed by ~4-5% and was pushing nearly every race into "slow".
-    preds = {}
-    for disc in DISCS:
-        m = models.get((gender, distance, disc))
-        if not m:
+    best = {d: min((r[f'{d}_s'] for r in stored if r[f'{d}_s']), default=None) for d in DISCS}
+    rows = []
+    raw_times = {d: [] for d in DISCS}
+    for r in stored:
+        p = people.get(r['athlete_id'])
+        if p is None:
+            # Field member missing from results/start list - can only happen if
+            # the DB changed under a stale prediction build; skip rather than 500.
             continue
-        field = {r['athlete_id']: (pre_ratings[r['athlete_id']][disc]
-                                   if r['athlete_id'] in pre_ratings and pre_ratings[r['athlete_id']][disc]
-                                   else START_RATING)
-                 for r in results}
-        lr = max(field.values())
-        lt = _anchor_time(field, lr, distance, disc, m,
-                          target_year=target_year, target_date=target_date)
-        for aid, rating in field.items():
-            preds.setdefault(aid, {})[disc] = max(0, round(lt * (10 ** ((lr - rating) / SCALE))))
-
-    if not preds:
-        return None
-
-    finishers = [r for r in results if r['status'] not in DNF_STATUSES and r['athlete_id'] in preds]
-    pow_w = [(preds[r['athlete_id']]['overall'], _w(r['athlete_id']))
-             for r in finishers if preds[r['athlete_id']].get('overall')]
-    total_w = sum(w for _, w in pow_w)
-    if total_w == 0:
-        return None
-    avg_pred_overall = sum(p * w for p, w in pow_w) / total_w
-
-    signal = {}
-    for disc in DISCS:
-        tk = f'{disc}_s'
-        diffs = [(preds[r['athlete_id']][disc] - r[tk], _w(r['athlete_id']))
-                 for r in finishers
-                 if preds[r['athlete_id']].get(disc) and (r.get(tk) or 0) > 0
-                 and _w(r['athlete_id']) > 0]
-        if len(diffs) < 3:
-            continue
-        tdw = sum(w for _, w in diffs)
-        signal[disc] = sum(d * w for d, w in diffs) / tdw / avg_pred_overall
-
-    if not signal:
-        return None
-
-    return signal, total_w, avg_pred_overall
-
-
-def _apply_form_overrides(preds, form_map, c_map, field, discs):
-    """Replace anchor-based predicted times with form-based ones on long
-    course: exp(pre-race form + event course constant) per discipline.
-
-    Athletes without enough form history (debuts, <3 prior splits) keep the
-    anchor prediction, but rescaled onto the form level - the two models'
-    absolute levels aren't mutually calibrated, and mixing them raw scrambles
-    the cross-group ordering (full-field Spearman drops ~0.07).
-    """
-    for disc in discs:
-        c = c_map.get(disc)
-        if c is None:
-            continue
-        form_t = {aid: math.exp(f[disc] + c)
-                  for aid, f in form_map.items() if disc in f}
-        if not form_t:
-            continue
-        ratios = sorted(t / preds[aid][disc] for aid, t in form_t.items()
-                        if preds.get(aid, {}).get(disc))
-        scale = ratios[len(ratios) // 2] if ratios else 1.0
-        for aid in field:
-            if aid in form_t:
-                preds.setdefault(aid, {})[disc] = max(0, round(form_t[aid]))
-            elif preds.get(aid, {}).get(disc):
-                preds[aid][disc] = max(0, round(preds[aid][disc] * scale))
-
-
-def _compute_race_predictions(race_id, race, results, models):
-    """Compute full-field predicted times, position diffs, and course conditions.
-
-    Returns (pred_rows, pos_diffs, course_conditions).
-    pred_rows: sorted by predicted overall time.
-    pos_diffs: athlete_id -> (predicted_pos - actual_pos), positive = beat prediction.
-    course_conditions: disc -> {formatted, category} where formatted is ±mm:ss.
-    Returns (None, None, None) if predictions are unavailable for this race.
-    """
-    distance = queries.get_race_distance_type(race_id)
-    if not distance:
-        return None, None, None
-
-    pre_ratings = {r['athlete_id']: r for r in queries.get_race_pre_race_ratings(race_id)}
-    gender      = race['gender']
-    target_date = race.get('race_date')
-    target_year = target_date.year if target_date else None
-    DISCS       = ['overall', 'swim', 'bike', 'run']  # transitions excluded - too course-specific
-
-    # For each discipline, compute a robust anchor time from the top-rated
-    # athletes' pooled history (strictly before target_date, so historical
-    # race pages aren't contaminated by post-race finishes), then ELO-scale
-    # the rest of the field off the leader's rating.
-    preds = {}  # athlete_id -> {disc: predicted_time_s}
-    for disc in DISCS:
-        m = models.get((gender, distance, disc))
-        if not m:
-            continue
-        field_ratings = {}
-        for r in results:
-            aid = r['athlete_id']
-            pr  = pre_ratings.get(aid)
-            field_ratings[aid] = pr[disc] if pr and pr[disc] else START_RATING
-
-        leader_rating = max(field_ratings.values())
-        anchor        = _anchor_time(field_ratings, leader_rating, distance, disc, m,
-                                     target_year=target_year, target_date=target_date)
-
-        for aid, rating in field_ratings.items():
-            t = anchor * (10 ** ((leader_rating - rating) / SCALE))
-            preds.setdefault(aid, {})[disc] = max(0, round(t))
-
-    if not preds:
-        return None, None, None
-
-    # Short course: pure ELO anchor for the whole field. The observed-split
-    # blend was retired - it over-fit thin records (a few fast splits against
-    # weak fields could vault a low-start athlete to the front). Long course:
-    # the form model still beats the anchor outright, so override with it.
-    field = tuple(sorted(r['athlete_id'] for r in results))
-    course = 'short' if distance in _SHORT_DISTANCES else 'long'
-    if course == 'long':
-        form_map = queries.get_field_form(field, 'long', before_date=target_date)
-        c_map = queries.get_form_course_constants(
-            race.get('event_id'), gender, distance, target_date)
-        _apply_form_overrides(preds, form_map, c_map, field, DISCS)
-    start_counts = queries.get_field_start_counts(field, course, before_date=target_date)
-
-    # Build rows sorted by predicted overall time
-    pred_rows = []
-    for r in results:
-        aid = r['athlete_id']
-        p   = preds.get(aid, {})
-        pred_rows.append({
-            'athlete_id':    aid,
-            'name':          r['name'],
-            'country_alpha3': r.get('country_alpha3', ''),
-            'year_of_birth': r.get('year_of_birth'),
-            'is_low_confidence': start_counts.get(aid, 0) < LOW_CONF_STARTS,
-            '_overall_raw':  p.get('overall', 9_999_999),
-            '_swim_raw':     p.get('swim', 0),
-            '_bike_raw':     p.get('bike', 0),
-            '_run_raw':      p.get('run', 0),
-        })
-    pred_rows.sort(key=lambda x: x['_overall_raw'])
-    for i, row in enumerate(pred_rows):
-        row['predicted_position'] = i + 1
-
-    # Fastest split times across the field
-    best = {}
-    for disc in DISCS:
-        vals = [r[f'_{disc}_raw'] for r in pred_rows if r.get(f'_{disc}_raw', 0) > 0]
-        best[disc] = min(vals) if vals else None
-
-    # Annotate each row with formatted times, fastest flags, and behind gaps
-    for row in pred_rows:
+        row = {
+            'athlete_id':         r['athlete_id'],
+            'name':               p['name'],
+            'country_alpha3':     p.get('country_alpha3', ''),
+            'year_of_birth':      p.get('year_of_birth'),
+            'is_low_confidence':  r['is_low_confidence'],
+            'predicted_position': r['predicted_position'],
+        }
+        for k in extra:
+            row[k] = p.get(k, '')
         for disc in DISCS:
-            raw = row.pop(f'_{disc}_raw', 0)
+            raw = r[f'{disc}_s']
             key = 'overall_s' if disc == 'overall' else f'{disc}_s'
             row[key] = format_time(raw)
             b = best[disc]
@@ -342,69 +102,10 @@ def _compute_race_predictions(race_id, race, results, models):
             else:
                 row[f'{disc}_fastest']  = bool(raw and b and raw == b)
                 row[f'{disc}_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
-
-    pred_pos_map = {r['athlete_id']: r['predicted_position'] for r in pred_rows}
-    pos_diffs = {}
-    for r in results:
-        if r['status'] in DNF_STATUSES:
-            continue
-        aid     = r['athlete_id']
-        actual  = r['position']
-        predicted = pred_pos_map.get(aid)
-        if predicted is not None and actual is not None:
-            pos_diffs[aid] = predicted - actual  # positive = beat prediction
-
-    # Course conditions: pool normalised signals from all elite programs in this event.
-    # Programs share the same course and race day, so combining gives a better estimate.
-    # Each race contributes a dimensionless % signal weighted by its total confidence mass.
-    # Display conversion uses this race's own avg_pred_overall as the reference.
-    event_id = race.get('event_id')
-    sibling_races = queries.get_races_by_event(event_id) if event_id else [{'race_id': race_id, 'gender': race['gender']}]
-
-    pooled = {}          # disc -> [(pct_signal, total_w)]
-    pred_overall_refs = []  # (avg_pred_overall, total_w) across all sibling races
-
-    for sibling in sibling_races:
-        sid = sibling['race_id']
-        if queries.get_race_category(sid) != 'elite':
-            continue
-        out = _course_signal_for_race(sid, sibling['gender'], models)
-        if not out:
-            continue
-        signal, s_total_w, s_avg_pred_overall = out
-        pred_overall_refs.append((s_avg_pred_overall, s_total_w))
-        for disc, pct in signal.items():
-            pooled.setdefault(disc, []).append((pct, s_total_w))
-
-    # Use a combined reference time so all races in the same event display identical conditions
-    combined_ref_w = sum(w for _, w in pred_overall_refs)
-    combined_avg_pred_overall = (sum(p * w for p, w in pred_overall_refs) / combined_ref_w
-                                 if combined_ref_w else None)
-
-    course_conditions = {}
-    if combined_avg_pred_overall:
-        for disc in DISCS:
-            race_signals = pooled.get(disc, [])
-            if not race_signals:
-                continue
-            combined_w = sum(w for _, w in race_signals)
-            avg_pct    = sum(p * w for p, w in race_signals) / combined_w
-            if   avg_pct >  0.03: category = 'very_fast'
-            elif avg_pct >  0.01: category = 'fast'
-            elif avg_pct > -0.01: category = 'normal'
-            elif avg_pct > -0.03: category = 'slow'
-            else:                  category = 'very_slow'
-            # Convert back to seconds using the pooled reference time for display
-            avg_diff_s = avg_pct * combined_avg_pred_overall
-            sign  = '-' if avg_diff_s >= 0 else '+'
-            abs_s = abs(round(avg_diff_s))
-            mins, secs = divmod(abs_s, 60)
-            course_conditions[disc] = {
-                'formatted': f"{sign}{mins:02d}:{secs:02d}",
-                'category':  category,
-            }
-
-    return pred_rows, pos_diffs, course_conditions
+            if raw:
+                raw_times[disc].append(raw)
+        rows.append(row)
+    return rows, raw_times
 
 
 def _build_time_histograms(time_values, bins=20):
@@ -485,127 +186,6 @@ def _build_rating_histograms(rating_values, bins=20):
     return chart_data
 
 
-def _upcoming_pred_seconds(race, entries, models):
-    """Raw per-athlete predicted seconds {athlete_id: {disc: sec}} for an
-    upcoming race - anchor, then short-course blend / long-course form override,
-    plus momentum - and the classified distance. Returns (None, None) when the
-    distance is unclassifiable or no models exist. Shared by the race-page table
-    and the event-page podium so the two always agree.
-    """
-    distance = queries.get_upcoming_race_distance_type(race['race_id'])
-    if not distance:
-        return None, None
-
-    gender      = race['gender']
-    target_year = race['race_date'].year if race.get('race_date') else None
-    DISCS       = ['overall', 'swim', 'bike', 'run']
-
-    # Current ratings per athlete (None = debut, use START_RATING)
-    current_ratings = {
-        e['athlete_id']: {
-            'overall':    e['overall_rating']    or START_RATING,
-            'swim':       e['swim_rating']       or START_RATING,
-            'bike':       e['bike_rating']       or START_RATING,
-            'run':        e['run_rating']        or START_RATING,
-        }
-        for e in entries
-    }
-
-    preds = {}
-    for disc in DISCS:
-        m = models.get((gender, distance, disc))
-        if not m:
-            continue
-        field_ratings = {aid: cr[disc] for aid, cr in current_ratings.items()}
-        leader_rating = max(field_ratings.values())
-        anchor        = _anchor_time(field_ratings, leader_rating, distance, disc, m,
-                                     target_year=target_year)
-        for aid, rating in field_ratings.items():
-            t = anchor * (10 ** ((leader_rating - rating) / SCALE))
-            preds.setdefault(aid, {})[disc] = max(0, round(t))
-
-    if not preds:
-        return None, None
-
-    # Short course: pure ELO anchor for the whole field (observed-split blend
-    # retired). Long course: full form override. Current form (no date cutoff -
-    # there is no future to leak).
-    field = tuple(sorted(e['athlete_id'] for e in entries))
-    if distance not in _SHORT_DISTANCES:
-        form_map = queries.get_field_form(field, 'long')
-        c_map = queries.get_form_course_constants(
-            race.get('event_id'), gender, distance, race['race_date'])
-        _apply_form_overrides(preds, form_map, c_map, field, DISCS)
-    return preds, distance
-
-
-def _compute_upcoming_predictions(race, entries, models):
-    """Compute predicted results for an upcoming race from current ratings.
-
-    Returns (pred_rows, raw_times): pred_rows sorted by predicted overall
-    time, raw_times keyed by discipline for the histograms. Returns
-    (None, {}) when predictions aren't available - no models for the
-    (gender, distance), or the distance can't be classified (e.g. a start
-    list whose event_spec_ids list both sprint and standard). The caller
-    unpacks the pair and falls back to start-list order.
-    """
-    preds, distance = _upcoming_pred_seconds(race, entries, models)
-    if not preds:
-        return None, {}
-    DISCS = ['overall', 'swim', 'bike', 'run']
-
-    course = 'short' if distance in _SHORT_DISTANCES else 'long'
-    field = tuple(sorted(e['athlete_id'] for e in entries))
-    start_counts = queries.get_field_start_counts(field, course)
-
-    pred_rows = []
-    for e in entries:
-        aid = e['athlete_id']
-        p   = preds.get(aid, {})
-        pred_rows.append({
-            'athlete_id':    aid,
-            'name':          e['name'],
-            'country_alpha3': e.get('country_alpha3', ''),
-            'year_of_birth': e.get('year_of_birth'),
-            'profile_img':   e.get('profile_img', ''),
-            'is_low_confidence': start_counts.get(aid, 0) < LOW_CONF_STARTS,
-            '_overall_raw':  p.get('overall', 9_999_999),
-            '_swim_raw':     p.get('swim', 0),
-            '_bike_raw':     p.get('bike', 0),
-            '_run_raw':      p.get('run', 0),
-        })
-    pred_rows.sort(key=lambda x: x['_overall_raw'])
-    for i, row in enumerate(pred_rows):
-        row['predicted_position'] = i + 1
-
-    best = {}
-    for disc in DISCS:
-        vals = [r[f'_{disc}_raw'] for r in pred_rows if r.get(f'_{disc}_raw', 0) > 0]
-        best[disc] = min(vals) if vals else None
-
-    # Collect raw seconds for histogram before formatting
-    raw_times = {disc: [] for disc in DISCS}
-    for row in pred_rows:
-        for disc in DISCS:
-            v = row.get(f'_{disc}_raw', 0)
-            if v and v < 9_999_999:
-                raw_times[disc].append(v)
-
-    for row in pred_rows:
-        for disc in DISCS:
-            raw = row.pop(f'_{disc}_raw', 0)
-            key = 'overall_s' if disc == 'overall' else f'{disc}_s'
-            row[key] = format_time(raw)
-            b = best[disc]
-            if disc == 'overall':
-                row['overall_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
-            else:
-                row[f'{disc}_fastest']  = bool(raw and b and raw == b)
-                row[f'{disc}_behind_s'] = format_time_behind(raw - b) if (raw and b and raw != b) else ''
-
-    return pred_rows, raw_times
-
-
 @router.get("/race/{race_id}", response_class=HTMLResponse)
 def get_race(request: Request, race_id: int, partial: bool = False):
     race = queries.get_race_info(race_id)
@@ -636,12 +216,25 @@ def get_race(request: Request, race_id: int, partial: bool = False):
     for r in results + ratings:
         r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
 
-    # Compute full-field predictions using pre-trained global models (elite only)
+    # Predictions are precomputed at build time (ptd_data/predictions.py) and
+    # served straight from race_predictions / race_course_conditions.
     race_distance = queries.get_race_distance_type(race_id)  # 'sprint' | 'standard' | None
     is_elite = queries.get_race_category(race_id) == 'elite'
-    predictions, pos_diffs, course_conditions = _compute_race_predictions(
-        race_id, race, results, queries.get_prediction_models()
-    ) if is_elite else (None, None, None)
+    predictions, pos_diffs, course_conditions = None, None, None
+    if is_elite:
+        stored = queries.get_race_predictions(race_id)
+        if stored:
+            people = {r["athlete_id"]: r for r in results}
+            predictions, _ = _prediction_rows(stored, people)
+            pred_pos_map = {r["athlete_id"]: r["predicted_position"] for r in stored}
+            pos_diffs = {}
+            for r in results:
+                if r["status"] in DNF_STATUSES:
+                    continue
+                predicted = pred_pos_map.get(r["athlete_id"])
+                if predicted is not None and r["position"] is not None:
+                    pos_diffs[r["athlete_id"]] = predicted - r["position"]  # positive = beat prediction
+            course_conditions = format_course_conditions(queries.get_race_course_conditions(race_id))
     if predictions:
         for r in predictions:
             r["age"] = race_year - r["year_of_birth"] if r["year_of_birth"] else None
@@ -973,9 +566,13 @@ def _get_upcoming_race(request: Request, race, partial: bool):
     )
     upcoming_rank_total = queries.get_race_rankings_total(race['gender'], rank_bucket)
 
-    predictions, pred_raw_times = _compute_upcoming_predictions(
-        race, entries, queries.get_prediction_models()
-    ) if is_elite else (None, {})
+    # Predictions precomputed at build time; join names/images from entries.
+    predictions, pred_raw_times = None, {}
+    if is_elite:
+        stored = queries.get_race_predictions(race_id)
+        if stored:
+            people = {e['athlete_id']: e for e in entries}
+            predictions, pred_raw_times = _prediction_rows(stored, people, extra=('profile_img',))
 
     current_year = date.today().year
     for e in entries:

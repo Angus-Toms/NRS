@@ -8,8 +8,7 @@ from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
 from ptd_data import queries
-from ptd_data.ratings import SCALE
-from app.routers.race_page import _anchor_time, LOW_CONF_STARTS
+from ptd_data.predictions import LOW_CONF_STARTS
 from app.routers.router_utils import (
     format_time, format_time_behind, format_rating_change, format_1yr_rating_change,
 )
@@ -630,21 +629,12 @@ def get_athlete(request: Request, athlete_id: int,
     ]
 
     # --- upcoming races with predictions ---
-    START_RATING = 1500
     upcoming_raw = queries.get_athlete_upcoming_races(athlete_id)
     upcoming_races = []
     if upcoming_raw:
-        models = queries.get_prediction_models()
-        disc_col = {'overall': 'overall_rating', 'swim': 'swim_rating',
-                    'bike': 'bike_rating', 'run': 'run_rating'}
         _upcoming_ids = [r['race_id'] for r in upcoming_raw]
-        _entries_by_race   = queries.get_upcoming_race_entries_bulk(_upcoming_ids)
-        _distance_by_race  = queries.get_upcoming_race_distance_types_bulk(_upcoming_ids)
         _standards_by_race = queries.get_upcoming_race_standards_bulk(_upcoming_ids)
         for race in upcoming_raw:
-            entries  = _entries_by_race.get(race['race_id'], [])
-            distance = _distance_by_race.get(race['race_id'])
-
             # Standard pill classification
             std_class = None
             standards = _standards_by_race.get(race['race_id'], {})
@@ -657,31 +647,20 @@ def get_athlete(request: Request, athlete_id: int,
                 elif v >= t['p30']: std_class = 'novice'
                 else:               std_class = 'beginner'
 
+            # Predictions are precomputed at build time and shared with the
+            # race page (ptd_data/predictions.py), so the two always agree.
             pred_pos, splits, behinds = None, {}, {}
-            if distance and models:
-                overall_ratings = {e['athlete_id']: e['overall_rating'] or START_RATING for e in entries}
-                my_overall = overall_ratings.get(athlete_id, START_RATING)
-                pred_pos   = sum(1 for r in overall_ratings.values() if r > my_overall) + 1
-
-                # Use the same anchor logic as the race page so predictions on
-                # an athlete's profile match those on /race/<id>. Previously
-                # this recomputed inline with plain slope*rating+intercept and
-                # drifted from the race page's pool-anchor+year-term version.
-                target_year = race['race_date'].year if race.get('race_date') else None
+            stored = queries.get_race_predictions(race['race_id'])
+            mine   = next((r for r in stored if r['athlete_id'] == athlete_id), None)
+            if mine:
+                pred_pos = mine['predicted_position']
                 for disc in ['overall', 'swim', 'bike', 'run']:
-                    m = models.get((race['gender'], distance, disc))
-                    if not m:
+                    raw = mine[f'{disc}_s']
+                    if not raw:
                         continue
-                    col = disc_col[disc]
-                    field = {e['athlete_id']: e[col] or START_RATING for e in entries}
-                    leader_rating = max(field.values())
-                    anchor        = _anchor_time(field, leader_rating, distance, disc, m,
-                                                 target_year=target_year)
-                    my_rating     = field.get(athlete_id, START_RATING)
-                    my_time       = anchor * (10 ** ((leader_rating - my_rating) / SCALE))
-                    leader_time   = anchor  # at leader rating, ELO factor = 1
-                    splits[disc]  = format_time(round(my_time))
-                    diff = round(my_time) - round(leader_time)
+                    leader = min(r[f'{disc}_s'] for r in stored if r[f'{disc}_s'])
+                    splits[disc]  = format_time(raw)
+                    diff = raw - leader
                     behinds[disc] = 'fastest' if diff == 0 else format_time_behind(diff)
 
             upcoming_races.append({
