@@ -430,10 +430,9 @@
                 </td>
                 <td class="race-col" data-value="{{ race.race_title }}">
                     <a href="/race/{{ race.race_id }}" class="link">{{ race.race_title }}</a>
-                    {% if race.is_relay %}<span class="relay-badge">MTR</span>
-                    {% elif race.standard_class %}<span class="std-pill std-pill--{{ race.standard_class }}">{{ race.standard_class|title }}</span>{% endif %}
+                    {% if race.standard_class %}<span class="std-pill std-pill--{{ race.standard_class }}">{{ race.standard_class|title }}</span>{% endif %}
                 </td>
-                <td class="program-col muted-col" data-value="{{ race.program }}">{{ race.program }}{% if race.is_relay and race.leg_num %} · Leg {{ race.leg_num }}{% endif %}</td>
+                <td class="program-col muted-col" data-value="{{ race.program }}">{{ race.program }}</td>
                 <td class="position-col" data-value="{{ race.position or 9999 }}">
                     {% if race.position == 1 %}<span class="pos-circle gold">1</span>
                     {% elif race.position == 2 %}<span class="pos-circle silver">2</span>

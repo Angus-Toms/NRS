@@ -94,6 +94,17 @@ def _display_program(prog_name, gender=None):
     return f"{div} {word}".strip()
 
 
+def _mtr_program(prog_name, leg_num=None):
+    """Mixed-relay program label for the results/ratings tables:
+    'Mixed Elite Relay' -> 'Elite MTR', 'Mixed Relay' -> 'MTR', with an
+    optional leg suffix."""
+    cat = prog_name.removeprefix("Mixed").removesuffix("Relay").strip()
+    label = f"{cat} MTR".strip()
+    if leg_num:
+        label += f" · Leg {leg_num}"
+    return label
+
+
 def _format_position(tier, pos, age_group=None):
     pos = int(pos)
     label = _TIER_LABELS.get(tier, tier)
@@ -528,7 +539,8 @@ def get_athlete(request: Request, athlete_id: int,
             "leg_num":        r.get("leg_num"),
             "race_title":     r["race_title"],
             "race_date":      r["race_date"],
-            "program":        _display_program(r["program"], r.get("gender")),
+            "program":        (_mtr_program(r["program"], r.get("leg_num")) if r.get("is_relay")
+                               else _display_program(r["program"], r.get("gender"))),
             "position":       r["position"],
             "status":         r["status"],
             # Relays have no race_rankings standard; suppress the pill rather
@@ -598,7 +610,8 @@ def get_athlete(request: Request, athlete_id: int,
             "race_id":           r["race_id"],
             "race_date":         r["race_date"],
             "race_title":        r["race_title"],
-            "race_program":      _display_program(r["race_program"]),
+            "race_program":      (_mtr_program(r["race_program"], r["leg_num"]) if r["is_relay"]
+                                  else _display_program(r["race_program"])),
             "position":          r["position"],
             "status":            r["status"],
             "standard_class":    _std_class(_std_map.get(r["race_id"])),

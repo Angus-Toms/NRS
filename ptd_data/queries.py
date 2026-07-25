@@ -2128,6 +2128,7 @@ def get_athlete_rating_history(athlete_id, category='elite', course='short'):
         "bike_rating",       "bike_change",
         "run_rating",        "run_change",
         "transition_rating", "transition_change",
+        "leg_num", "is_relay",
     ]
     return _dicts(cols, conn.execute(f"""
         SELECT
@@ -2141,14 +2142,16 @@ def get_athlete_rating_history(athlete_id, category='elite', course='short'):
             ra.swim,       ra.swim_change,
             ra.bike,       ra.bike_change,
             ra.run,        ra.run_change,
-            ra.transition, ra.transition_change
+            ra.transition, ra.transition_change,
+            rl.leg_num,
+            r.distance = 'relay' AS is_relay
         FROM ratings ra
         JOIN races r   ON ra.race_id   = r.race_id
         LEFT JOIN results res ON ra.race_id = res.race_id AND ra.athlete_id = res.athlete_id
-        -- Relay rating rows have no results row; position/status come from the
-        -- athlete's team result instead.
+        -- Relay rating rows have no results row; position/status/leg come from
+        -- the athlete's team result instead.
         LEFT JOIN (
-            SELECT l.race_id, l.athlete_id, rt.position, rt.status
+            SELECT l.race_id, l.athlete_id, l.leg_num, rt.position, rt.status
             FROM relay_legs l
             JOIN relay_teams rt ON rt.race_id = l.race_id AND rt.team_id = l.team_id
         ) rl ON rl.race_id = ra.race_id AND rl.athlete_id = ra.athlete_id
