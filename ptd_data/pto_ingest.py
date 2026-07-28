@@ -461,14 +461,16 @@ class PTOIngester:
 
         venue, country_raw = _split_location(info.get("location", ""))
         country_full = _resolve_pto_country(country_raw)
-        race_date = _parse_date(info.get("date", "")) or date(year, 1, 1)
+        gender_dates = _parse_race_dates(info, year)
+        event_start, event_end = min(gender_dates.values()), max(gender_dates.values())
 
         # Skip races with no results tables (future races)
         if not soup.find("table", class_="race-results"):
             print(f"  No race-results tables — race hasn't happened yet, skipping")
             return False
 
-        print(f"  Venue: {venue!r}  Country: {country_full!r}  Date: {race_date}  "
+        print(f"  Venue: {venue!r}  Country: {country_full!r}  "
+              f"Dates: {event_start}..{event_end}  "
               f"Brand: {brand}  Tier: {tier or '-'}  Prize: ${prize_usd}")
 
         db.upsert_nationality(self.conn, country_full)
@@ -481,8 +483,8 @@ class PTOIngester:
             venue=venue,
             country=country_full,
             continent=_country_to_continent(country_full),
-            start_date=str(race_date),
-            end_date=str(race_date),
+            start_date=str(event_start),
+            end_date=str(event_end),
             longitude=0,
             latitude=0,
             brand=brand,
@@ -501,6 +503,7 @@ class PTOIngester:
             print(f"  {gender_label}: {len(results)} rows found")
 
             race_id = db.slug_id(f"{slug}-{year}-{gender_val}")
+            race_date = gender_dates[gender_val]
 
             db.insert_race(
                 self.conn,
@@ -1136,9 +1139,32 @@ def _parse_date(text):
             return datetime.strptime(text.strip(), fmt).date()
         except (ValueError, AttributeError):
             continue
-    # Fallback: find first 4-digit year in text
-    m = re.search(r"\b(20\d{2})\b", text or "")
     return None
+
+
+def _parse_race_dates(info, year):
+    """Return {'male': date, 'female': date} from a PTO Race Info block.
+
+    Single-day races expose 'Date: 26 Apr 2026'. Multi-day championship events
+    (Kona, PTO/T100 majors) run the pro fields on different days and expose
+    'Dates: 06 Oct 2022 (FPRO) | 08 Oct 2022 (MPRO)' - the gender-tag order is
+    not fixed, so we key each parsed date by its own tag rather than position.
+    A gender left unresolved (untagged single-date race, or one field missing)
+    falls back to the other gender's date, then to Jan 1 of the year.
+    """
+    raw = info.get("dates") or info.get("date") or ""
+    tagged = {}
+    for m in re.finditer(r"(\d{1,2}\s+[A-Za-z]{3,}\s+\d{4})\s*\((M|F)PRO\)", raw):
+        d = _parse_date(m.group(1))
+        if d:
+            tagged["male" if m.group(2) == "M" else "female"] = d
+    if not tagged:
+        # Single-day or untagged: one date shared by both genders.
+        d = _parse_date(raw)
+        if d:
+            tagged = {"male": d, "female": d}
+    fallback = next(iter(tagged.values()), date(year, 1, 1))
+    return {g: tagged.get(g, fallback) for g in ("male", "female")}
 
 
 def _resolve_pto_country(raw):

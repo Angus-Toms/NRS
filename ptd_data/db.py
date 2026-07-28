@@ -52,6 +52,16 @@ def get_read_cursor():
     return cur
 
 
+def close_read_conn():
+    """Drop the cached read-only connection so a writable handle can be opened.
+    DuckDB refuses to hold a RO and a RW handle to the same file at once."""
+    global _read_root
+    if _read_root is not None:
+        _read_root.close()
+        _read_root = None
+    _read_local.cursor = None
+
+
 def create_schema(conn):
     conn.execute("CREATE TYPE IF NOT EXISTS gender_enum AS ENUM ('male', 'female', 'mixed')")
     conn.execute("CREATE TYPE IF NOT EXISTS category_enum AS ENUM ('elite', 'ag')")

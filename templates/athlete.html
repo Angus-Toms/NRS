@@ -222,7 +222,11 @@
    Table is horizontally scrollable inside its own container so no column
    is hidden on small screens. #}
 {% set ag_prefix = 'AG ' if category == 'ag' else '' %}
-{% set has_change_col = current_rankings and rating_changes_1yr %}
+{# Show the 1y Change column only if there's actually something in it. An athlete
+   dormant in this course for over a year has current==year-ago (change 0, blank)
+   and no sparkline, which would otherwise render an empty column. #}
+{% set has_change_data = sparklines or (rating_changes_1yr and rating_changes_1yr.values() | selectattr('formatted_str') | list) %}
+{% set has_change_col = current_rankings and has_change_data %}
 {% set has_rank_col   = current_rankings or peak_rankings %}
 {% set rank_col_label = ('Peak ' if not current_rankings and peak_rankings else '') ~ ag_prefix ~ 'World' %}
 
