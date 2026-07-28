@@ -30,6 +30,16 @@ Everything else gets steered by these numbers; do them first.
 - [ ] Verify prediction content on upcoming race pages is server-rendered crawlable HTML
       (not JS-only), since start-list queries hit these pages
 - [ ] Dry-run raceday.sh on the next race weekend and time it (target: results live <2h after finish)
+- [ ] Long-course start-list ingest tool: get Ironman pro start lists into upcoming_races +
+      start_list_entries so long-course races get pre-race pages, predictions, and social cards
+      (currently short-course only - and 70.3 Worlds + Kona are the biggest demand spikes of
+      the window). Source: https://www.ironman.com/community/pro-athletes#pro-start-lists
+      - First pass: manual CSV entry via a small script (paste from the page, match names to
+        athlete_ids with the existing matcher logic, flag non-matches for review)
+      - Second pass if the page structure is stable: scrape it directly (it is HTML, not
+        images - OCR shouldn't be needed; verify), keep manual CSV as fallback
+      - Name-matching review step is essential: silently mismatched athletes would generate
+        wrong predictions/cards under the wrong person's name
 
 ## P2 - Weeks 2-4 (distribution + shareability)
 
@@ -42,8 +52,17 @@ Everything else gets steered by these numbers; do them first.
       honest accuracy recap after
 - [ ] Switch IG/FB pipeline from individual images to one album/carousel per race
 - [ ] Tag athletes in every posted card
+- [ ] Athlete social-handle tool: internal page/script to search an athlete's IG/FB
+      (prefill a search from name + country, paste the confirmed handle) and save to DB
+      for later tagging and DMs
+      - Schema: athlete_socials table (athlete_id, platform, handle, verified_at) - lives
+        in the analytics DuckDB via a data/ CSV like corrections.csv so it survives rebuilds
+      - Manual confirm only - do NOT auto-save scraped guesses; a card tagging the wrong
+        person is worse than no tag
+      - Work through athletes in upcoming start lists first (that's who gets tagged next)
 - [ ] DM ~5-10 mid-level athletes per race weekend with their own pre/post-race card
       ("made this for your race, feel free to share"); keep a list of who reshares
+      (the reshare list can live in athlete_socials as a notes/reshared column)
 - [ ] Start measuring social by referral visits (Cloudflare Analytics) + athlete reshares,
       not follower count
 

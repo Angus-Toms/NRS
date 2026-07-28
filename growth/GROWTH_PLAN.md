@@ -87,6 +87,12 @@ Meanwhile "<race> 2026 results" queries are exactly where you already rank
       (WTCS, T100, Ironman/70.3 champs, World Cups). The upcoming_races
       table already knows them - a `weekly.sh` step can print "this
       weekend: run raceday for X, Y" so it's zero-thought.
+- [ ] **Long-course start lists** are the gap: upcoming/pre-race machinery is
+      short-course only, yet 70.3 Worlds and Kona are the biggest spikes of
+      the window. Build an ingest tool for Ironman pro start lists
+      (ironman.com/community/pro-athletes) - manual CSV first, scrape if
+      stable - so long-course races get pre-race pages, predictions and
+      cards too. Details in TODO.md P1.
 - [ ] Pre-race pages are equally valuable and FULLY automatic already:
       start lists + predictions are live and now in sitemap-upcoming.
       "start list" queries convert at 60% CTR when you rank. Make sure the
@@ -181,6 +187,10 @@ low-engagement template content - correct diagnosis. Redirect that effort:
 - [ ] Keep IG/FB alive but batch: one album/carousel per race (pre-cards +
       podium recap) instead of individual images - your instinct is right.
       Auto-generated is fine when it's clearly a data product.
+- [ ] **Social-handle tool** (enabler for the two items below): internal
+      lookup to find + manually confirm athletes' IG/FB handles, saved
+      against athlete_id so tagging/DMs are one click at post time.
+      Details in TODO.md P2.
 - [ ] **Tag the athletes in every card.** The card of athlete X is content
       athlete X wants to reshare to their followers. Mid-tier pros resharing
       their own prediction/recap cards is the actual growth mechanism, not
