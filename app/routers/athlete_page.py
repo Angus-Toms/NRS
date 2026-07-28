@@ -1,13 +1,14 @@
 import math
 from collections import OrderedDict
 from datetime import date, timedelta
+from functools import lru_cache
 
 from fastapi import HTTPException, Query, Request, APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
-from ptd_data import queries
+from ptd_data import db, queries
 from ptd_data.predictions import LOW_CONF_STARTS
 from app.routers.router_utils import (
     format_time, format_time_behind, format_rating_change, format_1yr_rating_change,
@@ -18,6 +19,8 @@ templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
 templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 templates.env.globals["flag"]          = flag
 router = APIRouter()
+
+_merge_redirects = lru_cache(maxsize=1)(db.athlete_merge_redirects)
 
 _TIER_LABELS = {
     "olympic":               "Olympic",
@@ -271,6 +274,11 @@ def get_athlete(request: Request, athlete_id: int,
                       course:   str | None = Query(None)):
     info = queries.get_athlete_info(athlete_id)
     if not info:
+        # Manually merged athletes: 301 the retired ID to the survivor so
+        # indexed URLs and backlinks follow the merge instead of 404ing.
+        merged_into = _merge_redirects().get(athlete_id)
+        if merged_into:
+            return RedirectResponse(f"/athlete/{merged_into}", status_code=301)
         raise HTTPException(status_code=404, detail=f"Athlete {athlete_id} not found")
 
     # Resolve course (short vs long).
@@ -484,6 +492,25 @@ def get_athlete(request: Request, athlete_id: int,
         for disc in ["overall", "swim", "bike", "run", "transition"]:
             athlete_dict[f"max_{disc}_race_id"]       = peaks[f"max_{disc}_race_id"]
             athlete_dict[f"{disc}_increase_race_id"]  = best[f"{disc}_race_id"] or 0
+
+    # --- crawlable intro sentence ---
+    # Athlete pages are otherwise near-identical tables; a unique line of real
+    # prose per athlete gives search engines text to match name queries against.
+    pronoun = "He" if info["gender"] == "male" else "She"
+    cat_label = "an age-group" if category == "ag" else "a professional"
+    course_label = "long-course" if course == "long" else "short-course"
+    from_str = f" from {info['country_full']}" if info.get("country_full") else ""
+    seo_intro = f"{info['name']} is {cat_label} {course_label} triathlete{from_str}."
+    if race_starts:
+        first_year = min(r["race_date"].year for r in race_hist) if race_hist else None
+        since = "" if not first_year else (f" in {first_year}" if race_starts == 1 else f" since {first_year}")
+        verb = "has recorded" if active else "recorded"
+        seo_intro += (f" {pronoun} {verb} {race_starts} race start{'s' if race_starts != 1 else ''}{since},"
+                      f" with {wins} win{'s' if wins != 1 else ''}"
+                      f" and {podiums} podium finish{'es' if podiums != 1 else ''}.")
+    world_rank = current_rankings.get("world_overall")
+    if world_rank:
+        seo_intro += f" {pronoun} is currently ranked {world_rank['n']}{world_rank['suffix']} in the world."
 
     # --- notable results: three parallel streams (short-course elite, AG, long-course) ---
     notable_results      = _build_notable_results(notable_raw)
@@ -748,6 +775,8 @@ def get_athlete(request: Request, athlete_id: int,
     return templates.TemplateResponse("athlete.html", {
         "request":        request,
         "active_page":    "athletes",
+        "noindex":        not queries.athlete_is_indexable(athlete_id),
+        "seo_intro":      seo_intro,
         "athlete":        athlete_dict,
         "has_ratings":          has_ratings,
         "show_charts":          has_ratings and race_starts > 1,

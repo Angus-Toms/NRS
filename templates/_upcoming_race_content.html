@@ -35,7 +35,7 @@
                     {% if has_rank %}
                     <td class="rt-rank">
                         {% if race_ranks[disc] and race_course %}
-                        <a class="ranking-link" href="/race-leaderboard?gender={{ race.gender }}&course={{ race_course }}&disc={{ disc }}" title="View {{ disc }} race leaderboard">{{ ordinal(race_ranks[disc]) }}</a>
+                        <a class="ranking-link" href="/race-leaderboard?gender={{ race.gender }}&course={{ race_course }}&disc={{ disc }}" rel="nofollow" title="View {{ disc }} race leaderboard">{{ ordinal(race_ranks[disc]) }}</a>
                         {% else %}<span class="no-data">-</span>{% endif %}
                     </td>
                     {% endif %}

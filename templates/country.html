@@ -237,7 +237,7 @@
                 <div class="country-upcoming-body">
                     {% for race in event.races[:3] %}
                     <div class="country-upcoming-race">
-                        <a href="/upcoming/race/{{ race.race_id }}" class="country-upcoming-race-title">{{ race.prog_name }}</a>
+                        <a href="/race/{{ race.race_id }}" class="country-upcoming-race-title">{{ race.prog_name }}</a>
                         <span class="country-upcoming-race-meta">{{ race.entry_count }} entered</span>
                     </div>
                     {% endfor %}

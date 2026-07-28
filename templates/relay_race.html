@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - Mixed Relay | Pro Tri Data{% endblock %}
+{% macro page_title() -%}
+{%- set y = race.date.strftime('%Y') -%}
+{%- set base = race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y -%}
+{{ base }} - Mixed Relay Results | Pro Tri Data
+{%- endmacro %}
+
+{% block title %}{{ page_title() }}{% endblock %}
 
 {% block meta %}
 {% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
@@ -8,7 +14,7 @@
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - Mixed Relay | Pro Tri Data">
+<meta property="og:title" content="{{ page_title() }}">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}

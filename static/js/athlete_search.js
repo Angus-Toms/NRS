@@ -161,7 +161,7 @@ function renderResults(athletes, disc, order) {
         // the profile page, so let the profile page pick its own default.
         const courseQS = getCourse() === 'all' ? '' : `?course=${encodeURIComponent(getCourse())}`;
         return `
-        <a href="/athlete/${a.athlete_id}${courseQS}" class="as-result-item">
+        <a href="/athlete/${a.athlete_id}${courseQS}"${courseQS ? ' rel="nofollow"' : ''} class="as-result-item">
             <img class="as-result-avatar" src="${img}" alt="${escapeHtml(a.name)}" onerror="this.src='${defaultImg}'">
             <div class="as-result-info">
                 <div class="as-result-name">${escapeHtml(a.name)}</div>

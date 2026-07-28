@@ -17,14 +17,17 @@ def _get_conn():
 
 @lru_cache(maxsize=1)
 def _athlete_rows():
-    """All athlete IDs ordered by peak rating. Cached for process lifetime —
-    the ratings table only changes on rebuild, which restarts the app. This
-    query scans the full ratings table and was previously rerun on every
-    sitemap-shard request."""
-    return _get_conn().execute("""
+    """Indexable athlete IDs ordered by peak rating. Cached for process
+    lifetime — the ratings table only changes on rebuild, which restarts the
+    app. Only athletes passing queries.ATHLETE_INDEXABLE_SQL are submitted;
+    single-result age-groupers are noindex'd thin pages we keep out of the
+    sitemap so Google spends its crawl budget on pages that can rank."""
+    from ptd_data.queries import ATHLETE_INDEXABLE_SQL
+    return _get_conn().execute(f"""
         SELECT a.athlete_id, MAX(r.overall) AS peak_rating
         FROM athletes a
         JOIN ratings r ON a.athlete_id = r.athlete_id
+        WHERE a.athlete_id IN ({ATHLETE_INDEXABLE_SQL})
         GROUP BY a.athlete_id
         ORDER BY peak_rating DESC
     """).fetchall()
@@ -114,6 +117,7 @@ def sitemap_index(request: Request) -> Response:
     entries = [
         f'  <sitemap><loc>{base}/sitemap-static.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-upcoming.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-series.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-recurring.xml</loc><lastmod>{today}</lastmod></sitemap>',
@@ -253,6 +257,26 @@ def sitemap_races(request: Request) -> Response:
             priority=priority,
         ))
 
+    return _xml_response(_wrap_urlset(urls))
+
+
+@lru_cache(maxsize=1)
+def _upcoming_race_ids():
+    return [r[0] for r in _get_conn().execute(
+        "SELECT race_id FROM upcoming_races ORDER BY race_date"
+    ).fetchall()]
+
+
+@router.get("/sitemap-upcoming.xml")
+def sitemap_upcoming(request: Request) -> Response:
+    """Upcoming races (served at /race/<id> from the upcoming_races table).
+    Start-list queries spike in the days before a race, so these need to be
+    submitted the moment they exist - waiting for the race to land in the
+    races sitemap misses the demand window entirely."""
+    base = str(request.base_url).rstrip("/")
+    today = date.today().isoformat()
+    urls = [_url(f"{base}/race/{rid}", lastmod=today, changefreq="daily", priority=0.9)
+            for rid in _upcoming_race_ids()]
     return _xml_response(_wrap_urlset(urls))
 
 

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import anyio
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -53,7 +54,15 @@ async def edge_cache_headers(request: Request, call_next):
         and "cache-control" not in response.headers
         and not request.headers.get("X-Partial")
     ):
-        response.headers["Cache-Control"] = "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
+        # Athlete pages only change on the weekly DB deploy but are the
+        # bulk of Googlebot traffic (50k+ URLs, so almost every crawl is an
+        # edge miss at 1h TTL and pays ~1.2s origin latency). A day of
+        # staleness after a deploy is fine; the longer TTL turns crawl
+        # misses into edge hits. Historical race pages get an even longer
+        # TTL set in their route (a cache-control header here means the
+        # route already chose one, and this middleware leaves it alone).
+        s_maxage = 86400 if request.url.path.startswith("/athlete/") else 3600
+        response.headers["Cache-Control"] = f"public, max-age=0, s-maxage={s_maxage}, stale-while-revalidate=86400"
     return response
 
 # /static/athlete_imgs must be mounted before /static so it takes precedence in dev.
@@ -90,6 +99,24 @@ async def http_error_handler(request: Request, exc: StarletteHTTPException):
             "active_page": None,
         },
         status_code = exc.status_code,
+    )
+
+# URLs that fail path/query validation (e.g. legacy name-based /race/<name>
+# URLs where an int is expected) are bad URLs, not bad requests: serve the 404
+# page instead of FastAPI's default 422 JSON. Google retries "other 4xx"
+# statuses far longer than 404s, so 2.6k legacy URLs were stuck in Search
+# Console's "Blocked due to other 4xx issue" bucket.
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    return templates.TemplateResponse(
+        "error.html",
+        {
+            "request": request,
+            "status_code": 404,
+            "detail": "Page not found",
+            "active_page": None,
+        },
+        status_code = 404,
     )
 
 # Render unexpected errors with the same template

@@ -1,22 +1,52 @@
 {% extends "base.html" %}
 
-{% block title %}{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - {{ race.gender | title }} Elite | Pro Tri Data{% endblock %}
+{# Titles match how people actually search: "<race> <year> results" and
+   "<race> start list". Most WT titles already lead with the year, so only
+   append it when missing. #}
+{% macro page_title() -%}
+{%- set y = race.date.strftime('%Y') -%}
+{%- set base = race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y -%}
+{%- if is_upcoming -%}
+{{ base }} - Start List &amp; Predictions | Pro Tri Data
+{%- else -%}
+{{ base }} - {{ "Men's" if race.gender == 'male' else ("Women's" if race.gender == 'female' else 'Mixed') }} {{ 'Age Group' if race.category == 'ag' else 'Elite' }} Results &amp; Splits | Pro Tri Data
+{%- endif -%}
+{%- endmacro %}
+
+{% block title %}{{ page_title() }}{% endblock %}
 
 {% block meta %}
 {% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
-{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. {{ race.gender | title }} elite results - {{ finish_count }} finishers. View splits, rating changes, and performance analysis.{% endset %}
+{% if is_upcoming %}
+{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%-d %B %Y') }}{{ loc_str }}. Start list with current ratings and predicted results for every athlete racing.{% endset %}
+{% else %}
+{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. {{ race.gender | title }} {{ 'age group' if race.category == 'ag' else 'elite' }} results - {{ finish_count }} finishers. View splits, rating changes, and performance analysis.{% endset %}
+{% endif %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ race.race_title }} ({{ race.date.strftime('%Y') }}) - {{ race.gender | title }} Elite | Pro Tri Data">
+<meta property="og:title" content="{{ page_title() }}">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
 
 {% block jsonld %}
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}"{% if race_location %},"location":{"@type":"Place","name":{{ race_location | tojson }}}{% endif %}}
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}","eventStatus":"https://schema.org/EventScheduled"{% if race_location %},"location":{"@type":"Place","name":{{ race_location | tojson }}{% if race_country %},"address":{{ race_country | tojson }}{% endif %}}{% endif %}}
 </script>
+{% if breadcrumb and (breadcrumb.series or breadcrumb.event) %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+{%- set crumbs = [] -%}
+{%- if breadcrumb.series -%}{%- set _ = crumbs.append((breadcrumb.series.name, breadcrumb.series.url)) -%}{%- endif -%}
+{%- if breadcrumb.event -%}{%- set _ = crumbs.append((breadcrumb.event.name, breadcrumb.event.url)) -%}{%- endif -%}
+{%- set _ = crumbs.append((race.race_title, '/race/' ~ race.race_id)) -%}
+{%- for name, url in crumbs -%}
+{"@type":"ListItem","position":{{ loop.index }},"name":{{ name | tojson }},"item":"https://www.protridata.com{{ url }}"}{{ "," if not loop.last }}
+{%- endfor -%}
+]}
+</script>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}

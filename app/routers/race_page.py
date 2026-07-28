@@ -1,8 +1,10 @@
 
 import numpy as np
 
+from datetime import date
+
 from fastapi import HTTPException, Request, APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL, flag
 
@@ -16,6 +18,16 @@ templates.env.globals["flag"]          = flag
 router = APIRouter()
 
 DNF_STATUSES = {"DNF", "DNS", "DQ", "LAP", "NC"}
+
+
+def _race_cache_headers(race_date):
+    """Historical race pages are effectively immutable (only a full ratings
+    rebuild touches them), so let the edge hold them for a week instead of
+    the default hour - Googlebot recrawls old races constantly and every
+    miss pays full origin latency."""
+    if race_date and (date.today() - race_date).days > 365:
+        return {"Cache-Control": "public, max-age=0, s-maxage=604800, stale-while-revalidate=2592000"}
+    return None
 
 
 def _build_breadcrumb(race, race_id, recurring_meta):
@@ -184,6 +196,14 @@ def _build_rating_histograms(rating_values, bins=20):
             }],
         }
     return chart_data
+
+
+# Legacy URL scheme: upcoming races used to live at /upcoming/race/<id> and
+# now share /race/<id>. Google indexed the old URLs (start-list queries earn
+# clicks pre-race), so hand that equity to the current URL instead of 404ing.
+@router.get("/upcoming/race/{race_id}")
+def get_upcoming_race_legacy(race_id: int):
+    return RedirectResponse(f"/race/{race_id}", status_code=301)
 
 
 @router.get("/race/{race_id}", response_class=HTMLResponse)
@@ -392,7 +412,7 @@ def get_race(request: Request, race_id: int, partial: bool = False):
         race[f"{disc}_increase_athlete_id"] = best_perf[f"{disc}_athlete_id"] or 0
 
     template = "race_partial.html" if partial else "race.html"
-    return templates.TemplateResponse(template, {
+    return templates.TemplateResponse(template, headers=_race_cache_headers(race["race_date"]), context={
         "request":        request,
         "active_page":    "races",
         "race":           race,
@@ -523,7 +543,7 @@ def _get_relay_race(request: Request, race, race_id: int):
     race["team_count"] = len(teams)
     race["status_counts"] = status_counts
 
-    return templates.TemplateResponse("relay_race.html", {
+    return templates.TemplateResponse("relay_race.html", headers=_race_cache_headers(race["race_date"]), context={
         "request":        request,
         "active_page":    "races",
         "race":           race,

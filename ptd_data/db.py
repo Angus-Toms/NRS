@@ -746,6 +746,30 @@ def record_athlete_nationality(conn, athlete_id, country_full, race_date):
     """, [athlete_id, country_full, race_date])
 
 
+def athlete_merge_redirects():
+    """old_id -> surviving_id map from data/athlete_merges.csv, chains resolved.
+
+    The app 301s /athlete/<merged_id> to the surviving athlete so indexed URLs
+    and backlinks follow the merge instead of 404ing. Loaded once per process;
+    the CSV only changes with a deploy.
+    """
+    path = _DATA_DIR / 'athlete_merges.csv'
+    if not path.exists():
+        return {}
+    redirects = {}
+    with open(path, newline='', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            redirects[int(row['merge_athlete_id'])] = int(row['keep_athlete_id'])
+    # Collapse chains (A->B, B->C becomes A->C) so the app serves one hop.
+    for old_id, new_id in redirects.items():
+        seen = {old_id}
+        while new_id in redirects and new_id not in seen:
+            seen.add(new_id)
+            new_id = redirects[new_id]
+        redirects[old_id] = new_id
+    return redirects
+
+
 def apply_athlete_merges(conn):
     """Apply manual athlete merges from data/athlete_merges.csv.
 

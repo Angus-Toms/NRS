@@ -69,7 +69,7 @@
         ] %}
         <div class="champs-grid">
             {% for label, champ, course in champ_cards %}
-            <a href="/athlete/{{ champ.athlete_id }}?course={{ course }}" class="champ-card">
+            <a href="/athlete/{{ champ.athlete_id }}" class="champ-card">
                 <div class="champ-card-header">
                     <span class="champ-badge">2025 {{ "Men" if champ.gender == "male" else "Women" }}'s {{ label }} World Champion</span>
                 </div>
@@ -269,7 +269,7 @@
                 ("Women · Age Group",    women_ag_podium,    "female", "ag",    "short"),
             ] %}
             <div class="lb-widget">
-                <a href="/athlete-leaderboard?gender={{ gender_slug }}&category={{ cat }}&course={{ crs }}&active_only=false" class="lb-widget-header">
+                <a href="/athlete-leaderboard?gender={{ gender_slug }}&category={{ cat }}&course={{ crs }}&active_only=false" rel="nofollow" class="lb-widget-header">
                     <span>{{ label }}</span>
                     <span class="lb-widget-more">See more<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                 </a>
@@ -283,7 +283,7 @@
                         {% else %}<span class="pos-other">{{ pos }}</span>{% endif %}
                         <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img else 'imgs/default_user_64.webp' }}"
                              alt="{{ a.name }}" class="lb-widget-img" loading="lazy" width="32" height="32">
-                        <a href="/athlete/{{ a.athlete_id }}?category={{ cat }}&course={{ crs }}" class="lb-widget-name">{{ a.name }} {{ flag(a.country_alpha3) }}</a>
+                        <a href="/athlete/{{ a.athlete_id }}" class="lb-widget-name">{{ a.name }} {{ flag(a.country_alpha3) }}</a>
                         <span class="lb-widget-rating">{{ "%.0f"|format(a.overall) }}</span>
                     </li>
                     {% endfor %}

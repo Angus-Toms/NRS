@@ -2,7 +2,7 @@
 
 {% block title %}{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data{% endblock %}
 
-{% set desc %}Career ELO ratings and race history for {{ athlete.name }}{% if athlete.country_full %}, {{ athlete.country_full }}{% endif %}{% if current_ratings and current_ratings.overall %}. Overall rating: {{ current_ratings.overall }}{% endif %}. View splits, discipline ratings, ranking history and more.{% endset %}
+{% set desc %}{{ seo_intro }} View splits, discipline ratings, ranking history and more.{% endset %}
 {% set img_url %}{{ STATIC_BASE_URL }}{% if athlete.profile_img %}athlete_imgs/512/{{ athlete.athlete_id }}.webp{% else %}imgs/logo-512.webp{% endif %}{% endset %}
 
 {% block meta %}
@@ -115,7 +115,7 @@
                 <span class="hero-meta-dot">·</span> <span class="athlete-hero-nickname">"{{ athlete.nickname }}"</span>
                 {% endif %}
                 <span class="hero-meta-dot">·</span>
-                <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" class="athlete-compare-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg><span class="athlete-compare-label">Compare</span></a>
+                <a href="/athlete-compare?athlete1={{ athlete.athlete_id }}&course={{ course }}" rel="nofollow" class="athlete-compare-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="compare-ic"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg><span class="athlete-compare-label">Compare</span></a>
             </div>
             <div class="athlete-hero-stats">
                 <span class="hero-stat-n">{{ athlete.race_starts }}</span> starts
@@ -139,6 +139,7 @@
                     {% for m in mode_summaries %}
                     {% set is_active = m.key == active_mode %}
                     <a href="/athlete/{{ athlete.athlete_id }}?course={{ m.course }}&category={{ m.category }}"
+                       rel="nofollow"
                        class="athlete-mode-pill{% if is_active %} active{% endif %}"
                        role="tab"
                        aria-selected="{{ 'true' if is_active else 'false' }}"
@@ -179,6 +180,7 @@
 
 {% block content %}
 <div id="athlete-ajax-content">
+<p class="athlete-intro">{{ seo_intro }}</p>
 {% set discs = [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
 
 <!-- Palmares: long-course overrides short-course; AG only applies to short-course -->
@@ -256,7 +258,7 @@
                     {% if has_rank_col %}
                     <td class="rt-rank">
                         {% if current_rankings and current_rankings['world_'~disc] %}
-                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" class="ranking-link">{{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup></a>
+                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}" rel="nofollow" class="ranking-link">{{ current_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['world_'~disc].suffix }}</sup></a>
                         {% elif peak_rankings and peak_rankings['world_'~disc] %}
                         <span>{{ peak_rankings['world_'~disc].n }}<sup class="ordinal-suffix">{{ peak_rankings['world_'~disc].suffix }}</sup></span>
                         {% else %}<span class="no-data">-</span>{% endif %}
@@ -264,7 +266,7 @@
                     {% if current_rankings %}
                     <td class="rt-rank">
                         {% if current_rankings['national_'~disc] %}
-                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" class="ranking-link">{{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup></a>
+                        <a href="/athlete-leaderboard?gender={{ athlete.gender }}&disc={{ disc }}&category={{ category }}&course={{ course }}&country={{ athlete.country_full | urlencode }}" rel="nofollow" class="ranking-link">{{ current_rankings['national_'~disc].n }}<sup class="ordinal-suffix">{{ current_rankings['national_'~disc].suffix }}</sup></a>
                         {% else %}<span class="no-data">-</span>{% endif %}
                     </td>
                     {% endif %}
@@ -373,7 +375,7 @@
 <div class="rivals-row">
     {% for r in rivals %}
     <div class="rival-card">
-        <a class="rival-link" href="/athlete/{{ r.athlete_id }}?course={{ course }}&category={{ category }}">
+        <a class="rival-link" href="/athlete/{{ r.athlete_id }}">
             <img class="rival-img"
                  src="{{ STATIC_BASE_URL ~ 'athlete_imgs/128/' ~ r.athlete_id ~ '.webp' if r.profile_img else STATIC_BASE_URL ~ 'imgs/default_user_64.webp' }}"
                  alt="{{ r.name }}" loading="lazy" width="80" height="80">
@@ -382,6 +384,7 @@
         </a>
         <a class="rival-compare"
            href="/athlete-compare?a1={{ athlete.athlete_id }}&a2={{ r.athlete_id }}&program={{ category }}-{{ course }}"
+           rel="nofollow"
            aria-label="Compare with {{ r.name }}" title="Compare">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>

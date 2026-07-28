@@ -142,7 +142,7 @@
     {% for card in trending_cards %}
     {% set athlete = card.athlete %}
     {% if athlete %}
-    <a href="/athlete/{{ athlete.athlete_id }}?course={{ card.course }}" class="champ-card">
+    <a href="/athlete/{{ athlete.athlete_id }}" class="champ-card">
         <div class="champ-card-header">
             <span class="champ-badge">{{ card.label }}</span>
         </div>
@@ -213,7 +213,7 @@
                 {% else %}<span class="pos-other">{{ pos }}</span>{% endif %}
                 <img src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ a.athlete_id ~ '.webp' if a.profile_img_exists else 'imgs/default_user_64.webp' }}"
                      alt="{{ a.name }}" class="lb-widget-img" loading="lazy" width="32" height="32">
-                <a href="/athlete/{{ a.athlete_id }}?course={{ crs }}&category={{ cat }}" class="lb-widget-name">{{ a.name }} {{ flag(a.country_alpha3) }}</a>
+                <a href="/athlete/{{ a.athlete_id }}" class="lb-widget-name">{{ a.name }} {{ flag(a.country_alpha3) }}</a>
                 <span class="lb-widget-rating">{{ a.overall_rating }}</span>
             </li>
             {% endfor %}

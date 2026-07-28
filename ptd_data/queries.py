@@ -1367,6 +1367,28 @@ def get_athlete_info(athlete_id):
     return dict(zip(cols, row))
 
 
+# An athlete page is worth indexing if the athlete has at least 2 results or
+# any elite result. Single-result age-groupers are near-duplicate thin pages
+# that Google crawls and rejects ("Crawled - currently not indexed"), dragging
+# down sitewide quality signals. Long-tail pages stay live but get
+# noindex'd and are excluded from the sitemap (see app/routers/robots.py,
+# which mirrors this predicate in SQL).
+ATHLETE_INDEXABLE_SQL = """
+    SELECT r.athlete_id
+    FROM results r
+    JOIN races ra ON r.race_id = ra.race_id
+    GROUP BY r.athlete_id
+    HAVING COUNT(*) >= 2 OR SUM(CASE WHEN ra.category = 'elite' THEN 1 ELSE 0 END) > 0
+"""
+
+
+def athlete_is_indexable(athlete_id):
+    row = _get_conn().execute(
+        f"SELECT 1 FROM ({ATHLETE_INDEXABLE_SQL}) idx WHERE idx.athlete_id = ?",
+        [athlete_id]).fetchone()
+    return row is not None
+
+
 def get_athlete_categories(athlete_id, course='short'):
     """Return list of categories this athlete has ratings for in the given course."""
     course_in = _course_in(course)
@@ -2540,7 +2562,7 @@ def get_race_info(race_id):
     conn = _get_conn()
     row = conn.execute("""
         SELECT r.race_id, r.race_title, r.prog_name, r.race_date,
-               e.venue AS location, e.country, r.gender, r.sub_category,
+               e.venue AS location, e.country, r.gender, r.category, r.sub_category,
                r.race_handle, r.event_id, r.is_multi_stage, r.distance
         FROM races r
         JOIN events e ON r.event_id = e.event_id
@@ -2549,7 +2571,7 @@ def get_race_info(race_id):
     if not row:
         return None
     cols = ["race_id", "race_title", "prog_name", "race_date",
-            "location", "country", "gender", "sub_category",
+            "location", "country", "gender", "category", "sub_category",
             "race_handle", "event_id", "is_multi_stage", "distance"]
     return dict(zip(cols, row))
 
