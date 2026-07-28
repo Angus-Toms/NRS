@@ -1053,10 +1053,3 @@ tr.sub-race-row .link:hover {
     .doping-marquee-track { animation: none; }
     .doping-overlay-icon { animation: none; }
 }
-
-/* Crawlable intro sentence under the hero */
-.athlete-intro {
-    margin: 14px 0 0;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
