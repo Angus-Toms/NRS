@@ -1346,6 +1346,11 @@
 /* Anchor targets land below the sticky header (52px) + toolbar (~100px). */
 .ri-group { scroll-margin-top: 162px; }
 
+/* Breathing room between a table's bottom edge and the next section head.
+   The .ri-page flex gap alone (0.5rem) reads as cramped against the 1rem
+   .page-section-head leaves below itself. */
+.ri-group + .ri-group { margin-top: 1.5rem; }
+
 .ri-count {
     font-size: 0.72rem;
     font-weight: 600;
