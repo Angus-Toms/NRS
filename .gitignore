@@ -35,9 +35,11 @@ data/
 *.duckdb.bak*
 *.csv
 *.log
+*.numbers
 
-# Work in progress
+# WIP
 social/
+growth/
 
 # Model research / backtest scripts (not part of the live app)
 analysis/
