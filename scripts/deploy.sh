@@ -122,9 +122,19 @@ if $DO_STATIC; then
             ct=$(content_type_for "$f")
             cc=$(cache_control_for "$f")
             printf "    %-60s" "$key"
-            wrangler r2 object put "$BUCKET/$key" --file "$f" \
-                --content-type "$ct" --cache-control "$cc" --remote > /dev/null 2>&1 \
-                && echo "ok" || echo "FAILED"
+            # env -u: scripts/.env exports CF_API_TOKEN / CF_ACCOUNT_ID, which
+            # wrangler reads as its deprecated auth aliases. That token has no
+            # R2 write scope, so every upload 403s; unset for this call and
+            # wrangler falls back to the OAuth login, which does. Keep the log
+            # on failure - silencing it turned a 403 into a bare "FAILED".
+            if env -u CF_API_TOKEN -u CF_ACCOUNT_ID \
+                wrangler r2 object put "$BUCKET/$key" --file "$f" \
+                --content-type "$ct" --cache-control "$cc" --remote > /tmp/wrangler-put.log 2>&1; then
+                echo "ok"
+            else
+                echo "FAILED"
+                grep -m1 "ERROR" /tmp/wrangler-put.log | sed 's/^/      /' || true
+            fi
         done
     done
     note "If assets look stale, purge the Cloudflare cache for static.protridata.com."
