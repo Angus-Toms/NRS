@@ -347,5 +347,12 @@
     <!-- Page-specific JavaScript -->
     {% block extra_js %}
     {% endblock %}
+
+    <!-- Cloudflare Web Analytics. Hostname-gated so local dev and any preview
+         host don't count as real visits; the token is public by design. -->
+    {% if request.url.hostname.endswith('protridata.com') %}
+    <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "7bba9a7651194ca7b77b5d615fd1f36f"}'></script>
+    {% endif %}
 </body>
 </html>
