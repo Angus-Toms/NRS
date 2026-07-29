@@ -125,6 +125,7 @@ def sitemap_index(request: Request) -> Response:
     entries = [
         f'  <sitemap><loc>{base}/sitemap-static.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-races.xml</loc><lastmod>{today}</lastmod></sitemap>',
+        f'  <sitemap><loc>{base}/sitemap-events.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-upcoming.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-countries.xml</loc><lastmod>{today}</lastmod></sitemap>',
         f'  <sitemap><loc>{base}/sitemap-series.xml</loc><lastmod>{today}</lastmod></sitemap>',
@@ -261,6 +262,48 @@ def sitemap_races(request: Request) -> Response:
         urls.append(_url(
             f"{base}/race/{race_id}",
             lastmod=race_date.isoformat(),
+            changefreq=changefreq,
+            priority=priority,
+        ))
+
+    return _xml_response(_wrap_urlset(urls))
+
+
+@lru_cache(maxsize=1)
+def _event_rows():
+    """Events with at least one race, past or upcoming. Events with neither
+    render an empty page, so they stay out of the sitemap for the same reason
+    single-result age-groupers do."""
+    return _get_conn().execute("""
+        SELECT e.event_id, e.start_date
+        FROM events e
+        WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
+           OR EXISTS (SELECT 1 FROM upcoming_races u WHERE u.event_id = e.event_id)
+        ORDER BY e.start_date DESC
+    """).fetchall()
+
+
+@router.get("/sitemap-events.xml")
+def sitemap_events(request: Request) -> Response:
+    """Event pages group a venue's races on one URL, which is what "kona 2026"
+    style queries actually want. Priority tiers mirror the races sitemap."""
+    base = str(request.base_url).rstrip("/")
+    today = date.today()
+
+    urls = []
+    for event_id, start_date in _event_rows():
+        days_ago = (today - start_date).days
+        if days_ago <= 30:
+            priority, changefreq = 0.9, "weekly"
+        elif days_ago <= 365:
+            priority, changefreq = 0.8, "monthly"
+        elif days_ago <= 365 * 3:
+            priority, changefreq = 0.7, "yearly"
+        else:
+            priority, changefreq = 0.5, "never"
+        urls.append(_url(
+            f"{base}/event/{event_id}",
+            lastmod=start_date.isoformat(),
             changefreq=changefreq,
             priority=priority,
         ))
