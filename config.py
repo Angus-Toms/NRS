@@ -48,6 +48,11 @@ DB_PATH = RUNTIME_DATA_DIR / "ptd.duckdb"
 # WorldTriathlon API
 WORLD_TRIATHLON_API_KEY = "aac0df989cb613114241670ca2f5ff75"
 
+# IndexNow. Bing verifies ownership by fetching this key back from the domain
+# root, so /<key>.txt must stay publicly reachable (served by routers/robots.py)
+# and must match the key sent when pinging the IndexNow API.
+INDEXNOW_KEY = "7fa935bdecbb481eb5b32ec8f4a8c9c7"
+
 # Deployment
 CF_BUCKET    = "ptd-static-assets"
 RENDER_SSH   = "srv-d58kqtemcj7s73ciqqjg@ssh.frankfurt.render.com"

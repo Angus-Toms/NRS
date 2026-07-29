@@ -3,6 +3,7 @@ from functools import lru_cache
 from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
+from config import INDEXNOW_KEY
 from ptd_data import db
 
 router = APIRouter()
@@ -70,6 +71,13 @@ Disallow: /favicon.ico
 # Sitemap index
 Sitemap: {base_url}/sitemap.xml
 """
+
+
+# IndexNow ownership proof: the key file's body is the key itself. Bing refetches
+# it on every ping, so this route has to keep working for raceday pings to land.
+@router.get(f"/{INDEXNOW_KEY}.txt", response_class=PlainTextResponse)
+def indexnow_key() -> str:
+    return INDEXNOW_KEY
 
 
 def _url(loc: str, lastmod: str | None = None, changefreq: str | None = None,
