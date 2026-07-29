@@ -2563,7 +2563,7 @@ def get_race_info(race_id):
     row = conn.execute("""
         SELECT r.race_id, r.race_title, r.prog_name, r.race_date,
                e.venue AS location, e.country, r.gender, r.category, r.sub_category,
-               r.race_handle, r.event_id, r.is_multi_stage, r.distance
+               r.race_handle, r.event_id, e.name AS event_name, r.is_multi_stage, r.distance
         FROM races r
         JOIN events e ON r.event_id = e.event_id
         WHERE r.race_id = ?
@@ -2572,7 +2572,7 @@ def get_race_info(race_id):
         return None
     cols = ["race_id", "race_title", "prog_name", "race_date",
             "location", "country", "gender", "category", "sub_category",
-            "race_handle", "event_id", "is_multi_stage", "distance"]
+            "race_handle", "event_id", "event_name", "is_multi_stage", "distance"]
     return dict(zip(cols, row))
 
 
@@ -3990,7 +3990,7 @@ def get_upcoming_race_info(race_id):
     row = conn.execute("""
         SELECT ur.race_id, ur.race_title, ur.prog_name, ur.race_date,
                e.venue AS location, e.country, ur.gender, ur.race_handle,
-               ur.event_id, ur.event_spec_ids, ur.category
+               ur.event_id, e.name AS event_name, ur.event_spec_ids, ur.category
         FROM upcoming_races ur
         JOIN events e ON ur.event_id = e.event_id
         WHERE ur.race_id = ?
@@ -3999,7 +3999,7 @@ def get_upcoming_race_info(race_id):
         return None
     cols = ["race_id", "race_title", "prog_name", "race_date",
             "location", "country", "gender", "race_handle", "event_id",
-            "event_spec_ids", "category"]
+            "event_name", "event_spec_ids", "category"]
     return dict(zip(cols, row))
 
 

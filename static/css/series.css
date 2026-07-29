@@ -504,6 +504,8 @@
     position: relative;
     z-index: 2;
 }
+/* An <a> to the edition's race page, so the timeline is crawlable; every
+   child sets its own colour, so only the underline needs suppressing. */
 .tyear {
     flex: 1 1 0;
     min-width: 0;
@@ -513,6 +515,7 @@
     cursor: pointer;
     padding-top: 0.1rem;
     position: relative;
+    text-decoration: none;
 }
 .tyear-img {
     width: 34px;

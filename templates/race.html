@@ -34,13 +34,20 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}","eventStatus":"https://schema.org/EventScheduled"{% if race_location %},"location":{"@type":"Place","name":{{ race_location | tojson }}{% if race_country %},"address":{{ race_country | tojson }}{% endif %}}{% endif %}}
 </script>
-{% if breadcrumb and (breadcrumb.series or breadcrumb.event) %}
+{% if breadcrumb and (breadcrumb.series or breadcrumb.recurring or breadcrumb.event) %}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
 {%- set crumbs = [] -%}
 {%- if breadcrumb.series -%}{%- set _ = crumbs.append((breadcrumb.series.name, breadcrumb.series.url)) -%}{%- endif -%}
-{%- if breadcrumb.event -%}{%- set _ = crumbs.append((breadcrumb.event.name, breadcrumb.event.url)) -%}{%- endif -%}
-{%- set _ = crumbs.append((race.race_title, '/race/' ~ race.race_id)) -%}
+{%- if breadcrumb.recurring -%}{%- set _ = crumbs.append((breadcrumb.recurring.name, breadcrumb.recurring.url)) -%}{%- endif -%}
+{#- The event crumb mirrors the visible breadcrumb, where the event is the year
+    segment under the recurring name. Naming it in full instead would repeat the
+    recurring crumb verbatim (event name == recurring name for Ironman and
+    Challenge events), rendering as "Event > Event" in SERP breadcrumbs. With no
+    recurring crumb there is nothing to repeat, so the full name is used. -#}
+{%- if breadcrumb.event -%}{%- set _ = crumbs.append((breadcrumb.year | string if breadcrumb.recurring else breadcrumb.event.name, breadcrumb.event.url)) -%}{%- endif -%}
+{#- Leaf is the program for the same reason: race_title repeats the event name. -#}
+{%- set _ = crumbs.append((race.prog_name if breadcrumb.event else race.race_title, '/race/' ~ race.race_id)) -%}
 {%- for name, url in crumbs -%}
 {"@type":"ListItem","position":{{ loop.index }},"name":{{ name | tojson }},"item":"https://www.protridata.com{{ url }}"}{{ "," if not loop.last }}
 {%- endfor -%}

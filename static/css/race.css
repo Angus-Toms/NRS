@@ -98,16 +98,28 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Year picker — clickable year + dropdown of past editions w/ winners. */
+/* Year picker — the year links to the event page (this edition), the chevron
+   beside it opens the dropdown of sibling editions w/ winners. Two separate
+   controls so the year can be a real crawlable <a href="/event/..."> while
+   the popover keeps its click-to-toggle behaviour. */
 .race-year-picker {
     position: relative;
     display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.race-year-link {
+    font-variant-numeric: tabular-nums;
 }
 .race-year-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    font-variant-numeric: tabular-nums;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
 }
 .race-year-trigger-ic {
     width: 0.85em;
@@ -116,7 +128,7 @@
     transition: transform 0.18s ease;
 }
 .race-year-picker.open .race-year-trigger-ic { transform: rotate(90deg); }
-.race-year-picker.open .race-year-trigger {
+.race-year-picker.open .race-year-link {
     color: var(--primary-color);
     border-bottom-color: var(--primary-color);
 }

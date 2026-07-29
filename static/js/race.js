@@ -404,6 +404,18 @@ function initRaceSplitsToggle() {
     });
 }
 
+// Race-switcher pills. They're links to the sibling races so crawlers can
+// follow them, but a plain click swaps the content in place instead of
+// navigating. Modified clicks (new tab, new window) fall through to the
+// browser. Delegated so it survives the swap switchRace() does.
+document.addEventListener('click', (e) => {
+    const pill = e.target.closest('a.race-pill[data-switch-race]');
+    if (!pill) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    switchRace(+pill.dataset.switchRace);
+});
+
 // Year-picker dropdown in the race hero breadcrumb. Event delegation so
 // it survives the partial swap done by switchRace().
 document.addEventListener('click', (e) => {

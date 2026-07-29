@@ -1,0 +1,61 @@
+{# Series / Recurring event / Year breadcrumb above the race title. Shared by
+   the individual and relay race heroes.
+
+   The year segment links to the event page. That link is the only
+   server-rendered path from a race to its event, and races are the
+   best-linked page type on the site, so it is what keeps 5.5k event pages out
+   of "Discovered - currently not indexed". The year carries it rather than a
+   crumb of its own because the event's name is usually the recurring name
+   verbatim ("Ironman 70.3 Boise") or the recurring name plus the year, so a
+   fourth crumb would read as a duplicate of the third. #}
+{% if breadcrumb and (breadcrumb.series or breadcrumb.recurring or breadcrumb.event) %}
+<nav class="race-breadcrumb" aria-label="Race context">
+    {% if breadcrumb.series %}
+    <span class="race-breadcrumb-seg">
+        <a href="{{ breadcrumb.series.url }}" class="race-breadcrumb-link">{{ breadcrumb.series.name }}</a>
+        <span class="race-breadcrumb-sep">/</span>
+    </span>
+    {% endif %}
+    {% if breadcrumb.recurring %}
+    <span class="race-breadcrumb-seg">
+        <a href="{{ breadcrumb.recurring.url }}" class="race-breadcrumb-link">{{ breadcrumb.recurring.name }}</a>
+        <span class="race-breadcrumb-sep">/</span>
+    </span>
+    {% endif %}
+    {# The year: an event link, a dropdown trigger, or both.
+
+       A crumb above already names the event, so the year alone identifies the
+       edition. With no series and no recurring group - 434 events, all
+       single-edition - a bare year would float with nothing qualifying it, so
+       the crumb takes the event's own name instead. Sibling years only exist
+       when there's a recurring group, so that case never wants the picker. #}
+    {%- set year_link %}
+    {%- if breadcrumb.event and (breadcrumb.series or breadcrumb.recurring) -%}
+    <a href="{{ breadcrumb.event.url }}" class="race-breadcrumb-link race-year-link" title="{{ breadcrumb.event.name }}">{{ breadcrumb.year }}</a>
+    {%- elif breadcrumb.event -%}
+    <a href="{{ breadcrumb.event.url }}" class="race-breadcrumb-link">{{ breadcrumb.event.name }}</a>
+    {%- else -%}
+    <span class="race-breadcrumb-year">{{ breadcrumb.year }}</span>
+    {%- endif -%}
+    {% endset -%}
+    {% if breadcrumb.years|length > 1 %}
+    <span class="race-year-picker" data-year-picker>
+        {{ year_link }}
+        <button type="button" class="race-year-trigger" aria-label="Other editions">
+            <svg class="race-year-trigger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <div class="race-year-popover" role="listbox">
+            {% for y in breadcrumb.years %}
+            <a href="/race/{{ y.race_id }}" class="race-yp-row{% if y.is_current %} current{% endif %}"{% if y.is_current %} aria-current="true"{% endif %}>
+                <span class="race-yp-year">{{ y.year }}</span>
+                <span class="race-yp-winner">{% if y.winner_name %}{{ y.winner_name }} {{ flag(y.winner_country_alpha3) }}{% else %}<span class="race-yp-winner-empty">{{ no_winner_label | default('No result') }}</span>{% endif %}</span>
+                <span class="race-yp-time">{{ y.overall_s }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </span>
+    {% else %}
+    {{ year_link }}
+    {% endif %}
+</nav>
+{% endif %}

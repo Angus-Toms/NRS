@@ -59,7 +59,37 @@
         </button>
         <div class="timeline-track">
             <div class="timeline-line"></div>
-            <div class="timeline-years" id="timeline"></div>
+            {#- Server-rendered first paint. buildTimeline() owns every later
+                render (paging, program switch) and replaces this wholesale;
+                this exists so the edition links are in the HTML at all, since
+                everything else on the page is built client-side and the page
+                otherwise emits no outbound links for a crawler to follow.
+                Keep in step with buildTimeline()'s template literal below: it
+                opens on the newest editions with a window of at most
+                TIMELINE_MAX_ITEMS, so render the last 7, oldest-first. -#}
+            <div class="timeline-years" id="timeline">
+                {%- set editions = races_json | reverse | list -%}
+                {%- set win_start = [0, editions | length - 7] | max -%}
+                {%- for e in editions[win_start:] -%}
+                {%- set winner = e.podium[0] if e.podium else none -%}
+                {%- set label = e.year if is_recurring else (e.race_handle or e.year) -%}
+                <a class="tyear{{ ' active' if win_start + loop.index0 == editions | length - 1 else '' }}" href="/race/{{ e.race_id }}" data-i="{{ win_start + loop.index0 }}">
+                    {%- if winner -%}
+                    <img class="tyear-img" src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ winner.athlete_id ~ '.webp' if winner.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ winner.name }}">
+                    <span class="tyear-name">{{ winner.name.split() | last }}</span>
+                    <span class="tyear-num">{{ label if label is not none else '' }}</span>
+                    <span class="tyear-dot"></span>
+                    <span class="tyear-time">{{ winner.time_fmt or '' }}</span>
+                    {%- else -%}
+                    <div class="tyear-img" style="background:var(--border-color)"></div>
+                    <span class="tyear-name">-</span>
+                    <span class="tyear-num">{{ label if label is not none else '' }}</span>
+                    <span class="tyear-dot"></span>
+                    <span class="tyear-time">-</span>
+                    {%- endif -%}
+                </a>
+                {%- endfor -%}
+            </div>
         </div>
     </div>
 
@@ -233,27 +263,34 @@ function buildTimeline(){
     if (!EDITIONS.length){ t.innerHTML = ""; return; }
     const end = Math.min(EDITIONS.length, windowStart + TIMELINE_WINDOW);
     const slice = EDITIONS.slice(windowStart, end);
+    // Anchors, not divs, so a paged-to edition is still a real link (and to
+    // match the server-rendered first paint in the markup above). A plain
+    // click selects the edition in place; modified clicks open the race page.
     t.innerHTML = slice.map((e, i) => {
         const winner = e.podium[0];
         const label = IS_RECURRING
             ? (e.year != null ? String(e.year) : "")
             : (e.race_handle || (e.year != null ? String(e.year) : ""));
-        if (!winner) return `<div class="tyear" data-i="${windowStart + i}">
+        if (!winner) return `<a class="tyear" href="/race/${e.race_id}" data-i="${windowStart + i}">
             <div class="tyear-img" style="background:var(--border-color)"></div>
             <span class="tyear-name">-</span>
             <span class="tyear-num">${label}</span>
             <span class="tyear-dot"></span>
             <span class="tyear-time">-</span>
-        </div>`;
-        return `<div class="tyear" data-i="${windowStart + i}">
+        </a>`;
+        return `<a class="tyear" href="/race/${e.race_id}" data-i="${windowStart + i}">
             <img class="tyear-img" src="${profileSrc(winner.athlete_id, winner.profile_img, 128)}" alt="${winner.name}">
             <span class="tyear-name">${surnameOf(winner.name)}</span>
             <span class="tyear-num">${label}</span>
             <span class="tyear-dot"></span>
             <span class="tyear-time">${winner.time_fmt || ""}</span>
-        </div>`;
+        </a>`;
     }).join("");
-    t.querySelectorAll(".tyear").forEach(el => el.onclick = () => setActive(+el.dataset.i));
+    t.querySelectorAll(".tyear").forEach(el => el.onclick = (ev) => {
+        if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        ev.preventDefault();
+        setActive(+el.dataset.i);
+    });
     document.getElementById("tl-prev").disabled = windowStart === 0;
     document.getElementById("tl-next").disabled = end >= EDITIONS.length;
     updateTimeline();

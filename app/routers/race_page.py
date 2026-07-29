@@ -31,13 +31,19 @@ def _race_cache_headers(race_date):
 
 
 def _build_breadcrumb(race, race_id, recurring_meta):
-    """Adaptive Series / Event / Year breadcrumb for the race hero.
+    """Adaptive Series / Recurring / Year breadcrumb for the race hero.
 
-    Each of the three segments is optional:
-      - series : primary series (lowest sort_order) the event belongs to
-      - event  : the recurring event group (same venue across years)
-      - year   : current race year. Has a dropdown of sibling years when
-                 recurring_meta is set; plain text otherwise.
+    Every segment is optional except the year:
+      - series    : primary series (lowest sort_order) the event belongs to
+      - recurring : the recurring event group (same venue across years)
+      - event     : this edition, i.e. the event the race belongs to. Not a
+                    segment of its own - the year segment links to it, since
+                    the year IS the edition and the event's own name is
+                    usually the recurring name verbatim ("Ironman 70.3
+                    Boise") or the recurring name plus the year, which would
+                    make a fourth crumb read as a duplicate.
+      - year      : current race year, linked to the event. Gains a chevron
+                    dropdown of sibling years when recurring_meta is set.
     """
     primary_series = queries.get_series_for_race(race_id)
     series_seg = None
@@ -48,9 +54,16 @@ def _build_breadcrumb(race, race_id, recurring_meta):
         }
 
     event_seg = None
+    if race.get('event_id'):
+        event_seg = {
+            'name': race.get('event_name') or race['race_title'],
+            'url':  f"/event/{race['event_id']}",
+        }
+
+    recurring_seg = None
     year_options = []
     if recurring_meta:
-        event_seg = {
+        recurring_seg = {
             'name': recurring_meta['name'],
             'url':  f"/recurring/{recurring_meta['slug']}",
         }
@@ -72,10 +85,11 @@ def _build_breadcrumb(race, race_id, recurring_meta):
             })
 
     return {
-        'series': series_seg,
-        'event':  event_seg,
-        'year':   race['race_date'].year,
-        'years':  year_options,
+        'series':    series_seg,
+        'recurring': recurring_seg,
+        'event':     event_seg,
+        'year':      race['race_date'].year,
+        'years':     year_options,
     }
 
 
