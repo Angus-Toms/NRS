@@ -1,3 +1,5 @@
+import re
+
 from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -447,6 +449,88 @@ def series_data(slug: str, program: str | None = None):
     ))
 
 
+# Hardcoded majors pinned to the top of the /recurring index, in display
+# order. Recurring groups are venue-keyed, so events that move venues every
+# year (the Olympics, 70.3 Worlds, WTCS Finals) have no group to pin - the
+# Olympics live under /series instead.
+_MAJOR_SLUGS = [
+    "hawaii-im-world-championships",   # Kona
+    "nice-im-world-championships",
+    "challenge-roth",
+    "ironman-frankfurt",
+    "ironman-lanzarote",
+    "ironman-nice",
+    "embrun",                          # Embrunman
+    "alpe-d-huez-l",
+    "wildflower",
+    "collins-cup",
+]
+
+# Brand buckets for the /recurring index, in display order. Matched on the
+# group name because 519 of 928 recurring groups (all the Ironman / 70.3 /
+# Challenge long-course events) have no series link to take a tier from.
+_RECURRING_BRANDS = [
+    ("Major Events",    None),  # matched by slug against _MAJOR_SLUGS
+    ("World Championships & Games", lambda n: "championship" in n or "games" in n),
+    ("WTCS",            lambda n: "championship series" in n or "wtcs" in n),
+    ("T100 / PTO",      lambda n: "t100" in n or n.startswith("pto ")),
+    ("Ironman",         lambda n: "ironman" in n and "70.3" not in n),
+    ("Ironman 70.3",    lambda n: n.startswith("ironman 70.3")),
+    ("Challenge",       lambda n: n.startswith("challenge")),
+    ("World Cup",       lambda n: "world cup" in n),
+    ("Continental Championships", lambda n: bool(re.search(
+        r"\b(european|americas|american|asian|african|africa|oceania|zonal)\b.*champ", n))),
+    ("Continental Cups", lambda n: bool(re.search(
+        r"\b(european|africa|african|americas|asian|oceania|junior) cup\b", n))),
+    ("Development Cups", lambda n: "development regional cup" in n),
+    ("National Series", lambda n: "french grand prix" in n or "bundesliga" in n),
+    ("National Championships", lambda n: "national championship" in n),
+    ("Other Races",     lambda n: True),
+]
+# Match order differs from display order: WTCS names contain "Championship
+# Series", national/continental championships contain "Championships", and
+# 70.3 names contain "Ironman", so the specific buckets must claim theirs
+# before the broad ones do.
+_RECURRING_MATCH_ORDER = [
+    "Ironman 70.3", "WTCS", "T100 / PTO", "Ironman", "Challenge", "World Cup",
+    "National Championships", "Continental Championships", "Development Cups",
+    "National Series", "Continental Cups", "World Championships & Games", "Other Races",
+]
+
+
+@router.get("/recurring", response_class=HTMLResponse)
+def recurring_index(request: Request):
+    """Index of all recurring event groups: the crawl hub that puts every
+    /recurring/<slug> page (and through them every edition) at depth 1."""
+    rows = queries.get_recurring_index()
+
+    matchers = dict(_RECURRING_BRANDS)
+    major_rank = {slug: i for i, slug in enumerate(_MAJOR_SLUGS)}
+    groups = {label: [] for label, _ in _RECURRING_BRANDS}
+    for r in rows:
+        r["year_span"] = (str(r["first_date"].year) if r["first_date"].year == r["last_date"].year
+                          else f"{r['first_date'].year} - {r['last_date'].year}")
+        if r["slug"] in major_rank:
+            groups["Major Events"].append(r)
+            continue
+        n = r["name"].lower()
+        brand = next(b for b in _RECURRING_MATCH_ORDER if matchers[b](n))
+        groups[brand].append(r)
+    groups["Major Events"].sort(key=lambda r: major_rank[r["slug"]])
+
+    brand_blocks = [
+        {"brand": b, "anchor": re.sub(r"[^a-z0-9]+", "-", b.lower()).strip("-"), "races": groups[b]}
+        for b, _ in _RECURRING_BRANDS if groups[b]
+    ]
+
+    return templates.TemplateResponse("recurring_index.html", {
+        "request":      request,
+        "active_page":  "races",
+        "brand_blocks": brand_blocks,
+        "total":        len(rows),
+    })
+
+
 @router.get("/recurring/{slug}", response_class=HTMLResponse)
 def recurring_detail(request: Request, slug: str, program: str | None = None):
     """Page for one recurring event group (e.g. all editions of Kona).
@@ -478,14 +562,24 @@ def recurring_detail(request: Request, slug: str, program: str | None = None):
     series_like = {
         "name":        rec["name"],
         "slug":        rec["slug"],
-        "description": rec.get("description") or f"All editions of {rec['name']}.",
+        "description": rec.get("description")
+                       or f"Every edition of {rec['name']}: results, winners, podiums and records.",
     }
+
+    # Whole-event year span for the <title>. hero_stats.year_span is scoped to
+    # the default program, which undershoots events like Kona where men and
+    # women race in different years.
+    y0, y1 = rec["first_date"], rec["last_date"]
+    event_year_span = ""
+    if y0 and y1:
+        event_year_span = str(y0.year) if y0.year == y1.year else f"{y0.year}-{y1.year}"
 
     return templates.TemplateResponse("series.html", {
         "request":      request,
         "active_page":  "races",
         "series":       series_like,
         "is_recurring": True,
+        "event_year_span": event_year_span,
         "program_tabs":     program_tabs,
         "program_overflow": program_overflow,
         **payload,

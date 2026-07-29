@@ -5194,6 +5194,9 @@ def get_all_recurring_events(min_editions=2):
         FROM recurring_events re
         JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
         JOIN events e           ON e.event_id = er.event_id
+        -- Cancelled editions (event exists, no races - e.g. the COVID-era
+        -- WTCS Chengdu events) don't count and shouldn't stretch the span.
+        WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
         GROUP BY re.recurring_event_id, re.slug, re.name
         HAVING edition_count >= ?
         ORDER BY edition_count DESC, last_date DESC
@@ -5203,6 +5206,59 @@ def get_all_recurring_events(min_editions=2):
         "first_year": r[3].year if r[3] else None,
         "last_year":  r[4].year if r[4] else None,
     } for r in rows]
+
+
+def get_recurring_index():
+    """One row per recurring event group for the /recurring index page:
+    edition count, date range, venue, and the latest elite/pro winner per
+    gender (newest individual race with a position-1 finisher)."""
+    rows = _get_conn().execute("""
+        WITH grp AS (
+            SELECT re.recurring_event_id, re.slug, re.name,
+                   COUNT(DISTINCT e.event_id) AS editions,
+                   MIN(e.start_date) AS first_date,
+                   MAX(e.start_date) AS last_date,
+                   ANY_VALUE(e.country) AS country,
+                   ANY_VALUE(e.venue)   AS venue
+            FROM recurring_events re
+            JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
+            JOIN events e ON e.event_id = er.event_id
+            -- Cancelled editions (event exists, no races) don't count; a
+            -- group with nothing but cancellations drops out entirely
+            -- (WTCS Chengdu 2021/2022 is the live example).
+            WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
+            GROUP BY re.recurring_event_id, re.slug, re.name
+        ),
+        winners AS (
+            SELECT * FROM (
+                SELECT er.recurring_event_id, r.gender,
+                       a.athlete_id, a.name AS winner, n.alpha3,
+                       ROW_NUMBER() OVER (PARTITION BY er.recurring_event_id, r.gender
+                                          ORDER BY r.race_date DESC) AS rn
+                FROM event_recurring er
+                JOIN races r     ON r.event_id = er.event_id
+                JOIN results res ON res.race_id = r.race_id AND res.position = 1 AND res.status = 'Finished'
+                JOIN athletes a  ON a.athlete_id = res.athlete_id
+                JOIN nationalities n ON n.country_full = a.country_full
+                WHERE r.gender IN ('male', 'female')
+                  AND (r.category = 'elite' OR r.prog_name IN ('Pro Men', 'Pro Women'))
+                  AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+            ) WHERE rn = 1
+        )
+        SELECT g.slug, g.name, g.venue, g.country, gn.alpha3, g.editions,
+               g.first_date, g.last_date,
+               wm.athlete_id, wm.winner, wm.alpha3,
+               wf.athlete_id, wf.winner, wf.alpha3
+        FROM grp g
+        LEFT JOIN nationalities gn ON gn.country_full = g.country
+        LEFT JOIN winners wm ON wm.recurring_event_id = g.recurring_event_id AND wm.gender = 'male'
+        LEFT JOIN winners wf ON wf.recurring_event_id = g.recurring_event_id AND wf.gender = 'female'
+        ORDER BY g.editions DESC, g.last_date DESC
+    """).fetchall()
+    cols = ["slug", "name", "venue", "country", "country_alpha3", "editions", "first_date", "last_date",
+            "male_winner_id", "male_winner", "male_winner_alpha3",
+            "female_winner_id", "female_winner", "female_winner_alpha3"]
+    return [dict(zip(cols, r)) for r in rows]
 
 
 def get_recurring_event_for_event(event_id):

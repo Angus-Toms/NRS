@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
+{# Recurring pages are the evergreen target for "<race> results" queries, so
+   their title carries that intent. The canonical is path-only and ?program=
+   is robots-blocked, so the indexed title never needs the program label. #}
+{% if is_recurring %}
+{% set full_title = series.name ~ ' - Results, History & Records' ~ (' (' ~ event_year_span ~ ')' if event_year_span else '') %}
+{% else %}
 {% set full_title = series.name + (' - ' + active_program_label if active_program_label else '') %}
+{% endif %}
 {% block title %}{{ full_title }} - Pro Tri Data{% endblock %}
 
 {% block meta %}

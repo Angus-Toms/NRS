@@ -160,6 +160,7 @@ def sitemap_static(request: Request) -> Response:
         _url(f"{base}/athletes",    today, "weekly", 0.8),
         _url(f"{base}/countries",   today, "weekly", 0.7),
         _url(f"{base}/series",      today, "weekly", 0.7),
+        _url(f"{base}/recurring",   today, "weekly", 0.7),
         _url(f"{base}/athlete-compare", today, "monthly", 0.5),
         _url(f"{base}/race-compare",    today, "monthly", 0.5),
         _url(f"{base}/about",       today, "monthly", 0.5),
@@ -354,6 +355,10 @@ def _recurring_slugs():
         FROM recurring_events re
         JOIN event_recurring er ON er.recurring_event_id = re.recurring_event_id
         JOIN events e ON e.event_id = er.event_id
+        -- Groups whose only editions were cancelled (no races) render an
+        -- empty page; keep them out for the same reason race-less events
+        -- stay out of the events sitemap.
+        WHERE EXISTS (SELECT 1 FROM races r WHERE r.event_id = e.event_id)
         GROUP BY re.recurring_event_id, re.slug
         ORDER BY MAX(e.start_date) DESC
     """).fetchall()]

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Triathlon Race Directory - Results &amp; History for {{ total }} Races | Pro Tri Data{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Every recurring triathlon race on Pro Tri Data - Ironman, 70.3, Challenge, T100, WTCS, World Cups and more. {{ total }} races with full results, history and latest winners.">
+<meta property="og:site_name" content="Pro Tri Data">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Triathlon Race Directory - Results &amp; History | Pro Tri Data">
+<meta property="og:description" content="{{ total }} recurring triathlon races with full results, history and latest winners.">
+<meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ STATIC_BASE_URL }}css/series.css?v={{ ASSET_VERSION }}">
+{% endblock %}
+
+{% block hero %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <div>
+            <h1>Race Directory</h1>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">{{ total }}</span>
+                <span class="hero-stat-lbl">Races</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% macro winner_cell(id, name, alpha3) -%}
+<td class="ri-winner">
+    {%- if id -%}
+    <a href="/athlete/{{ id }}" class="link">{{ name }}</a> {{ flag(alpha3) }}
+    {%- else -%}
+    <span class="no-data">-</span>
+    {%- endif -%}
+</td>
+{%- endmacro %}
+
+{% block content %}
+<div class="ri-page">
+    {# Sticky toolbar: filter + section jump chips, pinned under the site
+       header so long sections stay one click away from any scroll depth. #}
+    <div class="ri-toolbar">
+        <input type="search" class="ri-filter" id="ri-filter" placeholder="Filter races by name, venue or country..." autocomplete="off" spellcheck="false" aria-label="Filter races">
+        <nav class="ri-section-nav" aria-label="Jump to section">
+            {% for block in brand_blocks %}
+            <a href="#{{ block.anchor }}" class="ri-section-chip">{{ block.brand }}</a>
+            {% endfor %}
+        </nav>
+    </div>
+
+    {% for block in brand_blocks %}
+    <section class="ri-group" id="{{ block.anchor }}" data-ri-group>
+        <div class="page-section-head">{{ block.brand }} <span class="ri-count">{{ block.races | length }}</span></div>
+        <div class="series-data-card">
+            <table class="series-data-table ri-table">
+                <thead>
+                    <tr>
+                        <th>Race</th>
+                        <th>Venue</th>
+                        <th>Editions</th>
+                        <th>Latest Men's Winner</th>
+                        <th>Latest Women's Winner</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in block.races %}
+                    <tr data-ri-row data-ri-text="{{ (r.name ~ ' ' ~ (r.venue or '') ~ ' ' ~ (r.country or '')) | lower }}">
+                        <td class="ri-name"><a href="/recurring/{{ r.slug }}" class="link">{{ r.name }}</a></td>
+                        <td class="ri-venue muted-col">{% if r.venue %}{{ r.venue }}, {% endif %}{{ r.country }} {{ flag(r.country_alpha3, r.country) }}</td>
+                        <td class="ri-years muted-col">{{ r.year_span }} ({{ r.editions }})</td>
+                        {{ winner_cell(r.male_winner_id, r.male_winner, r.male_winner_alpha3) }}
+                        {{ winner_cell(r.female_winner_id, r.female_winner, r.female_winner_alpha3) }}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endfor %}
+
+    <div class="ri-empty" id="ri-empty" hidden>No races match that filter.</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Plain text filter over the server-rendered rows; sections with no visible
+// rows hide entirely. No fetch - all 900+ rows are already in the page.
+(function () {
+    const input    = document.getElementById('ri-filter');
+    const rows     = [...document.querySelectorAll('[data-ri-row]')];
+    const groups   = [...document.querySelectorAll('[data-ri-group]')];
+    const emptyEl  = document.getElementById('ri-empty');
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        rows.forEach(r => { r.hidden = q !== '' && !r.dataset.riText.includes(q); });
+        let any = false;
+        groups.forEach(g => {
+            const visible = g.querySelectorAll('[data-ri-row]:not([hidden])').length;
+            g.hidden = visible === 0;
+            any = any || visible > 0;
+        });
+        emptyEl.hidden = any;
+    });
+})();
+</script>
+{% endblock %}
