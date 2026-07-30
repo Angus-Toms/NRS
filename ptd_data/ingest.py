@@ -179,6 +179,27 @@ def parse_lnglat(coord):
     except (ValueError, TypeError):
         return 0.0
 
+
+def prog_race_date(prog, event):
+    """A program's date, falling back to the event date when the year is mangled.
+
+    The WT feed occasionally ships a typo'd prog_date: prog 8535 (2003 Ixtapa
+    Pan-American Cup, elite men) comes through as '0200-09-27'. Year 200 sorts
+    the race to the far end of history, poisons the 2-digit year in
+    short_course_race_handle, and Google/Bing reject the <lastmod> it produces
+    as an invalid date. Only an implausible year triggers the fallback: the
+    feed also has races legitimately offset by a day or two from their event
+    date, and those are left alone.
+    """
+    race_date = str(prog.get('prog_date', ''))
+    if race_date[:4].isdigit() and 1970 <= int(race_date[:4]) <= 2100:
+        return race_date
+
+    event_date = str(event.get('event_date', ''))
+    print(f"  Implausible prog_date {race_date!r} for prog {prog.get('prog_id')}, "
+          f"using event date {event_date!r}")
+    return event_date
+
 # Tokens stripped from a race title when extracting the venue. Built from a
 # frequency scan of all WT short-course event titles: anything that recurs as
 # sanctioning body, sport, level, geographic region, sponsor, or distance
@@ -586,7 +607,7 @@ class Ingester:
         """
         prog_id = int(prog['prog_id'])
         event_id = int(event['event_id'])
-        race_date_str = str(prog.get('prog_date', '')) or None
+        race_date_str = prog_race_date(prog, event) or None
 
         # Parse all results and build bulk rows
         result_rows = []
@@ -658,7 +679,7 @@ class Ingester:
 
         race_title = str(event.get('event_title', ''))
         location = clean_field(event.get('event_venue', ''))
-        race_date = str(prog.get('prog_date', ''))
+        race_date = prog_race_date(prog, event)
         prog_name = str(prog.get('prog_name', ''))
         winner_s = next((r[5] for r in result_rows if r[2] == 1 and r[5] > 0), None)
         db.insert_race(
@@ -689,7 +710,7 @@ class Ingester:
         """
         event_id = int(event['event_id'])
         prog_id = int(prog['prog_id'])
-        race_date = str(prog.get('prog_date', ''))
+        race_date = prog_race_date(prog, event)
         race_title = str(event.get('event_title', ''))
 
         if not race_date or race_date < RELAY_MIN_DATE:
@@ -903,7 +924,7 @@ class StartListIngester:
         event_id = int(event['event_id'])
         race_title = str(event.get('event_title', ''))
         prog_name = str(prog.get('prog_name', ''))
-        race_date = str(prog.get('prog_date', ''))
+        race_date = prog_race_date(prog, event)
         location = clean_field(event.get('event_venue', ''))
 
         # Ensure event exists in events table
