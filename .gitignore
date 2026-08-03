@@ -24,6 +24,10 @@ scripts/weekly.log
 # Local secrets sourced by scripts/deploy.sh (RENDER_API_KEY etc)
 scripts/.env
 
+# Google service-account private key for the Search Console API
+*service-account*.json
+gsc-*.json
+
 # Data (runtime only - source data in ptd_data/data/ is tracked)
 data/
 !ptd_data/data/

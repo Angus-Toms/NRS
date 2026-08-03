@@ -81,7 +81,13 @@
                 {%- set winner = e.podium[0] if e.podium else none -%}
                 {%- set label = e.year if is_recurring else (e.race_handle or e.year) -%}
                 <a class="tyear{{ ' active' if win_start + loop.index0 == editions | length - 1 else '' }}" href="/race/{{ e.race_id }}" data-i="{{ win_start + loop.index0 }}">
-                    {%- if winner -%}
+                    {%- if winner and is_relay -%}
+                    <img class="tyear-img" src="{{ STATIC_BASE_URL }}flags/{{ winner.country_alpha3 }}.svg" alt="{{ winner.name }}">
+                    <span class="tyear-name">{{ winner.name }}</span>
+                    <span class="tyear-num">{{ label if label is not none else '' }}</span>
+                    <span class="tyear-dot"></span>
+                    <span class="tyear-time">{{ winner.time_fmt or '' }}</span>
+                    {%- elif winner -%}
                     <img class="tyear-img" src="{{ STATIC_BASE_URL }}{{ 'athlete_imgs/128/' ~ winner.athlete_id ~ '.webp' if winner.profile_img else 'imgs/default_user_64.webp' }}" alt="{{ winner.name }}">
                     <span class="tyear-name">{{ winner.name.split() | last }}</span>
                     <span class="tyear-num">{{ label if label is not none else '' }}</span>
@@ -104,11 +110,15 @@
     <div class="edition-panel" id="ed-panel"></div>
 
     <!-- ── Tabs ─────────────────────────────────────────────────────── -->
+    {# Relay podiums are countries, so the medal table would just restate the
+       Most Wins list, and winner ages are undefined for a four-athlete team. #}
     <div class="tabs">
         <div class="tab active" data-tab="leaders">Most Wins</div>
         <div class="tab" data-tab="stats">Stats</div>
+        {% if not is_relay %}
         <div class="tab" data-tab="medals">Medals by Country</div>
         <div class="tab" data-tab="ages">Youngest / Oldest</div>
+        {% endif %}
     </div>
 
     <div class="tabpanel active" data-panel="leaders">
@@ -124,6 +134,8 @@
                 </div>
                 <div class="chart-wrap"><canvas id="ch-times"></canvas></div>
             </div>
+            {# Relay races carry no race_rankings row, so there is no standard. #}
+            {% if not is_relay %}
             <div class="chart-card">
                 <div class="chart-card-head">
                     <h3>Race Standard</h3>
@@ -137,13 +149,14 @@
                 </div>
                 <div class="chart-wrap"><canvas id="ch-std"></canvas></div>
             </div>
+            {% endif %}
             <div class="chart-card">
                 <div class="chart-card-head"><h3>Winning Margin</h3></div>
                 <div class="chart-wrap"><canvas id="ch-margin"></canvas></div>
             </div>
             <div class="chart-card">
                 <div class="chart-card-head">
-                    <h3>Fastest Splits</h3>
+                    <h3>{{ 'Fastest Legs' if is_relay else 'Fastest Splits' }}</h3>
                     <div class="radio-chips" id="fmt-splits"></div>
                 </div>
                 <div class="chart-wrap"><canvas id="ch-splits"></canvas></div>
@@ -151,6 +164,7 @@
         </div>
     </div>
 
+    {% if not is_relay %}
     <div class="tabpanel" data-panel="medals">
         <div class="series-data-card">
             <table class="series-data-table" id="medals-table">
@@ -183,6 +197,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
 </div>
 {% endblock %}
@@ -205,6 +220,11 @@ const PROGRAM_TABS     = {{ program_tabs | tojson }};
 const STATIC_BASE      = {{ STATIC_BASE_URL | tojson }};
 const SERIES_NAME      = {{ series.name | tojson }};
 const IS_RECURRING     = {{ (is_recurring or false) | tojson }};
+// Mixed team relay program: podium entries are national teams and their
+// splits are the four legs, so the panel, leaders and splits chart all read
+// legs instead of disciplines.
+const IS_RELAY         = {{ is_relay | tojson }};
+const LEG_LABELS       = ["Leg 1", "Leg 2", "Leg 3", "Leg 4"];
 
 // Newest-first from the server -> oldest-first for the timeline / charts.
 let EDITIONS = [];
@@ -219,7 +239,9 @@ function syncDerivedData(){
     EDITIONS = RACES.slice().reverse();
     FIELD_FASTEST = {};
     PERF_HISTORY.forEach(r => {
-        FIELD_FASTEST[r.race_id] = {
+        FIELD_FASTEST[r.race_id] = IS_RELAY ? {
+            1: r.leg1_s, 2: r.leg2_s, 3: r.leg3_s, 4: r.leg4_s,
+        } : {
             swim: r.winner_swim,
             bike: r.winner_bike,
             run:  r.winner_run,
@@ -285,9 +307,11 @@ function buildTimeline(){
             <span class="tyear-dot"></span>
             <span class="tyear-time">-</span>
         </a>`;
+        const imgSrc = IS_RELAY ? `${STATIC_BASE}flags/${winner.country_alpha3}.svg`
+                                : profileSrc(winner.athlete_id, winner.profile_img, 128);
         return `<a class="tyear" href="/race/${e.race_id}" data-i="${windowStart + i}">
-            <img class="tyear-img" src="${profileSrc(winner.athlete_id, winner.profile_img, 128)}" alt="${winner.name}">
-            <span class="tyear-name">${surnameOf(winner.name)}</span>
+            <img class="tyear-img" src="${imgSrc}" alt="${winner.name}">
+            <span class="tyear-name">${IS_RELAY ? winner.name : surnameOf(winner.name)}</span>
             <span class="tyear-num">${label}</span>
             <span class="tyear-dot"></span>
             <span class="tyear-time">${winner.time_fmt || ""}</span>
@@ -382,17 +406,45 @@ function buildPanel(){
             + (opts.transition ? " w1-num--t" : "")
             + (opts.total      ? " w1-num--total" : "");
         const lbl = opts.label ? ` data-label="${opts.label}"` : "";
+        const tip = opts.tip ? ` data-tippy-content="${attrEsc(opts.tip)}"` : "";
         if (info && info.empty)        return `<td class="${tdCls}"${lbl}><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
         if (!text)                     return `<td class="${tdCls}"${lbl}><span class="w1-cell"><span class="w1-cell-val">-</span><span class="w1-cell-gap">&nbsp;</span></span></td>`;
         const baseCls = opts.total ? "w1-cell w1-cell--total" : "w1-cell";
         if (info && info.fastest){
-            return `<td class="${tdCls}"${lbl}><span class="${baseCls} is-field-fastest"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">fastest</span></span></td>`;
+            return `<td class="${tdCls}"${lbl}${tip}><span class="${baseCls} is-field-fastest"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">fastest</span></span></td>`;
         }
         const gap = info && info.gap ? `+${fmtSec(info.gap)}` : "&nbsp;";
-        return `<td class="${tdCls}"${lbl}><span class="${baseCls}"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">${gap}</span></span></td>`;
+        return `<td class="${tdCls}"${lbl}${tip}><span class="${baseCls}"><span class="w1-cell-val">${text}</span><span class="w1-cell-gap">${gap}</span></span></td>`;
+    }
+
+    // Relay: one column per leg, each annotated against the field-fastest
+    // split for that leg number, with the leg's athlete on a tooltip.
+    function relayRow(p, i){
+        const tier = ["gold","silver","bronze"][i] || "";
+        const totalInfo = (i === 0 || p.gap == null) ? null : {gap: p.gap};
+        const byNum = {};
+        p.legs.forEach(l => byNum[l.leg_num] = l);
+        const legCells = [1, 2, 3, 4].map(n => {
+            const l = byNum[n];
+            const label = LEG_LABELS[n - 1];
+            if (!l || !(l.leg_s > 0)) return cellHtml("", {empty:true}, {label});
+            const best = ff[n];
+            const info = (best == null || best <= 0) ? {}
+                       : (l.leg_s === best ? {fastest:true} : {gap: l.leg_s - best});
+            return cellHtml(l.leg_fmt, info, {label, tip: l.name});
+        }).join("");
+        return `<tr class="${tier}-row">
+            <td class="w1-pos"><span class="pos-circle ${tier}">${p.position}</span></td>
+            <td class="w1-ath-cell"><a href="/country/${p.country_alpha3}" class="w1-ath ${tier}-img">
+                <img src="${STATIC_BASE}flags/${p.country_alpha3}.svg" alt="${p.name}"><span class="w1-ath-name"><b>${p.name}</b></span>
+            </a></td>
+            ${legCells}
+            ${cellHtml(p.time_fmt, totalInfo, {total:true, label:"Total"})}
+        </tr>`;
     }
 
     const rowsHtml = e.podium.map((p, i) => {
+        if (IS_RELAY) return relayRow(p, i);
         const tier = ["gold","silver","bronze"][i] || "";
         const totalInfo = (i === 0 || p.gap == null) ? null : {gap: p.gap};
         return `<tr class="${tier}-row">
@@ -408,6 +460,18 @@ function buildPanel(){
             ${cellHtml(p.time_fmt, totalInfo,        {total:true, label:"Total"})}
         </tr>`;
     }).join("");
+
+    const headsHtml = IS_RELAY
+        ? `<th>#</th><th>Team</th>` + LEG_LABELS.map(l => `<th class="num">${l}</th>`).join("")
+              + `<th class="num w1-num--total"></th>`
+        : `<th>#</th>
+           <th>Athlete</th>
+           <th class="num">Swim</th>
+           <th class="num w1-num--t">T1</th>
+           <th class="num">Bike</th>
+           <th class="num w1-num--t">T2</th>
+           <th class="num">Run</th>
+           <th class="num w1-num--total"></th>`;
 
     // Standards strip in the navy header. Order: Overall · Swim · Bike · Run · Trans.
     const stds = e.standards;
@@ -452,16 +516,7 @@ function buildPanel(){
             ${navHtml}
         </div>
         <table class="w1-table">
-            <thead><tr>
-                <th>#</th>
-                <th>Athlete</th>
-                <th class="num">Swim</th>
-                <th class="num w1-num--t">T1</th>
-                <th class="num">Bike</th>
-                <th class="num w1-num--t">T2</th>
-                <th class="num">Run</th>
-                <th class="num w1-num--total"></th>
-            </tr></thead>
+            <thead><tr>${headsHtml}</tr></thead>
             <tbody>${rowsHtml}</tbody>
         </table>`;
     document.getElementById("prev").onclick = () => setActive(activeIdx - 1);
@@ -514,6 +569,13 @@ function renderLeaders(){
         const groupsHtml = group(editionsFor(1), "gold", 1)
                          + group(editionsFor(2), "silver", 2)
                          + group(editionsFor(3), "bronze", 3);
+        // Relay winners are countries, so the row leads with the flag and
+        // links to the country page instead of an athlete.
+        if (IS_RELAY) return `<div class="leader-row">
+            <img src="${STATIC_BASE}flags/${l.country_alpha3}.svg" alt="${l.country_full}">
+            <a href="/country/${l.country_alpha3}" class="leader-name">${l.country_full}</a>
+            <div>${groupsHtml}</div>
+        </div>`;
         return `<div class="leader-row">
             <img src="${profileSrc(l.athlete_id, l.profile_img, 128)}" alt="${l.name}">
             <a href="/athlete/${l.athlete_id}" class="leader-name">${l.name} ${flagImg(l.country_alpha3)}</a>
@@ -524,6 +586,7 @@ function renderLeaders(){
 
 // ── Medals by Country ──────────────────────────────────────────────────
 function renderMedals(){
+    if (IS_RELAY) return;   // tab isn't rendered for relay programs
     const tbody = document.querySelector("#medals-table tbody");
     if (!MEDAL_TABLE.length){
         tbody.innerHTML = `<tr><td colspan="2" class="series-empty">No medals recorded.</td></tr>`;
@@ -572,6 +635,7 @@ function renderMedals(){
 
 // ── Youngest / Oldest Winners ──────────────────────────────────────────
 function renderAges(){
+    if (IS_RELAY) return;   // no single winner to age for a four-athlete team
     function rowHtml(w){
         return `<tr>
             <td><a href="/athlete/${w.athlete_id}" class="age-ath"><img src="${profileSrc(w.athlete_id, w.profile_img, 128)}">${w.name} ${flagImg(w.country_alpha3)}</a></td>
@@ -600,8 +664,12 @@ let splitsFormat = "standard";
 let stdDisc      = "overall";
 let charts = {};
 
+// Relay editions are all the same format (4x super-sprint), but a team total
+// lands either side of the individual sprint/standard thresholds, so the
+// format split is noise there: one chart over every edition instead.
 function buildFormatChips(containerId, current, onChange){
     const c = document.getElementById(containerId);
+    if (IS_RELAY){ c.style.display = "none"; return null; }
     const present = [...new Set(EDITIONS.map(e => classifyFormat(e.podium[0] && e.podium[0].overall_s)))]
         .sort((a, b) => FORMAT_ORDER.indexOf(a) - FORMAT_ORDER.indexOf(b));
     if (present.length <= 1){ c.style.display = "none"; return present[0] || current; }
@@ -615,6 +683,7 @@ function buildFormatChips(containerId, current, onChange){
 }
 
 function editionsInFormat(format){
+    if (IS_RELAY) return EDITIONS;
     return EDITIONS.filter(e => classifyFormat(e.podium[0] && e.podium[0].overall_s) === format);
 }
 
@@ -743,6 +812,14 @@ function tooltipMargin(tip, chart){
 function tooltipSplits(tip, chart){
     const ed = chart.$eds[tip.dataPoints[0].dataIndex];
     if (!ed) return "";
+    if (IS_RELAY){
+        const ff = FIELD_FASTEST[ed.race_id] || {};
+        return `${ttHead(ed)}
+            <div class="ct-body">
+                ${[1,2,3,4].map(n => ff[n]
+                    ? `<div class="ct-row"><span>${LEG_LABELS[n-1]}</span><b>${fmtSec(ff[n])}</b></div>` : "").join("")}
+            </div>`;
+    }
     function best(idx, fmtKey){
         let b = {sec: Infinity, ath: null, time: ""};
         ed.podium.forEach(p => {
@@ -770,13 +847,15 @@ function buildCharts(){
     timesFormat  = buildFormatChips("fmt-times",  timesFormat,  f => { timesFormat  = f; rebuildTimesChart();  });
     splitsFormat = buildFormatChips("fmt-splits", splitsFormat, f => { splitsFormat = f; rebuildSplitsChart(); });
 
-    const stdSelect = document.getElementById("std-disc");
-    stdSelect.value = stdDisc;
-    stdSelect.onchange = () => { stdDisc = stdSelect.value; rebuildStdChart(); };
+    if (!IS_RELAY){
+        const stdSelect = document.getElementById("std-disc");
+        stdSelect.value = stdDisc;
+        stdSelect.onchange = () => { stdDisc = stdSelect.value; rebuildStdChart(); };
+        rebuildStdChart();
+    }
 
     rebuildTimesChart();
     rebuildSplitsChart();
-    rebuildStdChart();
     rebuildMarginChart();
 }
 
@@ -796,6 +875,8 @@ function rebuildTimesChart(){
     charts.times.$eds = eds;
 }
 
+const LEG_COLORS = ["#0ea5e9", "#1a1a2e", "#e85d04", "#16a34a"];
+
 function rebuildSplitsChart(){
     const eds = editionsInFormat(splitsFormat);
     const yrs = eds.map(e => e.year);
@@ -805,14 +886,22 @@ function rebuildSplitsChart(){
         const vs = e.podium.map(p => p[key]).filter(s => s != null && s > 0);
         return vs.length ? Math.min(...vs) : null;
     };
-    if (charts.splits) charts.splits.destroy();
-    charts.splits = new Chart(document.getElementById("ch-splits"), {
-        type: "line",
-        data: {labels: yrs, datasets: [
+    // Relay: the field-fastest leg splits are already computed server-side.
+    const datasets = IS_RELAY
+        ? [1, 2, 3, 4].map(n => ({
+            label: LEG_LABELS[n - 1],
+            data: eds.map(e => (FIELD_FASTEST[e.race_id] || {})[n] || null),
+            borderColor: LEG_COLORS[n - 1], borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true,
+          }))
+        : [
             {label:"Swim", data: eds.map(e => fastestSec(e, "swim_s")), borderColor:"#0ea5e9", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
             {label:"Bike", data: eds.map(e => fastestSec(e, "bike_s")), borderColor:"#1a1a2e", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
             {label:"Run",  data: eds.map(e => fastestSec(e, "run_s")),  borderColor:"#e85d04", borderWidth:2, pointRadius:2.5, tension:0.25, spanGaps:true},
-        ]},
+          ];
+    if (charts.splits) charts.splits.destroy();
+    charts.splits = new Chart(document.getElementById("ch-splits"), {
+        type: "line",
+        data: {labels: yrs, datasets},
         options: {responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
             animation: drawAnimation(yrs.length),
             plugins:{legend:{labels:{font:{size:11}, boxWidth:14}}, tooltip:{enabled:false, external: chartTooltip(tooltipSplits)}},
@@ -862,6 +951,15 @@ function rebuildMarginChart(){
 
 // ── Program toggle: AJAX swap (no full page reload) ───────────────────
 async function switchProgram(slug){
+    // Relay and individual programs render different tabs, columns and
+    // charts (all server-rendered), so crossing between them needs a reload
+    // rather than a data swap.
+    if (/-mixed$/.test(slug) !== IS_RELAY){
+        const url = new URL(location.href);
+        url.searchParams.set("program", slug);
+        location.href = url.toString();
+        return;
+    }
     const dataUrl = location.pathname.replace(/\/$/, "") + "/data?program=" + encodeURIComponent(slug);
     let data;
     try {

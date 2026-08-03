@@ -18,7 +18,9 @@ _DISCS = ["overall", "swim", "bike", "run", "transition"]
 
 # Human labels for program tab bar
 _SUB_LABELS = {"elite": "Elite", "u23": "U23", "junior": "Junior", "youth": "Youth", "ag": "AG"}
-_GENDER_LABELS = {"male": "Men", "female": "Women", "mixed": "Mixed"}
+# 'mixed' is only ever a mixed team relay program, so label it MTR
+# ("Elite MTR", "U23 MTR") rather than the ambiguous "Elite Mixed".
+_GENDER_LABELS = {"male": "Men", "female": "Women", "mixed": "MTR"}
 
 # Tier order + labels for the index page groupings
 _TIER_ORDER = [
@@ -99,6 +101,45 @@ def _races_to_json(races):
             ],
             "standards":        r.get("standards"),
             "standard_classes": r.get("standard_classes"),
+        })
+    return out
+
+
+def _relay_races_to_json(races):
+    """Relay sibling of `_races_to_json`: podium entries are teams and their
+    splits are the four legs."""
+    out = []
+    for r in races:
+        rdate = r["race_date"]
+        out.append({
+            "race_id":     r["race_id"],
+            "race_date":   rdate.isoformat() if rdate else None,
+            "year":        rdate.year if rdate else None,
+            "race_handle": r.get("race_handle"),
+            "event_name":  r.get("event_name"),
+            "race_title":  r.get("race_title"),
+            "venue":       r.get("venue"),
+            "country":     r.get("country"),
+            "podium": [
+                {
+                    "position":       p["position"],
+                    "name":           p["name"],
+                    "country_full":   p["country_full"],
+                    "country_alpha3": p["country_alpha3"],
+                    "overall_s":      p["overall_s"],
+                    "gap":            p["gap"],
+                    "time_fmt":       p["time_fmt"],
+                    "gap_fmt":        p["gap_fmt"],
+                    "legs": [
+                        {"leg_num": l["leg_num"], "athlete_id": l["athlete_id"],
+                         "name": l["name"], "leg_s": l["leg_s"], "leg_fmt": l["leg_fmt"]}
+                        for l in p["legs"]
+                    ],
+                }
+                for p in r["podium"]
+            ],
+            "standards":        None,
+            "standard_classes": None,
         })
     return out
 
@@ -248,7 +289,92 @@ def _build_program_payload(races, leaders, perf_history, medal_table,
             {**r, "year": r["race_date"].year, "race_date": r["race_date"].isoformat()}
             for r in standards_hist
         ],
+        "is_relay":             False,
     }
+
+
+def _build_relay_payload(races, leaders, perf_history, prog):
+    """Mixed team relay sibling of `_build_program_payload`: teams stand in for
+    athletes and legs for disciplines. Winner ages and race standards have no
+    relay equivalent (no race_rankings rows, no single athlete), so they ship
+    empty and the template drops those sections."""
+    for race in races:
+        podium = race["podium"]
+        for p in podium:
+            p["time_fmt"] = format_time(p["overall_s"])
+            gap = p["gap"]
+            if gap is None:
+                p["gap_fmt"] = ""
+            elif gap == 0:
+                p["gap_fmt"] = "+0:00"
+            else:
+                p["gap_fmt"] = format_time_behind(gap)
+            for leg in p["legs"]:
+                leg["leg_fmt"] = format_time(leg["leg_s"]) if leg["leg_s"] else ""
+
+    for row in perf_history:
+        row["year"]      = row["race_date"].year
+        row["race_date"] = row["race_date"].isoformat()
+
+    years = {r["race_date"].year for r in races if r["race_date"]}
+    year_span = ""
+    if years:
+        y0, y1 = min(years), max(years)
+        year_span = f"{y0}" if y0 == y1 else f"{y0}-{y1}"
+
+    return {
+        "active_program":       _program_slug(*prog),
+        "active_program_label": _program_label(*prog),
+        "hero_stats":           {"editions": len(races), "year_span": year_span},
+        "races_json":           _relay_races_to_json(races),
+        "leaders":              leaders,
+        "medal_table":          [],
+        "youngest_winners":     [],
+        "oldest_winners":       [],
+        "perf_history":         perf_history,
+        "standards_history":    [],
+        "is_relay":             True,
+    }
+
+
+def _program_payload(scope_id, prog, recurring=False):
+    """Program-scoped payload for a series (`scope_id` = series_id) or a
+    recurring group (`recurring=True`, `scope_id` = recurring_event_id).
+    Mixed programs are team relays and read from the relay tables."""
+    if prog and prog[1] == "mixed":
+        if recurring:
+            return _build_relay_payload(
+                races        = queries.get_recurring_relay_races(scope_id, program=prog),
+                leaders      = queries.get_recurring_relay_leaders(scope_id, program=prog),
+                perf_history = queries.get_recurring_relay_performance_history(scope_id, program=prog),
+                prog         = prog,
+            )
+        return _build_relay_payload(
+            races        = queries.get_series_relay_races(scope_id, program=prog),
+            leaders      = queries.get_series_relay_leaders(scope_id, program=prog),
+            perf_history = queries.get_series_relay_performance_history(scope_id, program=prog),
+            prog         = prog,
+        )
+
+    if recurring:
+        return _build_program_payload(
+            races          = queries.get_recurring_races(scope_id, program=prog),
+            leaders        = queries.get_recurring_all_time_leaders(scope_id, program=prog),
+            perf_history   = queries.get_recurring_performance_history(scope_id, program=prog),
+            medal_table    = queries.get_recurring_medal_table(scope_id, program=prog),
+            winners_age    = queries.get_recurring_winners_with_age(scope_id, program=prog),
+            standards_hist = queries.get_recurring_standards_history(scope_id, program=prog),
+            prog           = prog,
+        )
+    return _build_program_payload(
+        races          = queries.get_series_races(scope_id, program=prog),
+        leaders        = queries.get_series_all_time_leaders(scope_id, program=prog),
+        perf_history   = queries.get_series_performance_history(scope_id, program=prog),
+        medal_table    = queries.get_series_medal_table(scope_id, program=prog),
+        winners_age    = queries.get_series_winners_with_age(scope_id, program=prog),
+        standards_hist = queries.get_series_standards_history(scope_id, program=prog),
+        prog           = prog,
+    )
 
 
 def _winners_age_to_json(rows):
@@ -409,15 +535,7 @@ def series_detail(request: Request, slug: str, program: str | None = None):
     active_slug = _program_slug(*prog) if prog else None
     program_tabs, program_overflow = _build_program_tabs(program_options, active_slug)
 
-    payload = _build_program_payload(
-        races          = queries.get_series_races(sid, program=prog),
-        leaders        = queries.get_series_all_time_leaders(sid, program=prog),
-        perf_history   = queries.get_series_performance_history(sid, program=prog),
-        medal_table    = queries.get_series_medal_table(sid, program=prog),
-        winners_age    = queries.get_series_winners_with_age(sid, program=prog),
-        standards_hist = queries.get_series_standards_history(sid, program=prog),
-        prog           = prog,
-    )
+    payload = _program_payload(sid, prog)
 
     return templates.TemplateResponse("series.html", {
         "request":      request,
@@ -438,15 +556,7 @@ def series_data(slug: str, program: str | None = None):
         raise HTTPException(status_code=404)
     sid = series["series_id"]
     prog = _resolve_program(queries.get_program_options_for_series(sid), program)
-    return JSONResponse(_build_program_payload(
-        races          = queries.get_series_races(sid, program=prog),
-        leaders        = queries.get_series_all_time_leaders(sid, program=prog),
-        perf_history   = queries.get_series_performance_history(sid, program=prog),
-        medal_table    = queries.get_series_medal_table(sid, program=prog),
-        winners_age    = queries.get_series_winners_with_age(sid, program=prog),
-        standards_hist = queries.get_series_standards_history(sid, program=prog),
-        prog           = prog,
-    ))
+    return JSONResponse(_program_payload(sid, prog))
 
 
 # Hardcoded majors pinned to the top of the /recurring index, in display
@@ -549,15 +659,7 @@ def recurring_detail(request: Request, slug: str, program: str | None = None):
     active_slug = _program_slug(*prog) if prog else None
     program_tabs, program_overflow = _build_program_tabs(program_options, active_slug)
 
-    payload = _build_program_payload(
-        races          = queries.get_recurring_races(rid, program=prog),
-        leaders        = queries.get_recurring_all_time_leaders(rid, program=prog),
-        perf_history   = queries.get_recurring_performance_history(rid, program=prog),
-        medal_table    = queries.get_recurring_medal_table(rid, program=prog),
-        winners_age    = queries.get_recurring_winners_with_age(rid, program=prog),
-        standards_hist = queries.get_recurring_standards_history(rid, program=prog),
-        prog           = prog,
-    )
+    payload = _program_payload(rid, prog, recurring=True)
 
     series_like = {
         "name":        rec["name"],
@@ -594,12 +696,4 @@ def recurring_data(slug: str, program: str | None = None):
         raise HTTPException(status_code=404)
     rid = rec["recurring_event_id"]
     prog = _resolve_program(queries.get_program_options_for_recurring(rid), program)
-    return JSONResponse(_build_program_payload(
-        races          = queries.get_recurring_races(rid, program=prog),
-        leaders        = queries.get_recurring_all_time_leaders(rid, program=prog),
-        perf_history   = queries.get_recurring_performance_history(rid, program=prog),
-        medal_table    = queries.get_recurring_medal_table(rid, program=prog),
-        winners_age    = queries.get_recurring_winners_with_age(rid, program=prog),
-        standards_hist = queries.get_recurring_standards_history(rid, program=prog),
-        prog           = prog,
-    ))
+    return JSONResponse(_program_payload(rid, prog, recurring=True))

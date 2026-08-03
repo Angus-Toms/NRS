@@ -9,6 +9,7 @@ import math
 import re
 import statistics
 from ast import literal_eval
+from collections import defaultdict
 from functools import lru_cache
 
 import duckdb
@@ -5711,6 +5712,202 @@ def get_series_winners_with_age(series_id, program=None):
 
 def get_recurring_winners_with_age(recurring_id, program=None):
     return _scoped_winners_with_age(_scope_clauses(recurring_id=recurring_id), program=program)
+
+
+def _scoped_relay_races(scope, program=None):
+    """Relay editions in scope newest-first, each with a top-3 team podium and
+    per-leg splits.
+
+    Mixed team relay results live in relay_teams/relay_legs rather than
+    `results`, so `_scoped_races` can't serve them: same page shape, different
+    source. Podium entries are teams (country + team number) whose "splits"
+    are the four legs.
+    """
+    conn = _get_conn()
+    prog_sql, prog_params = _program_filter(program)
+    race_cols = ["race_id", "race_title", "race_handle", "race_date", "prog_name", "gender",
+                 "sub_category", "event_name", "venue", "country"]
+    races = _dicts(race_cols, conn.execute(f"""
+        SELECT r.race_id, r.race_title, r.race_handle, r.race_date, r.prog_name, r.gender,
+               r.sub_category, e.name AS event_name, e.venue, e.country
+        FROM {scope['table']}
+        {scope['join']}
+        JOIN events e ON e.event_id = r.event_id
+        WHERE {scope['where']}
+          AND r.distance = 'relay'
+          AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+          {prog_sql}
+        ORDER BY r.race_date DESC
+    """, scope['params'] + prog_params))
+    if not races:
+        return races
+
+    race_ids = [r["race_id"] for r in races]
+    id_ph = ','.join(['?'] * len(race_ids))
+
+    podium_rows = conn.execute(f"""
+        SELECT rt.race_id, rt.position, rt.team_id, rt.team_num,
+               rt.country_full, n.alpha3, rt.total_s
+        FROM relay_teams rt
+        JOIN nationalities n ON n.country_full = rt.country_full
+        WHERE rt.race_id IN ({id_ph})
+          AND rt.position IN (1, 2, 3)
+          AND rt.status = 'Finished'
+        ORDER BY rt.race_id, rt.position
+    """, race_ids).fetchall()
+
+    leg_rows = conn.execute(f"""
+        SELECT l.race_id, l.team_id, l.leg_num, l.athlete_id, a.name, l.leg_s
+        FROM relay_legs l
+        JOIN athletes a ON a.athlete_id = l.athlete_id
+        WHERE l.race_id IN ({id_ph})
+        ORDER BY l.race_id, l.team_id, l.leg_num
+    """, race_ids).fetchall()
+    legs_by_team = defaultdict(list)
+    for race_id, team_id, leg_num, athlete_id, name, leg_s in leg_rows:
+        legs_by_team[(race_id, team_id)].append({
+            "leg_num": leg_num, "athlete_id": athlete_id, "name": name, "leg_s": leg_s,
+        })
+
+    podiums = defaultdict(list)
+    for race_id, position, team_id, team_num, country_full, alpha3, total_s in podium_rows:
+        podiums[race_id].append({
+            "position": position, "team_id": team_id,
+            "name": relay_team_name(country_full, team_num),
+            "country_full": country_full, "country_alpha3": alpha3,
+            "overall_s": total_s,
+            "legs": legs_by_team.get((race_id, team_id), []),
+        })
+
+    for race in races:
+        podium = podiums[race["race_id"]]
+        winner_s = podium[0]["overall_s"] if podium else None
+        for p in podium:
+            p["gap"] = (p["overall_s"] - winner_s) if winner_s and p["position"] != 1 else None
+        race["podium"] = podium
+
+    return races
+
+
+def get_series_relay_races(series_id, program=None):
+    return _scoped_relay_races(_scope_clauses(series_id=series_id), program=program)
+
+
+def get_recurring_relay_races(recurring_id, program=None):
+    return _scoped_relay_races(_scope_clauses(recurring_id=recurring_id), program=program)
+
+
+def _scoped_relay_leaders(scope, program=None):
+    """Countries ranked by relay wins in scope - the country analogue of
+    `_scoped_all_time_leaders`, with the same wins/seconds/thirds shape plus
+    the editions behind each medal."""
+    conn = _get_conn()
+    prog_sql, prog_params = _program_filter(program)
+    rows = conn.execute(f"""
+        SELECT rt.country_full, n.alpha3, rt.position, r.race_id, r.race_date, r.race_handle
+        FROM {scope['table']}
+        {scope['join']}
+        JOIN relay_teams rt  ON rt.race_id = r.race_id
+        JOIN nationalities n ON n.country_full = rt.country_full
+        WHERE {scope['where']}
+          AND r.distance = 'relay'
+          AND rt.position IN (1, 2, 3)
+          AND rt.status = 'Finished'
+          AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+          {prog_sql}
+        ORDER BY r.race_date DESC
+    """, scope['params'] + prog_params).fetchall()
+
+    leaders = {}
+    for country_full, alpha3, position, race_id, race_date, race_handle in rows:
+        l = leaders.setdefault(country_full, {
+            "country_full": country_full, "country_alpha3": alpha3,
+            "wins": 0, "seconds": 0, "thirds": 0, "podiums": [], "latest_win": None,
+        })
+        l[{1: "wins", 2: "seconds", 3: "thirds"}[position]] += 1
+        l["podiums"].append({"position": position, "race_id": race_id,
+                             "short": race_handle,
+                             "year": race_date.year if race_date else None})
+        if position == 1 and l["latest_win"] is None:
+            l["latest_win"] = race_date   # rows are newest-first
+
+    out = [l for l in leaders.values() if l["wins"] > 0]
+    out.sort(key=lambda l: (-l["wins"], -l["seconds"], -l["thirds"],
+                            -l["latest_win"].toordinal()))
+    for l in out:
+        l["win_editions"] = [p for p in l["podiums"] if p["position"] == 1]
+        l.pop("latest_win")
+    return out
+
+
+def get_series_relay_leaders(series_id, program=None):
+    return _scoped_relay_leaders(_scope_clauses(series_id=series_id), program=program)
+
+
+def get_recurring_relay_leaders(recurring_id, program=None):
+    return _scoped_relay_leaders(_scope_clauses(recurring_id=recurring_id), program=program)
+
+
+def _scoped_relay_performance_history(scope, program=None):
+    """Per-race team totals (winner / 10th / 25th) plus the field-fastest split
+    for each leg. Feeds the same charts as `_scoped_performance_history`, with
+    legs standing in for disciplines."""
+    conn = _get_conn()
+    prog_sql, prog_params = _program_filter(program)
+    cols = ["race_id", "race_date", "event_name", "winner_s", "p10_s", "p25_s"]
+    rows = _dicts(cols, conn.execute(f"""
+        WITH ranked AS (
+            SELECT r.race_id, r.race_date, e.name AS event_name, rt.total_s,
+                   ROW_NUMBER() OVER (PARTITION BY r.race_id ORDER BY rt.total_s) AS pos_rank
+            FROM {scope['table']}
+            {scope['join']}
+            JOIN events e       ON e.event_id = r.event_id
+            JOIN relay_teams rt ON rt.race_id = r.race_id
+            WHERE {scope['where']}
+              AND r.distance = 'relay'
+              AND rt.status = 'Finished'
+              AND rt.total_s > 0
+              AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+              {prog_sql}
+        )
+        SELECT race_id, race_date, MAX(event_name) AS event_name,
+               MAX(CASE WHEN pos_rank = 1  THEN total_s END) AS winner_s,
+               MAX(CASE WHEN pos_rank = 10 THEN total_s END) AS p10_s,
+               MAX(CASE WHEN pos_rank = 25 THEN total_s END) AS p25_s
+        FROM ranked
+        GROUP BY race_id, race_date
+        ORDER BY race_date
+    """, scope['params'] + prog_params))
+
+    leg_rows = conn.execute(f"""
+        SELECT r.race_id, l.leg_num, MIN(l.leg_s) AS best
+        FROM {scope['table']}
+        {scope['join']}
+        JOIN relay_legs l ON l.race_id = r.race_id
+        WHERE {scope['where']}
+          AND r.distance = 'relay'
+          AND l.leg_s > 0
+          AND NOT EXISTS (SELECT 1 FROM ignored_races ig WHERE ig.race_id = r.race_id)
+          {prog_sql}
+        GROUP BY r.race_id, l.leg_num
+    """, scope['params'] + prog_params).fetchall()
+    best_legs = defaultdict(dict)
+    for race_id, leg_num, best in leg_rows:
+        best_legs[race_id][leg_num] = best
+
+    for row in rows:
+        legs = best_legs.get(row["race_id"], {})
+        for n in (1, 2, 3, 4):
+            row[f"leg{n}_s"] = legs.get(n)
+    return rows
+
+
+def get_series_relay_performance_history(series_id, program=None):
+    return _scoped_relay_performance_history(_scope_clauses(series_id=series_id), program=program)
+
+
+def get_recurring_relay_performance_history(recurring_id, program=None):
+    return _scoped_relay_performance_history(_scope_clauses(recurring_id=recurring_id), program=program)
 
 
 def get_recurring_event_by_slug(slug):
