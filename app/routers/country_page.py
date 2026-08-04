@@ -2,7 +2,8 @@ from fastapi import HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from config import ASSET_VERSION, STATIC_BASE_URL, flag
+from config import ASSET_VERSION, STATIC_BASE_URL
+from app.display_helpers import flag
 from ptd_data import queries
 from app.routers.router_utils import format_rating, format_time
 

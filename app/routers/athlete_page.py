@@ -6,7 +6,8 @@ from functools import lru_cache
 from fastapi import HTTPException, Query, Request, APIRouter
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL, flag
+from config import ASSET_VERSION, STATIC_BASE_URL
+from app.display_helpers import flag
 
 from ptd_data import db, queries
 from ptd_data.predictions import LOW_CONF_STARTS

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL, flag
+from config import ASSET_VERSION, STATIC_BASE_URL
+from app.display_helpers import flag
 
 from ptd_data import queries
 

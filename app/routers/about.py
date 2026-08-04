@@ -3,7 +3,8 @@ import json
 
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
-from config import ASSET_VERSION, STATIC_BASE_URL, flag
+from config import ASSET_VERSION, STATIC_BASE_URL
+from app.display_helpers import flag
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")

@@ -10,7 +10,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import index, athlete_search, race_search, athlete_page, race_page, event_page, leaderboard, race_leaderboard, comparison, race_comparison, about, robots, series_page, country_page, upcoming_page, download
-from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION, flag, program_label, title_words
+from config import RUNTIME_DATA_DIR, STATIC_BASE_URL, ASSET_VERSION
+from app.display_helpers import flag, program_label, title_words
 
 BASE_DIR = Path(__file__).resolve().parent.parent # Project root
 ALLOWED_HOSTS = {"protridata.com", "www.protridata.com", "127.0.0.1:8000"}
