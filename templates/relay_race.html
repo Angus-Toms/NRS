@@ -10,8 +10,10 @@
 
 {% block title %}{{ page_title() }}{% endblock %}
 
-{% block meta %}
+{# Outside the blocks so the JSON-LD can reuse it as the Event description. #}
 {% set desc %}{{ program_label(race) }} results for {{ title_words(race.race_title) }}, {{ race.date.strftime('%B %Y') }}. {{ finish_count }} teams finished, with leg splits and rating changes.{% endset %}
+
+{% block meta %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
@@ -22,8 +24,11 @@
 
 {% block jsonld %}
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}"{% if race_location %},"location":{"@type":"Place","name":{{ race_location | tojson }}}{% endif %}}
+{#- location is required by Google's Event type, so it must never be conditional;
+    country is the fallback where venue is missing. See race.html. -#}
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ race.race_title | tojson }},"startDate":"{{ race.date.isoformat() }}","endDate":"{{ race.date.isoformat() }}","sport":"Triathlon","url":"https://www.protridata.com/race/{{ race.race_id }}","eventStatus":"https://schema.org/EventScheduled","description":{{ desc | trim | tojson }},"image":"{{ STATIC_BASE_URL }}imgs/logo-512.webp","location":{"@type":"Place","name":{{ (race_location or race_country) | tojson }}{% if race_country %},"address":{{ race_country | tojson }}{% endif %}}}
 </script>
+{% include "_breadcrumb_jsonld.html" %}
 {% endblock %}
 
 {% block extra_css %}

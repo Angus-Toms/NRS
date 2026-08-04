@@ -2,18 +2,24 @@
 
 {% block title %}{{ title_words(event.name) }} - Results{% endblock %}
 
+{# Outside the blocks so the JSON-LD can reuse it as the Event description. #}
+{% set desc %}Results for every category at {{ event.name }}{% if event.venue %}, {{ event.venue }}{% endif %}, with swim, bike and run splits and rating changes.{% endset %}
+
 {% block meta %}
-<meta name="description" content="Results for every category at {{ event.name }}{% if event.venue %}, {{ event.venue }}{% endif %}, with swim, bike and run splits and rating changes.">
+<meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{ title_words(event.name) }} - Results">
-<meta property="og:description" content="Results for every category at {{ event.name }}{% if event.venue %}, {{ event.venue }}{% endif %}, with swim, bike and run splits and rating changes.">
+<meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
 
 {% block jsonld %}
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SportsEvent","name":{{ event.name | tojson }},"sport":"Triathlon","url":"https://www.protridata.com/event/{{ event.event_id }}"{% if event.start_date %},"startDate":"{{ event.start_date.isoformat() }}"{% endif %}{% if event.end_date %},"endDate":"{{ event.end_date.isoformat() }}"{% endif %}{% if event.venue %},"location":{"@type":"Place","name":{{ event.venue | tojson }}}{% endif %}}
+{#- location is required by Google's Event type, so it must never be conditional.
+    Venue is missing on 17% of indexed events and all of those have a country, so
+    it is the fallback rather than a reason to emit markup that logs an error. -#}
+{"@context":"https://schema.org","@type":"SportsEvent","name":{{ event.name | tojson }},"sport":"Triathlon","url":"https://www.protridata.com/event/{{ event.event_id }}"{% if event.start_date %},"startDate":"{{ event.start_date.isoformat() }}"{% endif %}{% if event.end_date %},"endDate":"{{ event.end_date.isoformat() }}"{% endif %},"description":{{ desc | trim | tojson }},"image":"{{ STATIC_BASE_URL }}imgs/logo-512.webp","location":{"@type":"Place","name":{{ (event.venue or event.country) | tojson }}{% if event.country %},"address":{{ event.country | tojson }}{% endif %}}}
 </script>
 {% endblock %}
 
