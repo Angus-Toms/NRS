@@ -496,21 +496,22 @@ def get_athlete(request: Request, athlete_id: int,
     # --- crawlable intro sentence ---
     # Athlete pages are otherwise near-identical tables; a unique line of real
     # prose per athlete gives search engines text to match name queries against.
-    pronoun = "He" if info["gender"] == "male" else "She"
-    cat_label = "an age-group" if category == "ag" else "a professional"
+    # Phrased as clauses rather than sentences to stay inside the ~155 characters
+    # Google shows, and with no pronouns: the gender column is the race category
+    # the athlete competed in, which is not a claim about the person.
+    tier_label = "age-group" if category == "ag" else "professional"
     course_label = "long-course" if course == "long" else "short-course"
     from_str = f" from {info['country_full']}" if info.get("country_full") else ""
-    seo_intro = f"{info['name']} is {cat_label} {course_label} triathlete{from_str}."
+    seo_intro = f"{info['name']}, {tier_label} {course_label} triathlete{from_str}."
     if race_starts:
         first_year = min(r["race_date"].year for r in race_hist) if race_hist else None
         since = "" if not first_year else (f" in {first_year}" if race_starts == 1 else f" since {first_year}")
-        verb = "has recorded" if active else "recorded"
-        seo_intro += (f" {pronoun} {verb} {race_starts} race start{'s' if race_starts != 1 else ''}{since},"
-                      f" with {wins} win{'s' if wins != 1 else ''}"
-                      f" and {podiums} podium finish{'es' if podiums != 1 else ''}.")
+        seo_intro += (f" {race_starts} race start{'s' if race_starts != 1 else ''}{since},"
+                      f" {wins} win{'s' if wins != 1 else ''},"
+                      f" {podiums} podium{'s' if podiums != 1 else ''}.")
     world_rank = current_rankings.get("world_overall")
     if world_rank:
-        seo_intro += f" {pronoun} is currently ranked {world_rank['n']}{world_rank['suffix']} in the world."
+        seo_intro += f" Ranked {world_rank['n']}{world_rank['suffix']} in the world."
 
     # --- notable results: three parallel streams (short-course elite, AG, long-course) ---
     notable_results      = _build_notable_results(notable_raw)

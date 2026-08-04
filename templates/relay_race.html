@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 
+{# program_label is the prog_name for relays ("Mixed Junior Relay"), which already
+   says relay, so the title must not append it again. #}
 {% macro page_title() -%}
 {%- set y = race.date.strftime('%Y') -%}
-{%- set base = race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y -%}
-{{ base }} - Mixed Relay Results | Pro Tri Data
+{%- set base = title_words(race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y) -%}
+{{- base }} - {{ program_label(race) }} Results
 {%- endmacro %}
 
 {% block title %}{{ page_title() }}{% endblock %}
 
 {% block meta %}
-{% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
-{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. Mixed team relay results - {{ finish_count }} teams finished. View leg splits, fastest legs, and country rating changes.{% endset %}
+{% set desc %}{{ program_label(race) }} results for {{ title_words(race.race_title) }}, {{ race.date.strftime('%B %Y') }}. {{ finish_count }} teams finished, with leg splits and rating changes.{% endset %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">

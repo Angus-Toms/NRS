@@ -2,25 +2,34 @@
 
 {# Titles match how people actually search: "<race> <year> results" and
    "<race> start list". Most WT titles already lead with the year, so only
-   append it when missing. #}
+   append it when missing.
+
+   Kept deliberately short. Google shows ~60 characters, and a word-frequency
+   pass over GSC queries put "triathlon", the year, "results" and the venue at
+   the top while "splits", "elite" and the site name scored zero, so those are
+   gone. program_label() carries the program category, which every program of an
+   event needs or their titles collide. #}
 {% macro page_title() -%}
 {%- set y = race.date.strftime('%Y') -%}
-{%- set base = race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y -%}
+{%- set base = title_words(race.race_title if y in race.race_title else race.race_title ~ ' ' ~ y) -%}
 {%- if is_upcoming -%}
-{{ base }} - Start List &amp; Predictions | Pro Tri Data
+{{ base }} - {{ program_label(race) }} Start List
 {%- else -%}
-{{ base }} - {{ "Men's" if race.gender == 'male' else ("Women's" if race.gender == 'female' else 'Mixed') }} {{ 'Age Group' if race.category == 'ag' else 'Elite' }} Results &amp; Splits | Pro Tri Data
+{{ base }} - {{ program_label(race) }} Results
 {%- endif -%}
 {%- endmacro %}
 
 {% block title %}{{ page_title() }}{% endblock %}
 
 {% block meta %}
-{% set loc_str %}{% if race_location %} in {{ race_location }}{% endif %}{% endset %}
+{# No location here even though it is on hand: it runs to "Jakabaring Sport City,
+   Palembang, Indonesia" on some events, which alone blows the ~155 characters
+   Google shows, and most race titles already name the venue. The page body and
+   the JSON-LD below still carry it. #}
 {% if is_upcoming %}
-{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%-d %B %Y') }}{{ loc_str }}. Start list with current ratings and predicted results for every athlete racing.{% endset %}
+{% set desc %}{{ program_label(race) }} start list for {{ title_words(race.race_title) }}, {{ race.date.strftime('%-d %b %Y') }}, with ratings and predicted results.{% endset %}
 {% else %}
-{% set desc %}{{ race.race_title }}, {{ race.date.strftime('%B %Y') }}{{ loc_str }}. {{ race.gender | title }} {{ 'age group' if race.category == 'ag' else 'elite' }} results - {{ finish_count }} finishers. View splits, rating changes, and performance analysis.{% endset %}
+{% set desc %}{{ program_label(race) }} results for {{ title_words(race.race_title) }}, {{ race.date.strftime('%B %Y') }}. {{ finish_count }} finishers, with splits and rating changes.{% endset %}
 {% endif %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">

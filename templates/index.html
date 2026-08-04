@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Pro Tri Data{% endblock %}
+{# Brand alone told a searcher nothing: the homepage ranked 5.9 for "triathlon data"
+   and 8.5 for "protri" and took zero clicks on both. Each word after the dash is a
+   distinct head-term cluster in GSC (results 457 impressions, rating 23, ranking 24,
+   stats 19); "rating" and "ranking" are separate queries, not stems of each other,
+   so both earn their place. Brand stays first because "protri" is the single biggest
+   homepage query. 59 characters, inside what Google displays. #}
+{% block title %}Pro Tri Data - Triathlon Results, Ratings, Rankings &amp; Stats{% endblock %}
 
 {% block meta %}
 <meta name="description" content="Pro Tri Data tracks 60k+ athletes and 9k+ races across all World Triathlon racing. Explore career ratings, race results, and athlete comparisons.">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Pro Tri Data - Elite Triathlon Ratings &amp; Results">
+<meta property="og:title" content="Pro Tri Data - Triathlon Results, Ratings, Rankings &amp; Stats">
 <meta property="og:description" content="Ratings, results, and performance analysis for elite triathlon. Explore career trajectories, race splits, and rankings for every World Triathlon athlete.">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}

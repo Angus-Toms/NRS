@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}{{ event.name }} - Pro Tri Data{% endblock %}
+{% block title %}{{ title_words(event.name) }} - Results{% endblock %}
 
 {% block meta %}
-<meta name="description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
+<meta name="description" content="Results for every category at {{ event.name }}{% if event.venue %}, {{ event.venue }}{% endif %}, with swim, bike and run splits and rating changes.">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ event.name }} - Pro Tri Data">
-<meta property="og:description" content="{{ event.name }}{% if event.venue %} in {{ event.venue }}{% endif %}. Race results, splits, and performance analysis for every category.">
+<meta property="og:title" content="{{ title_words(event.name) }} - Results">
+<meta property="og:description" content="Results for every category at {{ event.name }}{% if event.venue %}, {{ event.venue }}{% endif %}, with swim, bike and run splits and rating changes.">
 <meta property="og:image" content="{{ STATIC_BASE_URL }}imgs/logo-512.webp">
 {% endblock %}
 

@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data{% endblock %}
+{% block title %}{{ athlete.name }} - Triathlon Results &amp; Ratings{% endblock %}
 
-{% set desc %}{{ seo_intro }} View splits, discipline ratings, ranking history and more.{% endset %}
+{% set desc %}{{ seo_intro }}{% endset %}
 {% set img_url %}{{ STATIC_BASE_URL }}{% if athlete.profile_img %}athlete_imgs/512/{{ athlete.athlete_id }}.webp{% else %}imgs/logo-512.webp{% endif %}{% endset %}
 
 {% block meta %}
 <meta name="description" content="{{ desc }}">
 <meta property="og:site_name" content="Pro Tri Data">
 <meta property="og:type" content="profile">
-<meta property="og:title" content="{{ athlete.name }} - Career Ratings &amp; Results | Pro Tri Data">
+<meta property="og:title" content="{{ athlete.name }} - Triathlon Results &amp; Ratings">
 <meta property="og:description" content="{{ desc }}">
 <meta property="og:image" content="{{ img_url }}">
 {% endblock %}
