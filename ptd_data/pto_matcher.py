@@ -80,9 +80,15 @@ def _name_similarity(a, b):
     return SequenceMatcher(None, _normalize_name(a), _normalize_name(b)).ratio()
 
 
-def _classify_pair(wt_name, pto_name, wt_country, pto_country, wt_yob, pto_yob):
+def _classify_pair(wt_name, pto_name, wt_country, pto_country, wt_yob, pto_yob,
+                   wt_gender, race_gender):
     """Return (status, notes) describing a candidate pair."""
     sim = _name_similarity(wt_name, pto_name)
+    if wt_gender != race_gender:
+        # Pairing is per-gender by construction, so this only fires when our
+        # stored gender for the WT athlete is wrong or they were already
+        # mis-linked. Either way it needs eyes, not an auto-apply.
+        return "gender_mismatch", f"sim={sim:.2f}  wt_gender={wt_gender} race={race_gender}"
     country_ok = (
         not wt_country or not pto_country
         or wt_country.lower() == pto_country.lower()
@@ -122,6 +128,7 @@ class _PairObservation:
     pto_slug: str
     pto_name: str
     pto_country: str
+    race_gender: str
 
 
 class PTOMatcher:
@@ -364,7 +371,7 @@ class PTOMatcher:
                             wt_athlete_id=wt_id, wt_name=wt_name,
                             wt_country=wt_country or "", wt_yob=wt_yob or 0,
                             pto_slug=p["pto_slug"], pto_name=p["name"],
-                            pto_country=pto_country_full,
+                            pto_country=pto_country_full, race_gender=gender,
                         ))
                         race_matches += 1
 
@@ -393,6 +400,7 @@ class PTOMatcher:
             by_slug[o.pto_slug][o.wt_athlete_id] += 1
             sample.setdefault((o.pto_slug, o.wt_athlete_id), o)
 
+        genders = dict(self.conn.execute("SELECT athlete_id, gender FROM athletes").fetchall())
         resolved = []
         for slug, counts in by_slug.items():
             (top_id, top_n), *rest = counts.most_common()
@@ -402,6 +410,7 @@ class PTOMatcher:
                 obs.wt_name, obs.pto_name,
                 obs.wt_country, obs.pto_country,
                 obs.wt_yob, 0,  # yob not available from results pages
+                genders[top_id], obs.race_gender,
             )
             if conflict:
                 status = "conflict"
@@ -512,14 +521,19 @@ def apply_matches(conn, resolved):
 
     Only 'exact' and 'nickname_candidate' are committed. Skips rows whose
     WT athlete is already linked to a different PTO slug — those need human
-    review.
+    review — and rows data/athlete_no_merge.csv rejects.
     """
+    no_merge = db.load_no_merge('pto')
     applied = 0
     conflicts = 0
     skipped_bad_status = 0
     for r in resolved:
         if r["status"] not in ("exact", "nickname_candidate"):
             skipped_bad_status += 1
+            continue
+        if r["wt_athlete_id"] in no_merge.get(r["pto_slug"], ()):
+            print(f"  [skip] {r['pto_slug']!r} -> wt_athlete_id={r['wt_athlete_id']} "
+                  "is blocked by athlete_no_merge.csv")
             continue
         existing = conn.execute(
             "SELECT pto_slug FROM athletes WHERE athlete_id = ?",

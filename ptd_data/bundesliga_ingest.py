@@ -187,14 +187,16 @@ def _buli_handle(venue, season):
 class BundesligaIngester:
     def __init__(self, conn):
         self.conn = conn
-        # Match against ALL existing athletes by ISO alpha3 (WT + FGP + PTO).
+        # Match against ALL existing athletes by (ISO alpha3, gender)
+        # (WT + FGP + PTO). Gender is in the key because none of the name rules
+        # below can tell a man from a woman.
         rows = conn.execute("""
-            SELECT a.athlete_id, a.name, a.year_of_birth, n.alpha3
+            SELECT a.athlete_id, a.name, a.year_of_birth, n.alpha3, a.gender
             FROM athletes a JOIN nationalities n USING (country_full)
         """).fetchall()
         self._candidates = {}
-        for athlete_id, name, yob, alpha3 in rows:
-            self._candidates.setdefault(alpha3, []).append((athlete_id, name, yob))
+        for athlete_id, name, yob, alpha3, gender in rows:
+            self._candidates.setdefault((alpha3, gender), []).append((athlete_id, name, yob))
         print(f"Loaded {len(rows)} match candidates")
         # alpha3 -> canonical country_full (most-used name wins, overrides trump).
         self._alpha3_names = {}
@@ -206,6 +208,9 @@ class BundesligaIngester:
             self._alpha3_names[alpha3] = country_full
         self._alpha3_names.update(_ALPHA3_NAME_OVERRIDES)
         self._merge_candidates = []
+        # {buli slug: {athlete_id, ...}} pairings a human has rejected. The
+        # Bundesliga publishes no per-athlete id, so the minted slug is the key.
+        self._no_merge = db.load_no_merge('buli')
 
     # -- country ------------------------------------------------------------
 
@@ -225,14 +230,15 @@ class BundesligaIngester:
         """Return (athlete_id, country_full, is_new)."""
         alpha3 = IOC_TO_ISO.get(nation_code, nation_code)
         country_full = self._country_from_code(nation_code)
+        # Keyed on name+country; also the identity used by athlete_no_merge.csv.
+        slug = f"buli-{_loc_slug(_normalize_name(name))}-{alpha3.lower()}"
 
-        matched = self._match_existing(name, alpha3, country_full)
+        matched = self._match_existing(name, alpha3, country_full, gender, slug)
         if matched:
             return matched, country_full, False
 
-        # Mint keyed on name+country; collision with the same name is the same
+        # Mint from the slug; collision with the same name is the same
         # athlete showing up in another race — reuse the row already minted.
-        slug = f"buli-{_loc_slug(_normalize_name(name))}-{alpha3.lower()}"
         athlete_id = db.slug_id(slug)
         collider = self.conn.execute(
             "SELECT name FROM athletes WHERE athlete_id = ?", [athlete_id]).fetchone()
@@ -248,13 +254,15 @@ class BundesligaIngester:
         print(f"    New Bundesliga athlete: {name!r} ({country_full})  id={athlete_id}")
         return athlete_id, country_full, True
 
-    def _match_existing(self, name, alpha3, country_full):
+    def _match_existing(self, name, alpha3, country_full, gender, slug):
         """Match against existing athletes. Same logic as fgp_ingest: country
-        prefilter, exact name+country, fold-key transliteration equality,
-        added/removed-name token subset. No yob is published for the Bundesliga,
-        so the yob-dependent fuzzy branch never fires; the near-miss goes to the
-        merge-candidate review file instead."""
-        candidates = self._candidates.get(alpha3, [])
+        and gender prefilter, exact name+country, fold-key transliteration
+        equality, added/removed-name token subset. No yob is published for the
+        Bundesliga, so the yob-dependent fuzzy branch never fires; the near-miss
+        goes to the merge-candidate review file instead."""
+        blocked = self._no_merge.get(slug, ())
+        candidates = [c for c in self._candidates.get((alpha3, gender), [])
+                      if c[0] not in blocked]
         if not candidates:
             return None
 

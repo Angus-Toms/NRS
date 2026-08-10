@@ -11,7 +11,8 @@
 #                     runs after FGP (matches against WT + FGP roster) and
 #                     before PTO
 #   4. pto          - scrape stats.protriathletes.org for long-course results
-#   4. merges       - apply manual athlete merges from data/athlete_merges.csv
+#   4. merges       - apply manual athlete merges from data/athlete_merges.csv,
+#                     then undo rejected auto-links from data/athlete_no_merge.csv
 #   5. ignored      - auto-detect subset/oversized races, then apply manual ignored.csv overrides
 #   6. stages       - flag combined rows of multi-stage events (heats/semis/A-B finals);
 #                     must run after ignored (writes to ignored_races)
@@ -145,6 +146,16 @@ if $DO_MERGES; then
     step "Merges - apply data/athlete_merges.csv"
     T=$SECONDS
     python3 -c "from ptd_data import db; conn = db.get_conn(read_only=False); db.apply_athlete_merges(conn); conn.close()"
+    elapsed $T
+fi
+
+# ── 4a. Rejected auto-links ───────────────────────────────────────────────────
+# Undo any link data/athlete_no_merge.csv rejects that a pre-block ingest had
+# already persisted. The matchers refuse to re-form them, so this converges.
+if $DO_MERGES; then
+    step "Un-links - apply data/athlete_no_merge.csv"
+    T=$SECONDS
+    python3 -c "from ptd_data import db; conn = db.get_conn(read_only=False); db.apply_athlete_no_merge(conn); conn.close()"
     elapsed $T
 fi
 

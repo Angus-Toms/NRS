@@ -860,6 +860,131 @@ def apply_athlete_merges(conn):
           f"({len(pairs) - applied} already-applied or skipped)")
 
 
+def load_no_merge(source=None):
+    """Rejected (source account -> athlete) pairings from data/athlete_no_merge.csv.
+
+    Returns {source_key: {athlete_id, ...}} for one `source` ('pto' / 'fgp' /
+    'buli'), or the full {source: {source_key: {athlete_id, ...}}} map when
+    source is None. A pairing is keyed, not named, because the hardest cases
+    are two different people sharing an identical name (Kelly Couch USA, one
+    male long-course and one female short-course).
+
+    The auto-matchers drop these athlete_ids from their candidate lists so a
+    pairing a human has rejected can never re-form on a later ingest.
+    """
+    path = _DATA_DIR / 'athlete_no_merge.csv'
+    blocked = {}
+    if path.exists():
+        with open(path, newline='', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                blocked.setdefault(row['source'], {}).setdefault(
+                    row['source_key'], set()).add(int(row['athlete_id']))
+    return blocked if source is None else blocked.get(source, {})
+
+
+# PTO races are the only source-owned races carrying a marker that survives
+# ingest: pto_ingest mints them with these prog_names and nothing else uses
+# them. That's what lets apply_athlete_no_merge move PTO results back off a
+# wrongly-linked athlete without guessing.
+_PTO_PROG_NAMES = "('Pro Men', 'Pro Women')"
+
+
+def apply_athlete_no_merge(conn):
+    """Undo any link data/athlete_no_merge.csv rejects but that is still attached.
+
+    A pairing made before its block existed is already persisted as
+    athletes.pto_slug, and _resolve_athlete short-circuits on that column, so
+    the ingest-time block alone never unpicks it. Per still-attached PTO row:
+    detach the slug (plus the height/weight/nickname taken from the wrong PTO
+    profile), mint the standalone athlete the ingest would have created -
+    slug_id(pto_slug), so the id matches what a from-scratch rebuild produces -
+    and move the PTO results and their per-race rows across.
+
+    Idempotent: once detached the slug no longer resolves to the blocked
+    athlete, so re-running is a no-op.
+    """
+    applied = 0
+    for source, keys in load_no_merge().items():
+        for source_key, blocked_ids in keys.items():
+            if source != 'pto':
+                # fgp/buli blocks are preventive only: their races carry no
+                # marker separating them from WT ones, so there is nothing safe
+                # to move. A link predating its block has to be unpicked by
+                # hand - say so rather than leaving it silently in place.
+                attached = source == 'fgp' and conn.execute(
+                    "SELECT athlete_id FROM athletes WHERE fftri_id = ?", [source_key],
+                ).fetchone()
+                if attached and attached[0] in blocked_ids:
+                    raise RuntimeError(
+                        f"fftri_id={source_key!r} is blocked from athlete "
+                        f"{attached[0]} but still attached; FGP links have no "
+                        "race marker to split results on - detach by hand"
+                    )
+                continue
+
+            row = conn.execute(
+                "SELECT athlete_id, country_full, height_cm, weight_kg, nickname "
+                "FROM athletes WHERE pto_slug = ?", [source_key],
+            ).fetchone()
+            if row is None or row[0] not in blocked_ids:
+                continue  # Never linked, already detached, or held by an allowed athlete.
+            blocked_id, country_full, height_cm, weight_kg, nickname = row
+
+            race_rows = conn.execute(f"""
+                SELECT res.race_id, r.gender, r.race_date
+                FROM results res JOIN races r USING (race_id)
+                WHERE res.athlete_id = ? AND r.prog_name IN {_PTO_PROG_NAMES}
+            """, [blocked_id]).fetchall()
+
+            conn.execute(
+                "UPDATE athletes SET pto_slug=NULL, height_cm=NULL, weight_kg=NULL, "
+                "nickname='' WHERE athlete_id = ?", [blocked_id],
+            )
+            if not race_rows:
+                # Linked but no PTO results yet - detaching is the whole fix;
+                # the next PTO ingest mints the standalone row itself.
+                print(f"  [no-merge] detached {source_key!r} from athlete {blocked_id} (no PTO results)")
+                applied += 1
+                continue
+
+            new_id = slug_id(source_key)
+            collider = conn.execute(
+                "SELECT name FROM athletes WHERE athlete_id = ?", [new_id]).fetchone()
+            if collider:
+                raise RuntimeError(
+                    f"slug_id collision: pto_slug={source_key!r} hashes to {new_id} "
+                    f"already held by {collider[0]!r}"
+                )
+
+            race_ids = [r[0] for r in race_rows]
+            genders = {r[1] for r in race_rows}
+            if len(genders) > 1:
+                raise RuntimeError(
+                    f"pto_slug={source_key!r} has PTO results in both genders "
+                    f"on athlete {blocked_id} - split by hand"
+                )
+            # Country matches by construction: every auto-matcher prefilters on
+            # an exact country match, so the PTO account raced under the same
+            # nationality as the athlete it was wrongly attached to.
+            upsert_athlete(conn, new_id, _title_from_slug(source_key), country_full,
+                           0, "", genders.pop())
+            upsert_athlete_pto_fields(conn, new_id, source_key, height_cm, weight_kg, nickname)
+            record_athlete_nationality(conn, new_id, country_full, min(r[2] for r in race_rows))
+
+            id_list = ','.join(str(i) for i in race_ids)
+            for table in ("results", "ratings", "rankings", "corrections", "start_list_entries"):
+                conn.execute(
+                    f"UPDATE {table} SET athlete_id = ? "
+                    f"WHERE athlete_id = ? AND race_id IN ({id_list})",
+                    [new_id, blocked_id],
+                )
+            print(f"  [no-merge] moved {len(race_ids)} PTO race(s) off athlete "
+                  f"{blocked_id} onto new athlete {new_id} ({source_key})")
+            applied += 1
+
+    print(f"Applied {applied} athlete un-link(s) from athlete_no_merge.csv")
+
+
 def reconcile_athlete_nationality(conn):
     """Sync athletes.country_full to the latest athlete_nationality_history row.
 

@@ -7,7 +7,6 @@ keep_athlete_id,merge_athlete_id,notes
 137125,379496623,Joona Lehtonen - FIN (yob 2001). WT account (137125) holds 11 short/standard races (2019-2024); PTO account (379496623) holds 2 middle-distance entries (2025) with yob=0 so the auto matcher refused to merge. No overlap race.
 69143,2116501904,"Manoel Messias - BRA. WT short-course account (69143) holds 117 sprint/standard races (2013-2026); the PTO account (2116501904, slug 'manoel-messias-dos-santos') only has 9 long-course entries (2020-2025). No overlap race for the auto matcher."
 122353,325274819,"Erin McConnell - IRL. FGP row 'Erin Mcconel' (no licence/yob) is the same athlete; matcher held it as a candidate on the spelling gap. Keep the DB name."
-70430,2012596524,"Valentin Rouvier - FRA. FGP row 'Valentine Bouvier' (licence B97448, no yob) is the same athlete; held on the name gap. Keep the DB name."
 114052,715939731,"Niall Caley - GBR. FGP row 'Naill Caley' (licence C14994, no yob) is the same athlete; held on the transposed spelling. Keep the DB name."
 198604,1568015902,"Léa Reviglio - FRA. FGP row 'L Reviglio' (no licence/yob, truncated first name) is the same athlete. Keep the DB name."
 47879,1110802659,"Audric Lambolez - FRA. FGP row 'Audric Lambrelez' (no licence/yob) is the same athlete; held on the spelling gap. Keep the DB name."

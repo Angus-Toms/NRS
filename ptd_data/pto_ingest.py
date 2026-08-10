@@ -201,21 +201,25 @@ class PTOIngester:
         # auto-merge (usually because PTO had no yob). Written to
         # data/merge_candidates.csv at end of run for manual review.
         self._merge_candidates: list[dict] = []
+        # {pto_slug: {athlete_id, ...}} pairings a human has rejected.
+        self._no_merge = db.load_no_merge('pto')
 
     def _load_wt_athletes(self):
-        """Build a country-keyed lookup of unmatched WT athletes for fuzzy name+yob matching.
+        """Build a (country, gender)-keyed lookup of unmatched WT athletes.
 
-        Returns {country_full: [(athlete_id, name, yob), ...]}. Indexing by
-        country lets _match_wt scan a tiny subset per lookup rather than the
-        full roster, keeping fuzzy matching cheap.
+        Returns {(country_full, gender): [(athlete_id, name, yob), ...]}.
+        Indexing by country lets _match_wt scan a tiny subset per lookup rather
+        than the full roster; gender is in the key because fuzzy name matching
+        alone happily crosses it ('Louis Richard' ~ 'Lucie Picard' scores 0.72,
+        and a shared country + yob was all the rest of the rule needed).
         """
         rows = self.conn.execute(
-            "SELECT athlete_id, name, country_full, year_of_birth FROM athletes "
+            "SELECT athlete_id, name, country_full, year_of_birth, gender FROM athletes "
             "WHERE pto_slug IS NULL"  # only unmatched WT athletes
         ).fetchall()
         index = {}
-        for athlete_id, name, country, yob in rows:
-            index.setdefault(country, []).append((athlete_id, name, yob))
+        for athlete_id, name, country, yob, gender in rows:
+            index.setdefault((country, gender), []).append((athlete_id, name, yob))
         return index
 
     def run(self, years=None):
@@ -832,7 +836,7 @@ class PTOIngester:
         nickname   = profile.get("nickname", "") or ""
 
         # 3. WT match with real yob
-        wt_id, confidence = self._match_wt(name, country_full, yob)
+        wt_id, confidence = self._match_wt(pto_slug, name, country_full, yob, gender)
         if wt_id:
             print(f"    Matched '{name}' (yob={yob or '?'}) → WT athlete {wt_id} [{confidence}]")
             db.upsert_athlete_pto_fields(
@@ -846,8 +850,8 @@ class PTOIngester:
                 )
             # Remove from in-memory WT index so subsequent races can't
             # re-use this athlete row against a different namesake.
-            lst = self._wt_athletes.get(country_full, [])
-            self._wt_athletes[country_full] = [c for c in lst if c[0] != wt_id]
+            lst = self._wt_athletes.get((country_full, gender), [])
+            self._wt_athletes[(country_full, gender)] = [c for c in lst if c[0] != wt_id]
             return wt_id, False
 
         # 4. New PTO-only athlete
@@ -870,15 +874,19 @@ class PTOIngester:
         print(f"    New PTO athlete: {name!r} yob={yob or '?'} ({pto_slug})  id={athlete_id}")
         return athlete_id, True
 
-    def _match_wt(self, name, country_full, yob):
-        """Try to match against a WT athlete by country + yob + fuzzy name.
+    def _match_wt(self, pto_slug, name, country_full, yob, gender):
+        """Try to match against a WT athlete by country + gender + yob + fuzzy name.
 
         Returns (athlete_id, confidence_str) or (None, None).
 
         Rules:
-        - Prefilter by exact country match. No country → no match (the old
+        - Prefilter by exact country and gender. No country → no match (the old
           name-alone fallback conflated namesakes like Thomas Davies GBR 1972
-          vs GBR 1995, and country is cheap and reliable).
+          vs GBR 1995, and country is cheap and reliable). Gender is a hard
+          prefilter for the same reason: none of the name rules below can tell
+          a man from a woman, so without it a 0.72-similar cross-gender pair
+          sharing a country and yob linked cleanly.
+        - Pairings listed in data/athlete_no_merge.csv are dropped up front.
         - Exact-name fallback: if there's a unique normalised-name match in
           the same country AND one side has yob=0/NULL, accept (we can't
           contradict on yob and the unique-name + same-country pairing is
@@ -894,7 +902,9 @@ class PTOIngester:
         WT match is recorded as a merge candidate for manual review (see
         self._merge_candidates).
         """
-        candidates = self._wt_athletes.get(country_full, [])
+        blocked = self._no_merge.get(pto_slug, ())
+        candidates = [c for c in self._wt_athletes.get((country_full, gender), [])
+                      if c[0] not in blocked]
         if not candidates:
             return None, None
 

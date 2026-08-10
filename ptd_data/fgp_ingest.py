@@ -32,12 +32,16 @@ Source quirks (all verified against the API + archived live pages):
     ERP returns as null) and is maintained by hand: a stage missing from it
     fails the run loudly.
 
-Athlete identity mirrors the PTO ingest: match on nationality + year of birth
-(±1, yob from the athlete-detail birth date) + fuzzy accent-insensitive name
-(same thresholds), keyed to athletes.fftri_id so resolution is sticky across
-runs. Unmatched athletes are minted as new rows; plausible-but-unconfirmed
-pairs are written to data/fgp_merge_candidates.csv for manual review via
-data/athlete_merges.csv.
+Athlete identity mirrors the PTO ingest. The FFTRI licence id is the identity
+within this source: two result rows carrying different ids are two different
+people, full stop, and athletes.fftri_id makes that sticky across runs. Fuzzy
+matching exists only to bridge *sources* — to attach a licence to a WT or
+Bundesliga row nothing has claimed yet — so it scans unlicensed athletes only,
+prefiltered on nationality and gender, then year of birth (±1, from the
+athlete-detail birth date) + accent-insensitive name similarity. Unmatched
+athletes are minted as new rows; plausible-but-unconfirmed pairs are written
+to data/fgp_merge_candidates.csv for manual review via data/athlete_merges.csv,
+and pairs a human has rejected go in data/athlete_no_merge.csv.
 """
 
 import csv
@@ -251,21 +255,36 @@ class FGPIngester:
         self._fftri_map = dict(conn.execute(
             "SELECT fftri_id, athlete_id FROM athletes WHERE fftri_id IS NOT NULL"
         ).fetchall())
-        # Candidate index for matching, keyed by ISO alpha3 so IOC/name-form
-        # differences can't break the prefilter. Already-linked athletes stay
-        # matchable: FFTRI licence ids are NOT stable per person (relicensing
-        # gives the same athlete a new id), so a second id must be able to
-        # resolve onto the athlete the first id already claimed.
+        # Candidate index for matching, keyed by (ISO alpha3, gender) so
+        # IOC/name-form differences can't break the prefilter and no name rule
+        # can pair a man with a woman. Only athletes no licence has claimed yet
+        # are in it: within FGP the licence id IS the identity, so two result
+        # rows carrying different ids are two different people and fuzzy name
+        # matching must never join them. Matching is for bridging *sources* -
+        # an FGP licence onto a WT or Bundesliga row that has no licence.
+        # Mirrors pto_ingest's `WHERE pto_slug IS NULL`.
+        #
+        # Cost: a relicensed athlete (same person, new id) now mints a second
+        # row instead of joining the first. That's what athlete_merges.csv is
+        # for, and it self-heals - slug_id('fftri-<id>') is deterministic, so
+        # the merge row keeps resolving on every rebuild.
         rows = conn.execute("""
-            SELECT a.athlete_id, a.name, a.year_of_birth, n.alpha3
+            SELECT a.athlete_id, a.name, a.year_of_birth, n.alpha3, a.gender
             FROM athletes a JOIN nationalities n USING (country_full)
+            WHERE a.fftri_id IS NULL
         """).fetchall()
         self._candidates = {}
         self._global_names = {}
-        for athlete_id, name, yob, alpha3 in rows:
-            self._candidates.setdefault(alpha3, []).append((athlete_id, name, yob))
-            self._global_names.setdefault(_normalize_name(name), []).append(
+        for athlete_id, name, yob, alpha3, gender in rows:
+            self._candidates.setdefault((alpha3, gender), []).append((athlete_id, name, yob))
+            self._global_names.setdefault((_normalize_name(name), gender), []).append(
                 (athlete_id, name, yob, alpha3))
+        # {fftri_id: {athlete_id, ...}} pairings a human has rejected.
+        self._no_merge = db.load_no_merge('fgp')
+        # Athletes a licence has claimed during this run. The index above is
+        # built once, so this keeps a second licence from matching an athlete
+        # the first one took a few rows earlier.
+        self._linked = set()
         print(f"Loaded {len(self._fftri_map)} linked FFTRI ids, "
               f"{len(rows)} match candidates")
         # alpha3 -> canonical country_full (most-used name wins, overrides trump).
@@ -349,19 +368,20 @@ class FGPIngester:
             if not code:
                 continue
             matched_id = self._match_existing(name, self._alpha3_from_code(code),
-                                              country_full, yob, fftri_id)
+                                              country_full, yob, fftri_id, gender)
             if matched_id:
                 break
         if not matched_id and yob:
-            matched_id = self._match_global(name, yob)
+            matched_id = self._match_global(name, yob, gender, fftri_id)
         if matched_id:
             if fftri_id:
-                # Keep the first licence id on the row (relicensed athletes
-                # carry several); the in-memory map still resolves this one.
+                # This licence now owns the athlete: no other id may match it,
+                # here or on a later run (the index excludes licensed rows).
                 self.conn.execute(
                     "UPDATE athletes SET fftri_id = ? WHERE athlete_id = ? AND fftri_id IS NULL",
                     [fftri_id, matched_id])
                 self._fftri_map[fftri_id] = matched_id
+                self._linked.add(matched_id)
             if yob:
                 self.conn.execute(
                     "UPDATE athletes SET year_of_birth = ? WHERE athlete_id = ? AND year_of_birth = 0",
@@ -394,14 +414,16 @@ class FGPIngester:
               f"({country_full})  id={athlete_id}")
         return athlete_id, country_full, True
 
-    def _match_existing(self, name, alpha3, country_full, yob, fftri_id):
+    def _match_existing(self, name, alpha3, country_full, yob, fftri_id, gender):
         """Match one FGP athlete against existing unlinked athletes.
 
-        Same rules as pto_ingest._match_wt: country prefilter, exact-name
-        fallback when a yob is missing, otherwise yob ±1 + fuzzy name with a
-        clear margin. Near-misses land in fgp_merge_candidates.csv.
+        Same rules as pto_ingest._match_wt: country + gender prefilter,
+        exact-name fallback when a yob is missing, otherwise yob ±1 + fuzzy
+        name with a clear margin. Near-misses land in fgp_merge_candidates.csv.
         """
-        candidates = self._candidates.get(alpha3, [])
+        blocked = self._no_merge.get(fftri_id or "", ())
+        candidates = [c for c in self._candidates.get((alpha3, gender), [])
+                      if c[0] not in blocked and c[0] not in self._linked]
         if not candidates:
             return None
 
@@ -449,16 +471,18 @@ class FGPIngester:
         conf = "name+country+yob" if top_sim >= 0.95 else f"fuzzy(sim={top_sim:.2f})"
         return self._accept(top, conf, name)
 
-    def _match_global(self, name, yob):
-        """Country-free fallback: unique exact-name + yob(±1) match anywhere.
+    def _match_global(self, name, yob, gender, fftri_id):
+        """Country-free fallback: unique exact-name + gender + yob(±1) match anywhere.
 
         Catches nationality switchers (e.g. an athlete racing FGP under a
         French licence whose WT row sits under Morocco or Romania) that the
         country prefilter can never bridge. Exact normalised name only —
         fuzzy matching without a country constraint is too loose.
         """
-        matches = [c for c in self._global_names.get(_normalize_name(name), [])
-                   if c[2] and abs(c[2] - yob) <= 1]
+        blocked = self._no_merge.get(fftri_id or "", ())
+        matches = [c for c in self._global_names.get((_normalize_name(name), gender), [])
+                   if c[2] and abs(c[2] - yob) <= 1
+                   and c[0] not in blocked and c[0] not in self._linked]
         if len(matches) != 1:
             return None
         athlete_id, db_name, db_yob, alpha3 = matches[0]
@@ -466,8 +490,6 @@ class FGPIngester:
                             f"name+yob_global (db_country={alpha3})", name)
 
     def _accept(self, candidate, confidence, fgp_name):
-        # Accepted candidates deliberately stay in the index: the same athlete
-        # can legitimately match again under a different FFTRI licence id.
         athlete_id, db_name, _ = candidate
         print(f"    Matched {fgp_name!r} -> existing athlete {db_name!r} "
               f"(id={athlete_id}) [{confidence}]")
