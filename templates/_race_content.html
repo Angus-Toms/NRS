@@ -1,5 +1,5 @@
 {# Race Performance: standards + (optional) best perf + (optional) course conditions, by discipline #}
-{% from "partials/_icons.html" import low_conf_badge %}
+{% from "partials/_icons.html" import low_conf_badge, help_icon %}
 {% set has_best = not ignored_info %}
 {% set has_cond = course_conditions %}
 {% set has_rank = race_ranks and race_ranks.values() | select | list | length > 0 %}
@@ -16,7 +16,7 @@
 {%- endif -%}
 {%- endif -%}
 {%- endmacro %}
-<div class="page-section-head">Standards</div>
+<div class="page-section-head"><span>Standards {{ help_icon('race-standards') }}</span></div>
 <div class="ratings-section">
     <div class="ratings-table-scroll">
         <table class="ratings-table">
@@ -76,7 +76,7 @@
 
 <!-- Results Table -->
 <div class="results-section-head">
-    <div class="page-section-head" id="results-section-title">Race Results</div>
+    <div class="page-section-head" id="results-section-title"><span><span class="section-label">Race Results</span> {{ help_icon('race-results') }}</span></div>
     <div class="results-section-controls">
         {% with download_url = "/download/races/" ~ race.race_id ~ "/results" %}{% include "partials/download_button.html" %}{% endwith %}
         {% if has_predictions %}
@@ -296,7 +296,7 @@
 {% endif %}
 
 <!-- Ratings Table -->
-<div class="page-section-head">Ratings &amp; Changes</div>
+<div class="page-section-head"><span>Ratings &amp; Changes {{ help_icon('race-rating-changes') }}</span></div>
 {% if ignored_info %}
 {# Pick a message based on the reason. Oversized fields are almost always a
    combined Elite + AG result table from the source data — say so explicitly

@@ -179,6 +179,7 @@
 {% endblock %}
 
 {% block content %}
+{% from "partials/_icons.html" import help_icon %}
 <div id="athlete-ajax-content">
 {% set discs = [('overall','Overall'),('swim','Swim'),('bike','Bike'),('run','Run'),('transition','Transition')] %}
 
@@ -231,7 +232,7 @@
 {% set has_rank_col   = current_rankings or peak_rankings %}
 {% set rank_col_label = ('Peak ' if not current_rankings and peak_rankings else '') ~ ag_prefix ~ 'World' %}
 
-<div class="page-section-head"><span>Ratings</span></div>
+<div class="page-section-head"><span>Ratings {{ help_icon('athlete-ratings') }}</span></div>
 
 <div class="ratings-section">
     <div class="ratings-table-scroll">
@@ -301,7 +302,7 @@
 {% endif %}{# has_ratings #}
 
 {% if upcoming_races %}
-<div class="page-section-head">Upcoming Races</div>
+<div class="page-section-head"><span>Upcoming Races {{ help_icon('athlete-upcoming') }}</span></div>
 <p class="page-section-sub" style="margin-bottom:0.75rem">Predicted positions and splits are based on current ratings. Actual results may vary.</p>
 <div class="table-section results-table upcoming-races-table">
     <table class="sortable-table">
@@ -395,7 +396,7 @@
 {% endif %}
 
 <div class="page-section-head">
-    <span>Race Results</span>
+    <span>Race Results {{ help_icon('athlete-results') }}</span>
     {% with download_url = "/download/athletes/" ~ athlete.athlete_id ~ "/results?category=" ~ category ~ "&course=" ~ course %}{% include "partials/download_button.html" %}{% endwith %}
 </div>
 <div class="results-sort-chips" role="tablist" aria-label="Sort race results">
@@ -549,7 +550,7 @@
 
 {% if has_ratings %}
 <div class="page-section-head">
-    <span>Rating History</span>
+    <span>Rating History {{ help_icon('athlete-rating-history') }}</span>
     {% with download_url = "/download/athletes/" ~ athlete.athlete_id ~ "/ratings?category=" ~ category ~ "&course=" ~ course %}{% include "partials/download_button.html" %}{% endwith %}
 </div>
 <div class="ratings-sort-chips" role="tablist" aria-label="Sort rating history">

@@ -3,6 +3,12 @@
 {# Low-confidence marker (Lucide "asterisk"): athletes with few career starts,
    whose ELO rating hasn't settled, so predictions for them are less reliable.
    `cls` adds a modifier class; `title` is the hover/tooltip text. #}
+{# Section help icon: opens the guided explainer tour for `key` (see
+   HELP_TOURS in static/js/utils.js). Place inside a .page-section-head. #}
+{% macro help_icon(key) -%}
+<button type="button" class="help-icon" data-help="{{ key }}" aria-label="What does this section mean?" title="What does this section mean?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+{%- endmacro %}
+
 {% macro low_conf_badge(cls='', title='Few career starts - rating not yet settled, so this prediction is less reliable') -%}
 <span class="low-conf {{ cls }}" title="{{ title }}" aria-label="Low confidence: {{ title }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/></svg></span>
 {%- endmacro %}

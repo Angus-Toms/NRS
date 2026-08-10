@@ -349,7 +349,9 @@ function initRaceViewToggle() {
             if (resultsEl)     resultsEl.classList.toggle('hidden', view !== 'results');
             if (predictionsEl) predictionsEl.classList.toggle('hidden', view !== 'predictions');
             if (subtitleEl)    subtitleEl.classList.toggle('hidden', view !== 'predictions');
-            if (titleEl) titleEl.textContent = view === 'predictions' ? 'Predicted Results' : 'Race Results';
+            // Only the label span: the section's help icon lives alongside it.
+            const labelEl = titleEl && titleEl.querySelector('.section-label');
+            if (labelEl) labelEl.textContent = view === 'predictions' ? 'Predicted Results' : 'Race Results';
         });
     });
 }

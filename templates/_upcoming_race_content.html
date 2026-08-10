@@ -1,5 +1,5 @@
 <!-- Race Standards -->
-{% from "partials/_icons.html" import low_conf_badge %}
+{% from "partials/_icons.html" import low_conf_badge, help_icon %}
 {% set has_rank = race_ranks and race_ranks.values() | select | list | length > 0 %}
 {% set substat_cols = 1 if has_rank else 0 %}
 {% macro ordinal(n) -%}
@@ -14,7 +14,7 @@
 {%- endif -%}
 {%- endif -%}
 {%- endmacro %}
-<div class="page-section-head">Race Standards</div>
+<div class="page-section-head"><span>Race Standards {{ help_icon('upcoming-standards') }}</span></div>
 <div class="ratings-section">
     <div class="ratings-table-scroll">
         <table class="ratings-table">
@@ -48,7 +48,7 @@
 
 <!-- Predicted Results Table -->
 <div class="results-section-head">
-    <div class="page-section-head">Predicted Results</div>
+    <div class="page-section-head"><span>Predicted Results {{ help_icon('upcoming-predictions') }}</span></div>
 </div>
 {% if predictions %}
 <p class="page-section-sub" style="margin-bottom:0.75rem">Predicted splits and finishing order based on pre-race ratings, using a global model trained on {{ "women's" if race.gender == "female" else "men's" }} {{ "standard distance" if race_distance == "standard" else race_distance }} races. These don't account for this specific course or conditions. Athletes marked {{ low_conf_badge('low-conf-inline') }} have few career starts, so their ratings haven't settled - we're less confident in their predictions.</p>
