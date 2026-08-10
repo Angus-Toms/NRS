@@ -155,6 +155,19 @@ if [ "$STATUS" = "success" ]; then
     fi
 fi
 
+# Pull the week's Search Console rows and refresh growth/gsc_report.md. Runs
+# regardless of deploy status - it only reads the GSC API, and a failed deploy
+# is exactly a week you still want the search numbers for. Non-fatal: a Google
+# API blip must not mark the data pipeline as failed.
+run_step "gsc_query_miner" python scripts/gsc_query_miner.py
+rc=$?
+if [ $rc -ne 0 ]; then
+    {
+        echo "[WARN] gsc_query_miner.py exited $rc"
+    } | tee -a "$LATEST_LOG" "$VERBOSE_LOG" >/dev/null
+    notify_warn "gsc_query_miner.py exited $rc. tail $LATEST_LOG"
+fi
+
 EVENTS_AFTER=$(db_count events)
 RACES_AFTER=$(db_count races)
 ATHLETES_AFTER=$(db_count athletes)
