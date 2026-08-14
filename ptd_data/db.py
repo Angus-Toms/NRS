@@ -109,7 +109,6 @@ def create_schema(conn):
             fftri_id        VARCHAR
         )
     """)
-    conn.execute("ALTER TABLE athletes ADD COLUMN IF NOT EXISTS fftri_id VARCHAR")
 
     # Doping sanctions, populated exclusively from data/doping_bans.csv (see
     # load_doping_bans). athlete_id is intentionally NOT FK-constrained to match
@@ -384,13 +383,6 @@ def create_schema(conn):
             PRIMARY KEY (gender, distance, discipline)
         )
     """)
-    # Drop rating_cap if it exists on older DBs — empirically useless in the
-    # residual sweep and replaced by per-athlete history anchoring.
-    conn.execute("ALTER TABLE prediction_models DROP COLUMN IF EXISTS rating_cap")
-    # Idempotent migration for DBs created before year_coef existed. Nullable
-    # because DuckDB ALTER can't add NOT NULL + DEFAULT in one step; readers
-    # COALESCE to 0 so pre-migration rows act as "no year term".
-    conn.execute("ALTER TABLE prediction_models ADD COLUMN IF NOT EXISTS year_coef DOUBLE")
 
     # Precomputed race predictions (see ptd_data/predictions.py). Rebuilt on
     # every weekly build; predictions are a pure function of the read-only DB
