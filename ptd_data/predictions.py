@@ -58,6 +58,20 @@ _SHORT_DISTANCES = {'sprint', 'standard'}
 # (analysis/k_replay.py).
 LOW_CONF_STARTS = 8
 
+# Win / podium probability spread, per course. Both models read the same
+# relative predicted-time margins (pred_t / winner_pred_t - 1):
+#   win    softmax / Plackett-Luce strength, P_i propto exp(-beta * margin_i)
+#   podium P(top 3) under the same PL weights, by Gumbel sampling
+# Fitted on pre-2025 races and scored on 2025+ (analysis/win_probability.py,
+# analysis/podium_probability.py). Podium beta is lower because the target is
+# 3 slots wide, so the distribution across the field is flatter - it is not a
+# rescaling of the win probabilities. Calibration holds across the range on
+# both courses; the top bin (>75% podium, >50% win) runs a few points hot.
+WIN_BETA    = {'short': 122.0, 'long': 65.0}
+PODIUM_BETA = {'short': 95.0,  'long': 57.5}
+PODIUM_K    = 3
+PODIUM_SIMS = 20_000
+
 # Course-condition confidence: an athlete's diff contributes with weight
 # min(1, prior_starts / CONF_THRESHOLD).
 CONF_THRESHOLD = 10
@@ -288,12 +302,38 @@ def _prediction_rows(race_id, preds, ordered_ids, course, target_date=None):
     field = tuple(sorted(ordered_ids))
     start_counts = queries.get_field_start_counts(field, course, before_date=target_date)
     order = sorted(ordered_ids, key=lambda a: preds.get(a, {}).get('overall', 9_999_999))
+
+    # Win / podium probabilities over the athletes that actually have a
+    # predicted overall time. Athletes without one keep 0 and are left out of
+    # the field entirely, so the rest still sum to 1 (win) and 3 (podium).
+    overall = np.array([preds.get(a, {}).get('overall', 0) or 0 for a in order], float)
+    live = overall > 0
+    win_p = np.zeros(len(order))
+    pod_p = np.zeros(len(order))
+    if live.any():
+        margins = overall[live] / overall[live].min() - 1.0
+        logw = -WIN_BETA[course] * margins
+        w = np.exp(logw - logw.max())
+        win_p[live] = w / w.sum()
+        # Sampling PL orderings == argsort of (log weight + Gumbel noise), so an
+        # athlete's share of top-3 finishes across sims is their podium prob.
+        # Seeded on race_id so a rebuild reproduces the same percentages.
+        n = int(live.sum())
+        if n <= PODIUM_K:
+            pod_p[live] = 1.0
+        else:
+            g = np.random.default_rng(race_id).gumbel(size=(PODIUM_SIMS, n))
+            pl = -PODIUM_BETA[course] * margins
+            top = np.argpartition(-(pl[None, :] + g), PODIUM_K - 1, axis=1)[:, :PODIUM_K]
+            pod_p[live] = np.bincount(top.ravel(), minlength=n) / PODIUM_SIMS
+
     rows = []
     for i, aid in enumerate(order):
         p = preds.get(aid, {})
         rows.append((race_id, aid, i + 1,
                      p.get('overall', 0), p.get('swim', 0), p.get('bike', 0), p.get('run', 0),
-                     start_counts.get(aid, 0) < LOW_CONF_STARTS))
+                     start_counts.get(aid, 0) < LOW_CONF_STARTS,
+                     float(win_p[i]), float(pod_p[i])))
     return rows
 
 
@@ -385,7 +425,7 @@ def rebuild(conn=None):
     conn.execute("DELETE FROM race_predictions")
     conn.execute("DELETE FROM race_course_conditions")
     conn.executemany(
-        "INSERT INTO race_predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?)", pred_rows)
+        "INSERT INTO race_predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", pred_rows)
     if cond_rows:
         conn.executemany(
             "INSERT INTO race_course_conditions VALUES (?, ?, ?, ?)", cond_rows)

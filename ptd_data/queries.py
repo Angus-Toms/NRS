@@ -3498,11 +3498,11 @@ def get_race_predictions(race_id):
     raw seconds with 0 = unavailable. Empty list if the race has no
     predictions (non-elite, unclassifiable distance, or pre-migration DB)."""
     cols = ["athlete_id", "predicted_position", "overall_s", "swim_s", "bike_s",
-            "run_s", "is_low_confidence"]
+            "run_s", "is_low_confidence", "win_pct", "podium_pct"]
     try:
         cur = _get_conn().execute("""
             SELECT athlete_id, predicted_position, overall_s, swim_s, bike_s,
-                   run_s, is_low_confidence
+                   run_s, is_low_confidence, win_pct, podium_pct
             FROM race_predictions
             WHERE race_id = ?
             ORDER BY predicted_position

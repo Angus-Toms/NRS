@@ -59,9 +59,33 @@ The form model replaces the anchor's times entirely — it is well-calibrated fo
 long course and beats the anchor on both ordering and outright times. Athletes
 without enough form history keep the anchor, rescaled onto the form level.
 
+## Win and podium probabilities
+
+Both are read off the predicted overall times, so they never disagree with the
+predicted order. Each athlete's margin is `pred_t / leader_pred_t - 1`, and the
+Plackett-Luce strength is `exp(-beta * margin)`. Win probability is the softmax
+over those strengths; podium probability is P(top 3) under the same weights,
+computed by Gumbel sampling (sampling a PL ordering is just an argsort of log
+weight plus Gumbel noise), seeded on `race_id` so rebuilds reproduce.
+
+Podium uses its own, lower beta (`PODIUM_BETA` in `ptd_data/predictions.py`):
+a 3-wide target spreads flatter across the field, so podium probability is not
+a rescaling of win probability. Betas were fitted on pre-2025 races and scored
+on 2025+ in `analysis/win_probability.py` and `analysis/podium_probability.py`
+(see `analysis/WIN_PROBABILITY.md` for the tables). Both are well calibrated
+across the range; the top bin runs a few points hot.
+
+Probabilities cover every athlete in the stored field with a predicted time,
+including - on completed races - those who went on to DNF, so they read as a
+genuine pre-race view. Win sums to 1 and podium to 3 per race.
+
 ## Where it runs
 
 All of it is rebuilt by `python -m ptd_data.ratings` (phases: `ratings`, then
 `rankings`, then `models`; the anchor models and form model are the `models`
 phase and read the ratings table). The live site and the social-media post
 generator call the same prediction code, so they agree.
+
+Predicted times and the win/podium columns are then precomputed per race into
+`race_predictions` by `python -m ptd_data.predictions` (step 11 of
+`scripts/build_db.sh`), which wipes and repopulates the whole table every run.

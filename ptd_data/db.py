@@ -408,6 +408,8 @@ def create_schema(conn):
             bike_s             INTEGER NOT NULL DEFAULT 0,
             run_s              INTEGER NOT NULL DEFAULT 0,
             is_low_confidence  BOOLEAN NOT NULL DEFAULT FALSE,
+            win_pct            DOUBLE NOT NULL DEFAULT 0,   -- 0-1, sums to 1 per race
+            podium_pct         DOUBLE NOT NULL DEFAULT 0,   -- 0-1, sums to 3 per race
             PRIMARY KEY (race_id, athlete_id)
         )
     """)
