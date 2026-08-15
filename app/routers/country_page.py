@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from config import ASSET_VERSION, STATIC_BASE_URL
 from app.display_helpers import flag
 from ptd_data import queries
-from app.routers.router_utils import format_rating, format_time
+from app.routers.router_utils import format_rating, format_rating_change, format_time, format_time_behind
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["STATIC_BASE_URL"] = STATIC_BASE_URL
@@ -18,6 +18,15 @@ _DISC_LABELS   = {"overall": "Overall", "swim": "Swim", "bike": "Bike",
                   "run": "Run", "transition": "Transition"}
 _GENDER_LABELS = {"male": "Men", "female": "Women"}
 _LB_PAGE_SIZE  = 5
+
+# Relay program labels, keyed on races.sub_category.
+_RELAY_PROGRAM_LABELS = {
+    "elite":  "Elite MTR",
+    "u23":    "U23 MTR",
+    "junior": "Junior MTR",
+    "youth":  "Youth MTR",
+    "ag":     "Age Group MTR",
+}
 
 # Continent display order for the index page.
 _CONTINENT_ORDER = ["Europe", "Americas", "Asia", "Oceania", "Africa", "Other"]
@@ -111,7 +120,7 @@ def country_detail(
     discipline: str = "overall",
     gender: str | None = None,
     course: str = "short",
-    active_only: bool = False,
+    active_only: bool = True,
 ):
     if course not in ("short", "long"):
         course = "short"
@@ -138,24 +147,70 @@ def country_detail(
         for loc in hosted_locations
     ]
 
-    # Mixed team relay: country rating snapshot, recent team results, and a
-    # suggested lineup from the top-rated active athletes (current cycle
-    # order: female, male, female, male).
+    # Mixed team relay: country rating snapshot and full team result history.
     relay_summary = queries.get_country_relay_summary(country["country_full"])
     relay_results = []
-    suggested_team = []
+    relay_rating_history = []
+    relay_ratings = []
     if relay_summary:
         relay_summary["overall_rating_fmt"] = format_rating(relay_summary["overall_rating"])
+        n = relay_summary["race_count"]
+        relay_summary["win_pct"]    = relay_summary["wins"]    / n if n else 0
+        relay_summary["podium_pct"] = relay_summary["podiums"] / n if n else 0
+
+        # Per-discipline ratings widget rows, shaped like the athlete page's
+        # ratings table: current rating + world rank, peak rating and the
+        # biggest single-race gain, each with its race.
+        extremes = queries.get_country_relay_rating_extremes(country["country_full"])
+        for disc, label in [("overall", "Overall"), ("swim", "Swim"), ("bike", "Bike"),
+                            ("run", "Run"), ("transition", "Transition")]:
+            rank = (relay_summary["active_world_overall"] if disc == "overall"
+                    else relay_summary[f"active_world_{disc}"])
+            if rank:
+                rank = int(rank)
+                suffix = "th" if 10 <= rank % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
+                rank = {"n": rank, "suffix": suffix}
+            relay_ratings.append({
+                "disc":         disc,
+                "label":        label,
+                "rating":       format_rating(relay_summary[f"{disc}_rating"]),
+                "rank":         rank,
+                "peak":         format_rating(extremes[f"{disc}_peak"]),
+                "peak_race":    extremes[f"{disc}_peak_race"],
+                "peak_race_id": extremes[f"{disc}_peak_race_id"],
+                "best_race":    extremes[f"{disc}_best_race"],
+                "best_race_id": extremes[f"{disc}_best_race_id"],
+                "best_change":  format_rating_change(extremes[f"{disc}_best_change"]),
+            })
+        legs_by_team = queries.get_country_relay_legs(country["country_full"])
         for r in queries.get_country_relay_results(country["country_full"]):
             r["total"] = format_time(r["total_s"]) if r["total_s"] else ""
+            r["behind"] = (format_time_behind(r["total_s"] - r["winner_total_s"])
+                           if r["total_s"] and r["winner_total_s"] else "")
+            r["program"] = _RELAY_PROGRAM_LABELS[r["sub_category"]]
+            r["legs"] = legs_by_team.get((r["race_id"], r["team_id"]), [])
+            for l in r["legs"]:
+                l["leg"] = format_time(l["leg_s"]) if l["leg_s"] else ""
+                l["leg_behind"] = (format_time_behind(l["leg_s"] - l["leg_best_s"])
+                                   if l["leg_best_s"] and (l["leg_s"] or 0) > l["leg_best_s"]
+                                   else "")
+                l["leg_fastest"] = bool(l["leg_best_s"] and l["leg_s"] == l["leg_best_s"])
+                # Gaps are to the fastest split on the same leg of the same
+                # race, matching the relay race page's panel.
+                for d in ("swim", "t1", "bike", "t2", "run"):
+                    l[d] = format_time(l[f"{d}_s"]) if l[f"{d}_s"] else ""
+                    raw, fast = l[f"{d}_s"] or 0, l[f"{d}_best_s"]
+                    l[f"{d}_fastest"] = bool(fast and raw == fast)
+                    l[f"{d}_behind"] = (format_time_behind(raw - fast)
+                                        if fast and raw > fast else "")
             relay_results.append(r)
-        top_m = queries.get_country_leaderboard(country["alpha3"], "male",   "overall", limit=2, active_only=True)
-        top_f = queries.get_country_leaderboard(country["alpha3"], "female", "overall", limit=2, active_only=True)
-        if len(top_m) >= 2 and len(top_f) >= 2:
-            suggested_team = [
-                {"leg": i + 1, **a}
-                for i, a in enumerate([top_f[0], top_m[0], top_f[1], top_m[1]])
-            ]
+
+        for h in queries.get_country_relay_rating_history(country["country_full"]):
+            h["program"] = _RELAY_PROGRAM_LABELS[h["sub_category"]]
+            for d in ("overall", "swim", "bike", "run", "transition"):
+                h[f"{d}_change"] = format_rating_change(h[f"{d}_change"])
+                h[f"{d}_rating"] = format_rating(h[f"{d}_rating"])
+            relay_rating_history.append(h)
 
     # Hero stats: athletes, events, championship medal total
     medals_total = sum(m["total"] for m in medals)
@@ -196,7 +251,8 @@ def country_detail(
         "active_only":      active_only,
         "relay_summary":    relay_summary,
         "relay_results":    relay_results,
-        "suggested_team":   suggested_team,
+        "relay_rating_history": relay_rating_history,
+        "relay_ratings":    relay_ratings,
     })
 
 

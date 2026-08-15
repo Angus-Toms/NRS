@@ -1221,7 +1221,9 @@ def get_country_relay_summary(country_full):
     conn = _get_conn()
     row = conn.execute("""
         SELECT cr.overall, cr.swim, cr.bike, cr.run, cr.transition,
-               ck.world_overall, ck.active_world_overall, r.race_date
+               ck.world_overall, ck.active_world_overall, r.race_date,
+               ck.active_world_swim, ck.active_world_bike,
+               ck.active_world_run, ck.active_world_transition
         FROM country_ratings cr
         JOIN races r ON cr.race_id = r.race_id
         LEFT JOIN country_rankings ck
@@ -1248,27 +1250,142 @@ def get_country_relay_summary(country_full):
         "run_rating": row[3], "transition_rating": row[4],
         "world_overall": row[5], "active_world_overall": row[6],
         "last_race_date": row[7],
+        "active_world_swim": row[8], "active_world_bike": row[9],
+        "active_world_run": row[10], "active_world_transition": row[11],
         "race_count": stats[0], "wins": stats[1], "podiums": stats[2],
     }
 
 
-def get_country_relay_results(country_full, limit=8):
-    """The country's most recent elite mixed relay team results."""
+def get_country_relay_rating_extremes(country_full):
+    """Peak rating and biggest single-race gain per discipline, with the race
+    each happened at. Feeds the country page's relay ratings widget."""
     conn = _get_conn()
-    cols = ["race_id", "race_title", "race_handle", "race_date", "team_title",
-            "team_num", "position", "status", "total_s"]
+    discs = ["overall", "swim", "bike", "run", "transition"]
+    parts = []
+    for d in discs:
+        parts.append(f"""
+            MAX(cr.{d}) AS {d}_peak,
+            ARG_MAX(r.race_title, cr.{d}) AS {d}_peak_race,
+            ARG_MAX(cr.race_id, cr.{d}) AS {d}_peak_race_id,
+            MAX(cr.{d}_change) AS {d}_best_change,
+            ARG_MAX(r.race_title, cr.{d}_change) AS {d}_best_race,
+            ARG_MAX(cr.race_id, cr.{d}_change) AS {d}_best_race_id""")
+    row = conn.execute(f"""
+        SELECT {','.join(parts)}
+        FROM country_ratings cr
+        JOIN races r ON r.race_id = cr.race_id
+        WHERE cr.country_full = ?
+    """, [country_full]).fetchone()
+    keys = ["peak", "peak_race", "peak_race_id", "best_change", "best_race", "best_race_id"]
+    return {f"{d}_{k}": row[i * 6 + j]
+            for i, d in enumerate(discs) for j, k in enumerate(keys)}
+
+
+def get_country_relay_results(country_full):
+    """The country's mixed relay team results across all programs, newest first.
+
+    winner_total_s is the fastest total in the same race, so the page can show
+    the gap to the winner under each total. sub_category drives the program
+    label; races.prog_name is not reliable here (junior races carry a plain
+    "Mixed Relay" name).
+    """
+    conn = _get_conn()
+    cols = ["race_id", "team_id", "race_title", "race_handle", "race_date", "sub_category",
+            "team_title", "team_num", "position", "status", "total_s", "winner_total_s"]
     rows = _dicts(cols, conn.execute("""
-        SELECT rt.race_id, r.race_title, r.race_handle, r.race_date,
-               rt.team_title, rt.team_num, rt.position, rt.status, rt.total_s
+        SELECT rt.race_id, rt.team_id, r.race_title, r.race_handle, r.race_date, r.sub_category,
+               rt.team_title, rt.team_num, rt.position, rt.status, rt.total_s,
+               w.winner_total_s
         FROM relay_teams rt
         JOIN races r ON rt.race_id = r.race_id
-        WHERE rt.country_full = ? AND r.sub_category = 'elite'
+        LEFT JOIN (
+            SELECT race_id, MIN(total_s) AS winner_total_s
+            FROM relay_teams
+            WHERE total_s > 0
+            GROUP BY race_id
+        ) w ON w.race_id = rt.race_id
+        WHERE rt.country_full = ?
         ORDER BY r.race_date DESC, rt.team_num
-        LIMIT ?
-    """, [country_full, limit]))
+    """, [country_full]))
     for r in rows:
         r["team_name"] = relay_team_name(country_full, r["team_num"])
     return rows
+
+
+def get_country_relay_legs(country_full):
+    """Member legs for every relay team of this country, keyed (race_id, team_id).
+
+    team_id repeats across races, hence the composite key. rank is the leg
+    placing within the whole race (all teams, same leg number), so it has to be
+    computed before filtering down to this country's teams.
+    """
+    conn = _get_conn()
+    cols = ["race_id", "team_id", "leg_num", "athlete_id", "name", "leg_s",
+            "swim_s", "t1_s", "bike_s", "t2_s", "run_s", "rank",
+            "swim_best_s", "t1_best_s", "bike_best_s", "t2_best_s", "run_best_s",
+            "leg_best_s"]
+    rows = _dicts(cols, conn.execute("""
+        WITH ranked AS (
+            SELECT l.race_id, l.team_id, l.leg_num, l.athlete_id, l.leg_s,
+                   l.swim_s, l.t1_s, l.bike_s, l.t2_s, l.run_s,
+                   rt.country_full,
+                   CASE WHEN l.leg_s > 0
+                        THEN RANK() OVER (PARTITION BY l.race_id, l.leg_num
+                                          ORDER BY CASE WHEN l.leg_s > 0 THEN 0 ELSE 1 END, l.leg_s)
+                   END AS rank,
+                   MIN(CASE WHEN l.swim_s > 0 THEN l.swim_s END) OVER w AS swim_best_s,
+                   MIN(CASE WHEN l.t1_s   > 0 THEN l.t1_s   END) OVER w AS t1_best_s,
+                   MIN(CASE WHEN l.bike_s > 0 THEN l.bike_s END) OVER w AS bike_best_s,
+                   MIN(CASE WHEN l.t2_s   > 0 THEN l.t2_s   END) OVER w AS t2_best_s,
+                   MIN(CASE WHEN l.run_s  > 0 THEN l.run_s  END) OVER w AS run_best_s,
+                   MIN(CASE WHEN l.leg_s  > 0 THEN l.leg_s  END) OVER w AS leg_best_s
+            FROM relay_legs l
+            JOIN relay_teams rt ON rt.race_id = l.race_id AND rt.team_id = l.team_id
+            WINDOW w AS (PARTITION BY l.race_id, l.leg_num)
+        )
+        SELECT ranked.race_id, ranked.team_id, ranked.leg_num, ranked.athlete_id, a.name,
+               ranked.leg_s, ranked.swim_s, ranked.t1_s, ranked.bike_s, ranked.t2_s,
+               ranked.run_s, ranked.rank,
+               ranked.swim_best_s, ranked.t1_best_s, ranked.bike_best_s,
+               ranked.t2_best_s, ranked.run_best_s, ranked.leg_best_s
+        FROM ranked
+        LEFT JOIN athletes a ON a.athlete_id = ranked.athlete_id
+        WHERE ranked.country_full = ?
+        ORDER BY ranked.race_id, ranked.team_id, ranked.leg_num
+    """, [country_full]))
+    legs = {}
+    for r in rows:
+        legs.setdefault((r["race_id"], r["team_id"]), []).append(r)
+    return legs
+
+
+def get_country_relay_rating_history(country_full):
+    """Post-race relay rating values + changes for this country, newest first.
+
+    A country can field more than one team in a race but earns a single rating
+    row, so the team join picks its best-placed team for the position column.
+    """
+    conn = _get_conn()
+    cols = ["race_id", "race_title", "race_date", "sub_category", "position", "status",
+            "overall_rating", "swim_rating", "bike_rating", "run_rating", "transition_rating",
+            "overall_change", "swim_change", "bike_change", "run_change", "transition_change"]
+    return _dicts(cols, conn.execute("""
+        SELECT r.race_id, r.race_title, r.race_date, r.sub_category,
+               t.position, t.status,
+               cr.overall, cr.swim, cr.bike, cr.run, cr.transition,
+               cr.overall_change, cr.swim_change, cr.bike_change,
+               cr.run_change, cr.transition_change
+        FROM country_ratings cr
+        JOIN races r ON r.race_id = cr.race_id
+        LEFT JOIN (
+            SELECT race_id, country_full, position, status,
+                   ROW_NUMBER() OVER (PARTITION BY race_id, country_full
+                                      ORDER BY position NULLS LAST) AS rn
+            FROM relay_teams
+        ) t ON t.race_id = cr.race_id AND t.country_full = cr.country_full AND t.rn = 1
+        WHERE cr.country_full = ?
+        ORDER BY r.race_date DESC
+    """, [country_full]))
 
 
 def get_country_hosted_race_locations(country_full):

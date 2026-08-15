@@ -498,11 +498,19 @@ def _get_relay_race(request: Request, race, race_id: int):
                 legs_flat.append(l)
     leg_rank = {}
     leg_fastest_s = {}   # leg_num -> fastest leg split, for the main-row gap annotation
+    # (leg_num, discipline) -> fastest split, for the expanded panel's gaps. A
+    # leg is single-gender, so comparing within the same leg number is the only
+    # comparison that means anything.
+    disc_fastest_s = {}
     for leg_num in (1, 2, 3, 4):
         group = sorted((l for l in legs_flat if l["leg_num"] == leg_num),
                        key=lambda l: l["leg_s"])
         if group:
             leg_fastest_s[leg_num] = group[0]["leg_s"]
+        for d in ("swim", "t1", "bike", "t2", "run"):
+            splits = [l[f"{d}_s"] for l in group if (l[f"{d}_s"] or 0) > 0]
+            if splits:
+                disc_fastest_s[(leg_num, d)] = min(splits)
         for i, l in enumerate(group):
             leg_rank[(l["team"]["team_id"], leg_num)] = i + 1
 
@@ -514,6 +522,11 @@ def _get_relay_race(request: Request, race, race_id: int):
             l["leg"] = format_time(l["leg_s"]) if l["leg_s"] else ""
             for d in ("swim", "t1", "bike", "t2", "run"):
                 l[d] = format_time(l[f"{d}_s"]) if l[f"{d}_s"] else ""
+                raw = l[f"{d}_s"] or 0
+                fast = disc_fastest_s.get((l["leg_num"], d))
+                l[f"{d}_fastest"] = bool(fast and raw == fast)
+                l[f"{d}_behind"] = (format_time_behind(raw - fast)
+                                    if fast and raw > fast else "")
             l["rank"] = leg_rank.get((t["team_id"], l["leg_num"]))
             best = leg_fastest_s.get(l["leg_num"])
             l["leg_behind"] = (format_time_behind(l["leg_s"] - best)

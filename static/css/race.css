@@ -717,7 +717,6 @@
 }
 
 .race-view.hidden { display: none; }
-.hidden { display: none; }
 
 /* Position diff badges */
 .pos-diff {
@@ -810,42 +809,8 @@
     max-width: 9rem;
 }
 
-.relay-legs-detail > td {
-    padding: 0;
-    background: var(--highlight);
-}
-.relay-legs-panel {
-    padding: 0.75rem 1rem 1rem;
-}
-
-.relay-legs-table {
-    width: 100%;
-    font-size: 0.85rem;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-.relay-legs-table td {
-    padding: 0.4rem 0.6rem;
-    text-align: left;
-    vertical-align: top;
-}
-/* No header row: every cell carries its own inline discipline label. */
-.relay-legs-table .time-disc-label {
-    display: block;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-weight: 600;
-    color: var(--text-lighter);
-    margin: -0.35rem 0 0.3rem;
-    white-space: nowrap;
-}
-/* Leg + Pos are secondary context: narrow, small grey text. Athlete gets the
-   slack so its name/flag never bleeds into the first split column. */
-.relay-legs-table .relay-legs-leg { width: 3rem; }
-.relay-legs-table .relay-legs-ath { width: 22%; white-space: normal; }
-.relay-legs-table .relay-legs-pos { width: 4.5rem; }
-.relay-legs-table td.relay-legs-ath .link { white-space: nowrap; }
+/* The expandable leg-splits panel lives in base.css - the country page uses
+   the same markup for its relay results table. */
 
 /* Fastest-legs filters: two segmented radio-chip switchers (reused from the
    leaderboard) laid side by side, wrapped in the same white filter-card widget
@@ -871,13 +836,6 @@
 .relay-fastest-table .position-col,
 .rating-table.relay-sortable .position-col { width: 48px; }
 
-/* Team + Leg columns in the fastest-legs table are secondary context. */
-.relay-small-col {
-    font-size: 0.82rem;
-    color: var(--text-light);
-    white-space: nowrap;
-}
-
 /* Fastest-legs zebra is driven by JS (.zebra on visible rows) so it stays
    correct after filtering; cancel the site-wide nth-child striping here. */
 .relay-fastest-table tbody tr:nth-child(even) td { background: transparent; }
@@ -885,29 +843,6 @@
 
 /* Relay team rows keep the expand chevron visible on desktop (unlike the
    individual results table, where the toggle is a mobile-only splits reveal). */
-.relay-teams-table .splits-toggle-col {
-    display: table-cell;
-    width: 3rem;
-    text-align: center;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-}
-.relay-teams-table .splits-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-light);
-    padding: 0.25rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.relay-teams-table .splits-toggle-chevron { display: block; transition: transform 0.15s ease; }
-
-/* Fastest-leg annotation: orange text, but the leg time itself stays neutral. */
-.relay-teams-table .time-cell-gap--fastest {
-    color: var(--primary-color);
-    font-weight: 600;
-}
-.relay-teams-table .splits-toggle.open .splits-toggle-chevron { transform: rotate(180deg); }
+/* The always-visible chevron column and the fastest-split annotation are
+   shared with the country page's relay table; both live in base.css. */
 

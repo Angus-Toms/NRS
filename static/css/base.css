@@ -1535,6 +1535,152 @@ table td a.link:hover   { color: var(--primary-color); }
     color: var(--text-color);
 }
 
+/* World/national rank links and their ordinal suffixes, shared by the athlete
+   and country ratings widgets. */
+.ranking-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color var(--transition-fast);
+}
+.ranking-link:hover { color: var(--primary-color); }
+
+sup.ordinal-suffix {
+    font-size: 0.55em;
+    vertical-align: super;
+    font-weight: 600;
+    line-height: 0;
+}
+
+/* Rating change pill: the up/down chevron sits inline with the number and
+   scales with the cell, rather than rendering at the SVG's own size. Shared by
+   the athlete, race and country rating tables. */
+.rating-change {
+    font-size: 0.75em;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+/* Muted date/program columns in rating tables - same treatment the athlete
+   page gives them. */
+.rating-table td.date-col,
+.rating-table td.program-col {
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+}
+
+/* ============================================
+   RELAY LEG-SPLITS PANEL (relay race + country pages)
+   ============================================ */
+.hidden { display: none; }
+
+.relay-team-row.has-legs { cursor: pointer; }
+
+/* Unlike the individual results table (where the toggle is a mobile-only
+   splits reveal), the relay tables keep the chevron visible on desktop: it is
+   the only cue that a row expands. The team table is itself a .results-table,
+   so this has to out-specify the `.results-table .splits-toggle-col` hide rule
+   further down the file - hence the td/th qualifier. It deliberately stops
+   short of beating the mobile block's `.results-table td.splits-toggle-col`,
+   which ties on specificity and wins on order, keeping the stacked layout. */
+.relay-teams-table td.splits-toggle-col,
+.relay-teams-table th.splits-toggle-col,
+.relay-results-table td.splits-toggle-col,
+.relay-results-table th.splits-toggle-col {
+    display: table-cell;
+    width: 3rem;
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+.relay-teams-table .splits-toggle,
+.relay-results-table .splits-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.relay-teams-table .splits-toggle-chevron,
+.relay-results-table .splits-toggle-chevron { display: block; transition: transform 0.15s ease; }
+.relay-teams-table .splits-toggle.open .splits-toggle-chevron,
+.relay-results-table .splits-toggle.open .splits-toggle-chevron { transform: rotate(180deg); }
+
+/* Fastest-split annotation: orange text, but the time itself stays neutral. */
+.relay-teams-table .time-cell-gap--fastest,
+.relay-results-table .time-cell-gap--fastest,
+.relay-legs-table .time-cell-gap--fastest {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Secondary-context columns (leg number, team name) in the relay tables. */
+.relay-small-col {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+/* Zebra striping reads as noise once expandable panels are interleaved between
+   the rows: the alternation counts the hidden panel rows, so it flips
+   unpredictably as rows open. Result rows stay white and the panel row alone
+   carries the shading, which is what actually signals the nesting. Both rules
+   out-specify the site-wide `tbody tr:nth-child(even) td` stripe; row hover
+   still wins over both, being !important. */
+/* transparent, not white: on desktop the white card shows through, and the
+   mobile stacked layout keeps its own per-row shading underneath. */
+.relay-teams-table   > tbody > tr:not(.relay-legs-detail) > td,
+.relay-results-table > tbody > tr:not(.relay-legs-detail) > td {
+    background: transparent;
+}
+.relay-teams-table   > tbody > tr.relay-legs-detail > td,
+.relay-results-table > tbody > tr.relay-legs-detail > td,
+.relay-legs-detail > td {
+    padding: 0;
+    background: var(--highlight);
+}
+/* The panel nests its own table, so it picks up the site stripe a second time. */
+.relay-legs-table tbody tr:nth-child(even) td { background: transparent; }
+.relay-legs-panel {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.relay-legs-table {
+    width: 100%;
+    font-size: 0.85rem;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.relay-legs-table td {
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+}
+/* No header row: every cell carries its own inline discipline label. */
+.relay-legs-table .time-disc-label {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    color: var(--text-lighter);
+    margin: -0.35rem 0 0.3rem;
+    white-space: nowrap;
+}
+/* Leg + Pos are secondary context: narrow, small grey text. Athlete gets the
+   slack so its name/flag never bleeds into the first split column. */
+.relay-legs-table .relay-legs-leg { width: 3rem; }
+.relay-legs-table .relay-legs-ath { width: 22%; white-space: normal; }
+.relay-legs-table .relay-legs-pos { width: 4.5rem; }
+.relay-legs-table td.relay-legs-ath .link { white-space: nowrap; }
+/* The panel's leg-time column isn't inside a .overall-col table row on every
+   page, so bold it directly. */
+.relay-legs-table .overall-time { font-weight: 700; }
+
 /* ============================================
    STAT CARD GRID (race + athlete summary cards)
    ============================================ */

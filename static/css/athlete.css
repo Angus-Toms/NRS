@@ -401,22 +401,8 @@
 /* ============================================
    RANKINGS
    ============================================ */
-.ranking-link {
-    text-decoration: none;
-    color: inherit;
-    transition: color var(--transition-fast);
-}
-
-.ranking-link:hover {
-    color: var(--primary-color);
-}
-
-sup.ordinal-suffix {
-    font-size: 0.55em;
-    vertical-align: super;
-    font-weight: 600;
-    line-height: 0;
-}
+/* (.ranking-link and sup.ordinal-suffix moved to base.css - the country
+   page's relay ratings widget uses them too.) */
 
 .ranking-national-label {
     font-size: 0.75rem;
@@ -612,13 +598,7 @@ tr.sub-race-row .link:hover {
 /* ============================================
    RATING CHANGES & INDICATORS
    ============================================ */
-.rating-change {
-    font-size: 0.75em;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3em;
-}
+/* (.rating-change moved to base.css - the country page uses it too.) */
 
 /* ============================================
    RESPONSIVE

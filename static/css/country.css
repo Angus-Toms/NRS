@@ -43,7 +43,10 @@
 .country-index-page {
     max-width: 1100px;
     margin: 0 auto;
-    padding: var(--spacing-lg) var(--spacing-md);
+    /* No horizontal padding: this sits inside .page-container, which already
+       constrains to 1100px and provides the side gutter. Padding here would
+       make every table narrower than the athlete page's. */
+    padding: var(--spacing-lg) 0;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xl);
@@ -128,56 +131,76 @@
 
 
 /* ============================================================
-   Championship medals
+   Championship medals - Olympic-style medal board
    ============================================================ */
-.country-medals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.country-medal-tile {
+.medal-board {
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: var(--spacing-md);
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
+    padding: 0.25rem 1.25rem;
 }
 
-.country-medal-label {
-    font-size: 0.78rem;
+.medal-board-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: 0.65rem 0;
+}
+.medal-board-row + .medal-board-row { border-top: 1px solid var(--border-color); }
+.medal-board-head { padding: 0.5rem 0 0.35rem; }
+
+.medal-board-label {
+    flex: 0 0 180px;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+/* Stacked medal bar: total length is the championship's share of the biggest
+   haul, split into gold/silver/bronze segments. */
+.medal-board-bar {
+    flex: 1;
+    display: flex;
+    height: 10px;
+    gap: 2px;
+}
+/* Pill segments: the bar rarely spans the full track, so rounding on the
+   container's overflow never reaches the right-hand end. Round each segment
+   instead; min-width keeps a 1-medal sliver visible as a dot. */
+.medal-bar-seg { height: 100%; border-radius: 5px; min-width: 10px; }
+.medal-bar-gold   { background: var(--gold); }
+.medal-bar-silver { background: var(--silver); }
+.medal-bar-bronze { background: var(--bronze); }
+
+.medal-count-col {
+    flex: 0 0 2.5rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+}
+.medal-count-zero { color: var(--text-lighter); font-weight: 400; }
+.medal-total-col {
+    flex: 0 0 3rem;
+    font-weight: 700;
+}
+.medal-board-head .medal-total-col {
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-light);
-    font-weight: 600;
 }
-
-.country-medal-counts {
-    display: flex;
-    gap: var(--spacing-md);
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.country-medal-counts .podium-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.country-medal-counts .podium-n {
-    font-weight: 700;
-    color: var(--text-color);
-    font-size: 1.05rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.country-medal-counts .pos-circle--sm {
+.medal-board-head .pos-circle--sm {
     width: 20px;
     height: 20px;
     font-size: 0.7rem;
+}
+
+@media (max-width: 640px) {
+    /* Drop the bar; label + counts stay aligned. */
+    .medal-board-bar { display: none; }
+    .medal-board-label { flex: 1 1 auto; }
 }
 
 
@@ -469,11 +492,26 @@
 }
 
 /* ── Mixed team relay section ───────────────────────────────────────────── */
-.relay-stat-value {
-    font-size: 1.3rem;
+/* Career stat strip - the athlete hero's starts/wins/podiums line, recoloured
+   for the light page and mounted as the ratings card's header bar. */
+.relay-stat-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    padding: 0.7rem 1rem;
+    background: #fafbfc;
+    border-bottom: 1px solid var(--border-color);
+}
+.relay-stat-n {
     font-weight: 700;
     color: var(--text-color);
+    font-variant-numeric: tabular-nums;
 }
+.relay-stat-pct { color: var(--text-lighter); font-size: 0.8rem; }
+.relay-stat-dot { color: var(--text-lighter); user-select: none; }
 .relay-subhead {
     font-weight: 600;
     margin: 1.25rem 0 0.6rem;
@@ -484,54 +522,39 @@
     font-size: 0.85rem;
     margin-left: 0.4rem;
 }
-.relay-lineup-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 0.75rem;
+/* The table's own header row already reads as the top edge, so the card
+   border above it is a redundant line. Corners stay rounded like every other
+   table card - the card clips its contents, so the header follows the curve. */
+.relay-table-section { border-top: none; }
+/* Everything else - width, fixed layout, cell padding, the navy header row and
+   the row separators - comes from the base `table` rules, same as every other
+   table on the site. Only the column widths and the wrapping race title are
+   specific to this table. */
+.relay-results-table .relay-date-col    { width: 14%; }
+.relay-results-table .relay-race-col    { width: 32%; }
+.relay-results-table .relay-program-col { width: 16%; }
+.relay-results-table .relay-team-col    { width: 14%; }
+.relay-results-table .relay-pos-col     { width: 8%; }
+.relay-results-table .relay-total-col   { width: 12%; }
+/* Long race titles wrap onto extra lines rather than overrunning the column. */
+.relay-results-table .relay-race-col {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
-.relay-lineup-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.9rem 0.5rem;
-    background: var(--white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    text-decoration: none;
-    color: var(--text-color);
+.relay-results-table .relay-total-col .time-cell-main { font-weight: 700; }
+
+/* Relay rating table column widths, mirroring the athlete page's rating table
+   (athlete.css) so the two read the same. Kept scoped rather than moved to
+   base.css because the calc() assumes this exact column set - the race page's
+   rating tables have different columns and would be mangled by it.
+   Fixed total = 135 + 247 + 95 + 90 (position, from base) + 110 (overall);
+   the four discipline columns share what's left. The .overall-col rule has to
+   follow .rating-col: the overall header carries both classes. */
+.relay-rating-table .date-col     { width: 135px; }
+.relay-rating-table .race-col     { width: 247px; }
+.relay-rating-table .program-col  { width: 95px; }
+.relay-rating-table .rating-col   { width: calc((100% - 667px) / 4); }
+.relay-rating-table .overall-col  { width: 110px; }
+@media (min-width: 769px) {
+    .relay-rating-table { min-width: 988px; }
 }
-.relay-lineup-card:hover { box-shadow: var(--box-shadow-hover); }
-.relay-lineup-leg {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-light);
-}
-.relay-lineup-img {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-.relay-lineup-name { font-weight: 600; text-align: center; }
-.relay-lineup-rating { color: var(--text-light); font-size: 0.85rem; }
-.relay-results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-.relay-results-table th, .relay-results-table td {
-    padding: 0.45rem 0.75rem;
-    text-align: left;
-    white-space: nowrap;
-}
-.relay-results-table thead th {
-    font-weight: 600;
-    color: var(--text-light);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-.relay-results-table tbody tr { border-top: 1px solid var(--border-color); }

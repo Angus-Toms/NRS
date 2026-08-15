@@ -1,9 +1,12 @@
 {# Split cell for the expanded leg-splits table: an inline discipline label
-   above the time (the table has no header row). #}
-{% macro leg_split(label, time, show_label) %}
+   above the time (the table has no header row), and the gap to the fastest
+   split on that leg underneath. #}
+{% macro leg_split(label, time, show_label, fastest, behind) %}
 <td class="time-col split-col" data-value="{{ time }}">
     {% if show_label %}<span class="time-disc-label">{{ label }}</span>{% endif %}
     <span class="time-cell-main">{{ time if time else '-' }}</span>
+    {% if fastest %}<span class="time-cell-gap time-cell-gap--fastest">fastest</span>
+    {% else %}<span class="time-cell-gap">{{ behind }}</span>{% endif %}
 </td>
 {% endmacro %}
 
@@ -81,14 +84,16 @@
                                         {% if loop.first %}<span class="time-disc-label">Athlete</span>{% endif %}
                                         <a href="/athlete/{{ leg.athlete_id }}" class="link">{{ leg.name }} {{ flag(leg.team.country_alpha3) }}</a>
                                     </td>
-                                    {{ leg_split('Swim', leg.swim, loop.first) }}
-                                    {{ leg_split('T1',   leg.t1,   loop.first) }}
-                                    {{ leg_split('Bike', leg.bike, loop.first) }}
-                                    {{ leg_split('T2',   leg.t2,   loop.first) }}
-                                    {{ leg_split('Run',  leg.run,  loop.first) }}
+                                    {{ leg_split('Swim', leg.swim, loop.first, leg.swim_fastest, leg.swim_behind) }}
+                                    {{ leg_split('T1',   leg.t1,   loop.first, leg.t1_fastest,   leg.t1_behind) }}
+                                    {{ leg_split('Bike', leg.bike, loop.first, leg.bike_fastest, leg.bike_behind) }}
+                                    {{ leg_split('T2',   leg.t2,   loop.first, leg.t2_fastest,   leg.t2_behind) }}
+                                    {{ leg_split('Run',  leg.run,  loop.first, leg.run_fastest,  leg.run_behind) }}
                                     <td class="time-col overall-col" data-value="{{ leg.leg }}">
                                         {% if loop.first %}<span class="time-disc-label">Leg Time</span>{% endif %}
                                         <span class="overall-time">{{ leg.leg if leg.leg else '-' }}</span>
+                                        {% if leg.rank == 1 and leg.leg %}<span class="time-cell-gap time-cell-gap--fastest">fastest</span>
+                                        {% elif leg.leg_behind %}<span class="time-cell-gap">{{ leg.leg_behind }}</span>{% endif %}
                                     </td>
                                     <td class="relay-legs-pos">
                                         {% if loop.first %}<span class="time-disc-label">Leg Pos</span>{% endif %}
