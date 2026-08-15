@@ -316,7 +316,7 @@ function applyNiceTicks(scale, opts = {}) {
 // columns (rankings, 1y change, course conditions...) just drop out.
 // `column: true` expands a th target's spotlight to the whole table column.
 const _pill = c => `<span class="std-pill std-pill--${c}">${c[0].toUpperCase() + c.slice(1)}</span>`;
-const _ratingBasics = 'Every athlete carries an ELO-style rating per discipline, updated after each race. Higher is better. There is no fixed minimum or maximum - ratings only mean something relative to other athletes in the same gender, course and category.';
+const _ratingBasics = 'Every athlete carries a rating per discipline, updated after each race. Higher is better. There is no fixed minimum or maximum - ratings only mean something relative to other athletes in the same gender, course and category.';
 const _tierText = `Tiers grade the field strength against all races of the same gender and course: ${_pill('beginner')} bottom 30%, ${_pill('novice')} next 30%, ${_pill('intermediate')} 60th-85th percentile, ${_pill('advanced')} 85th-95th, and ${_pill('expert')} the top 5%.`;
 
 const HELP_TOURS = {
